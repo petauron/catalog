@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 1,
+  "sources": {
+    "pulse": {
+      "repository": "petauron/pulse",
+      "workflow": ".github/workflows/release.yml",
+      "publishJob": "Publish GitHub release",
+      "branch": "main",
+      "allowPrerelease": true,
+      "image": "ghcr.io/petauron/pulse",
+      "imageApp": "pulse",
+      "imageName": "pulse",
+      "artifactApp": "pulse-agent",
+      "artifactName": "pulse-agent",
+      "archives": {"amd64": "x86_64", "arm64": "aarch64"}
+    }
+  }
+}

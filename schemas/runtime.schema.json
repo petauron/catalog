@@ -1,0 +1,98 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petauron.com/contracts/catalog/v4/runtime.schema.json",
+  "title": "Versioned declarative runtime (unknown versions are non-executable)",
+  "type": "object",
+  "required": ["kind", "version"],
+  "properties": {
+    "kind": { "$ref": "#/$defs/name" },
+    "version": { "type": "integer", "minimum": 1, "maximum": 9007199254740991 },
+    "requiredCapabilities": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } }
+  },
+  "allOf": [{
+    "if": { "properties": { "kind": { "enum": ["docker", "systemd"] }, "version": { "const": 1 } } },
+    "then": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {}, "version": {}, "requiredCapabilities": {},
+        "storage": { "type": "array", "items": { "$ref": "#/$defs/storage" } },
+        "docker": { "$ref": "#/$defs/docker" },
+        "systemd": { "$ref": "#/$defs/systemd" }
+      },
+      "oneOf": [
+        { "properties": { "kind": { "const": "docker" } }, "required": ["docker"], "not": { "required": ["systemd"] } },
+        { "properties": { "kind": { "const": "systemd" } }, "required": ["systemd"], "not": { "required": ["docker"] } }
+      ]
+    }
+  }],
+  "$defs": {
+    "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9.-]{0,62}$" },
+    "names": { "type": "array", "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
+    "relativePath": { "type": "string", "minLength": 1, "pattern": "^(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\\\u0000\\r\\n]).+$" },
+    "absolutePath": { "type": "string", "minLength": 2, "pattern": "^/(?!/)(?!.*(?:^|/)\\.\\.(?:/|$))(?!.*[\\\\\\u0000\\r\\n]).+$" },
+    "runtimeValue": {
+      "type": "object", "additionalProperties": false, "required": ["kind"],
+      "properties": {
+        "kind": { "enum": ["private-address", "service-address", "state-directory", "config-file", "credential-file"] },
+        "name": { "type": "string", "minLength": 1 },
+        "path": { "$ref": "#/$defs/relativePath" }
+      },
+      "allOf": [
+        { "if": { "properties": { "kind": { "const": "private-address" } } }, "then": { "not": { "required": ["name"] } }, "else": { "required": ["name"] } },
+        { "if": { "required": ["path"] }, "then": { "properties": { "kind": { "const": "state-directory" } } } }
+      ]
+    },
+    "value": {
+      "type": "object", "additionalProperties": false, "minProperties": 1, "maxProperties": 1,
+      "properties": {
+        "literal": { "type": ["string", "number", "boolean", "object", "array"] },
+        "config": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$" },
+        "secret": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$" },
+        "runtime": { "$ref": "#/$defs/runtimeValue" },
+        "object": { "type": "object", "additionalProperties": { "$ref": "#/$defs/value" } },
+        "array": { "type": "array", "items": { "$ref": "#/$defs/value" } }
+      }
+    },
+    "values": { "type": "array", "maxItems": 256, "items": { "$ref": "#/$defs/value" } },
+    "environment": { "type": "object", "maxProperties": 256, "propertyNames": { "pattern": "^[A-Za-z_][A-Za-z0-9_]*$" }, "additionalProperties": { "$ref": "#/$defs/value" } },
+    "credentials": { "type": "object", "propertyNames": { "$ref": "#/$defs/name" }, "additionalProperties": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$" } },
+    "storage": {
+      "type": "object", "additionalProperties": false, "required": ["name", "persistent"],
+      "properties": { "name": { "$ref": "#/$defs/name" }, "persistent": { "type": "boolean" } }
+    },
+    "configFile": {
+      "type": "object", "additionalProperties": false, "required": ["path", "format", "values"],
+      "properties": { "path": { "type": "string", "minLength": 1 }, "format": { "enum": ["json", "yaml", "env"] }, "values": { "type": "object", "additionalProperties": { "$ref": "#/$defs/value" } } }
+    },
+    "configFiles": { "type": "array", "maxItems": 128, "items": { "$ref": "#/$defs/configFile" } },
+    "mount": {
+      "type": "object", "additionalProperties": false, "required": ["target"],
+      "properties": { "storage": { "$ref": "#/$defs/name" }, "hostPath": { "$ref": "#/$defs/absolutePath" }, "target": { "$ref": "#/$defs/absolutePath" }, "readOnly": { "type": "boolean" } },
+      "oneOf": [{ "required": ["storage"], "not": { "required": ["hostPath"] } }, { "required": ["hostPath"], "not": { "required": ["storage"] } }]
+    },
+    "port": { "type": "object", "additionalProperties": false, "required": ["service"], "properties": { "service": { "$ref": "#/$defs/name" }, "protocol": { "const": "tcp" } } },
+    "health": { "type": "object", "additionalProperties": false, "required": ["service"], "properties": { "service": { "$ref": "#/$defs/name" }, "path": { "type": "string", "pattern": "^/(?!/)[^?#]*$" }, "timeoutSeconds": { "type": "integer", "minimum": 0, "maximum": 120 } } },
+    "limits": { "type": "object", "additionalProperties": false, "properties": { "memoryBytes": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }, "cpuMillis": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 }, "pids": { "type": "integer", "minimum": 0, "maximum": 9007199254740991 } } },
+    "container": {
+      "type": "object", "additionalProperties": false, "required": ["name", "image"],
+      "properties": {
+        "name": { "$ref": "#/$defs/name" }, "image": { "$ref": "#/$defs/name" },
+        "command": { "$ref": "#/$defs/values" }, "arguments": { "$ref": "#/$defs/values" },
+        "environment": { "$ref": "#/$defs/environment" }, "credentials": { "$ref": "#/$defs/credentials" }, "configFiles": { "$ref": "#/$defs/configFiles" },
+        "mounts": { "type": "array", "items": { "$ref": "#/$defs/mount" } }, "ports": { "type": "array", "items": { "$ref": "#/$defs/port" } },
+        "user": { "type": "string" }, "hostNetwork": { "type": "boolean" }, "devices": { "type": "array", "items": { "$ref": "#/$defs/absolutePath" } },
+        "dependsOn": { "$ref": "#/$defs/names" }, "health": { "$ref": "#/$defs/health" }, "limits": { "$ref": "#/$defs/limits" }
+      }
+    },
+    "docker": { "type": "object", "additionalProperties": false, "required": ["containers"], "properties": { "containers": { "type": "array", "minItems": 1, "maxItems": 32, "items": { "$ref": "#/$defs/container" } } } },
+    "artifactFile": { "type": "object", "additionalProperties": false, "required": ["path"], "properties": { "path": { "$ref": "#/$defs/relativePath" }, "executable": { "type": "boolean" } } },
+    "systemd": {
+      "type": "object", "additionalProperties": false, "required": ["artifact", "executable", "files"],
+      "properties": {
+        "artifact": { "$ref": "#/$defs/name" }, "executable": { "$ref": "#/$defs/relativePath" }, "files": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "#/$defs/artifactFile" } },
+        "arguments": { "$ref": "#/$defs/values" }, "environment": { "$ref": "#/$defs/environment" }, "configFiles": { "$ref": "#/$defs/configFiles" }, "credentials": { "$ref": "#/$defs/credentials" },
+        "stateDirectories": { "$ref": "#/$defs/names" }, "user": { "type": "string" }, "health": { "$ref": "#/$defs/health" }, "limits": { "$ref": "#/$defs/limits" }
+      }
+    }
+  }
+}

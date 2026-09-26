@@ -3,5 +3,8 @@
 /node_modules/
 /coverage/
 *.key
+!/catalog/testdata/v4/catalog-signing-public.key
 *.pem
 .env
+.cache/
+*.test

@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://petauron.com/contracts/catalog/v4/catalog.schema.json",
+  "title": "Petauron catalog schema 4",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "generatedAt", "apps"],
+  "properties": {
+    "schemaVersion": { "const": 4 },
+    "generatedAt": {
+      "type": "string",
+      "format": "date-time",
+      "pattern": "^[0-9]{4}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12][0-9]|3[01])T(?:[01][0-9]|2[0-3]):[0-5][0-9]:[0-5][0-9](?:\\.[0-9]{0,8}[1-9])?Z$",
+      "not": { "const": "0001-01-01T00:00:00Z" }
+    },
+    "apps": {
+      "type": "array",
+      "items": { "$ref": "app-manifest.schema.json" }
+    }
+  }
+}
