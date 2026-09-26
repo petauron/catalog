@@ -1,0 +1,102 @@
+name: Publish independent application catalog
+on:
+  workflow_dispatch:
+    inputs:
+      kind:
+        description: Release notification, reviewed recipe change, or expiry renewal
+        type: choice
+        options: [release, reviewed, renew]
+        default: release
+      application:
+        description: Reviewed source identifier (release only)
+        type: string
+      tag:
+        description: Published source tag (release only)
+        type: string
+      sha:
+        description: Exact published source commit (release only)
+        type: string
+      run_id:
+        description: Successful source release publishing run (release only)
+        type: string
+  schedule:
+    - cron: '23 4 * * *'
+permissions:
+  contents: read
+concurrency:
+  group: official-catalog-stable
+  queue: max
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.repository == 'petauron/catalog' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    environment: catalog-signing
+    permissions:
+      contents: write
+      actions: read
+      attestations: read
+      packages: read
+    env:
+      GH_TOKEN: ${{ github.token }}
+      CATALOG_PRODUCTION_ENABLED: ${{ vars.CATALOG_PRODUCTION_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require explicit cutover and protected noninteractive signing environment
+        run: |
+          test "$CATALOG_PRODUCTION_ENABLED" = true
+          jq -e '.completed and .oldWriterDisabled and .consumersUpgraded' catalog/migration.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
+            jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
+      - name: Select isolated runner workspace
+        run: |
+          echo "CATALOG_WORK=$RUNNER_TEMP/catalog-request" >> "$GITHUB_ENV"
+          echo "CATALOG_BIN=$RUNNER_TEMP/catalog-bin" >> "$GITHUB_ENV"
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: go.mod
+          cache: true
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Test and build from the protected catalog commit
+        run: |
+          npm ci --ignore-scripts
+          go test ./... -count=1
+          node --test scripts/*.test.mjs
+          mkdir -m 700 "$CATALOG_BIN"
+          go build -o "$CATALOG_BIN/catalog-check" ./cmd/catalog-check
+          go build -o "$CATALOG_BIN/catalog-publish" ./cmd/catalog-publish
+          go build -o "$CATALOG_BIN/catalog-verify" ./cmd/catalog-verify
+      - name: Warn before offline root rotation is required
+        run: node scripts/root-expiry.mjs
+      - name: Resolve source, verify artifacts, and allocate a durable revision
+        id: prepare
+        env:
+          CATALOG_REQUEST_KIND: ${{ github.event_name == 'schedule' && 'renew' || inputs.kind }}
+          CATALOG_APPLICATION: ${{ inputs.application }}
+          CATALOG_SOURCE_TAG: ${{ inputs.tag }}
+          CATALOG_SOURCE_SHA: ${{ inputs.sha }}
+          CATALOG_SOURCE_RUN_ID: ${{ inputs.run_id }}
+        run: node scripts/catalog-plan.mjs
+      - name: Sign online roles, persist exact bytes, CAS activate, and verify public catalog
+        if: steps.prepare.outputs.publish == 'true'
+        env:
+          CATALOG_SIGNERS: ${{ secrets.CATALOG_SIGNERS }}
+          CATALOG_KEY_DIRECTORY: ${{ runner.temp }}/catalog-signers
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET_NAME: ${{ vars.CATALOG_R2_BUCKET_NAME }}
+          R2_ENDPOINT: https://${{ vars.CATALOG_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: node scripts/catalog-signing-job.mjs
+      - name: Record actionable failure without exposing credentials
+        if: failure()
+        run: |
+          echo '::error::Catalog publication was not confirmed. Preserve drafts and check migration/source/expiry gates. Do not reset trust or overwrite timestamp.'
+          echo 'Catalog publication blocked or failed. Review this run and the pending release ledger before any retry.' >> "$GITHUB_STEP_SUMMARY"

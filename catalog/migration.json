@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "completed": false,
+  "source": "petauron/vastora",
+  "sourceIdentity": "vastora-official",
+  "channel": "stable",
+  "oldWriterDisabled": false,
+  "consumersUpgraded": false,
+  "lastLegacyRevision": null,
+  "baselineSHA256": null,
+  "rootSHA256": null
+}
