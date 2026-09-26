@@ -8,8 +8,13 @@ Installing/upgrading an application still requires an administrator's action.
 ## Release request contract
 
 The protected `publish.yml` workflow accepts `kind=release` with `application`,
-`tag`, `sha`, and `run_id`. It also accepts `kind=reviewed` after a recipe PR or
-`kind=renew` to renew signed metadata. A daily run requests renewal automatically.
+`tag`, `sha`, and `run_id`. It also accepts `kind=reviewed` after a recipe PR,
+`kind=renew` to renew signed metadata, or `kind=poll` (the default). Every 30
+minutes the scheduled poll discovers upstream releases and checks metadata expiry.
+GitHub scheduling may be delayed; this is not a delivery-time guarantee.
+Discovery examines at most 100 recent releases and 100 matching workflow runs
+per source. Older releases remain available through the manual release contract.
+No new version and no pending renewal means no signed publication.
 
 `catalog/sources.json` is the reviewed source registry. Initially only Pulse is
 automated, including its Alpha releases. The publisher derives its repository,
@@ -28,21 +33,20 @@ URLs or checksums. It independently checks:
   configs and declared native archive members / ELF headers. No downloaded
   application binary or archive script is executed.
 
-The Pulse release workflow has a separate `notify-catalog` job after `publish`.
-A failure to notify cannot delete a public release; dispatch only submits a
-request, it does not wait for signing or claim that the package was published.
-For an existing release, dispatch the same contract using its original release
-run (including `v0.1.0-alpha.5`); do not re-release or mutate its tag.
+Pulse does not notify the catalog and needs no cross-repository credentials.
+The catalog discovers the highest permitted semantic version, resolves its tag
+commit and successful publishing job, then applies the same full verification.
+Drafts, unapproved prereleases and older versions are not installed. An incomplete
+latest release fails closed for retry, not fallback to an older release. A pending
+publication resumes its exact recorded bytes before any new discovery, provided
+the original commit and recipe still match; otherwise operator recovery is required.
+Existing releases (including `v0.1.0-alpha.5`) need not be re-released.
 
 ## Credentials and GitHub settings
 
-Use a GitHub App installed **only** on `petauron/catalog`, with `Actions: write`
-and implicit metadata read. Its private key belongs in Pulse's `catalog-notify`
-environment as `CATALOG_NOTIFY_APP_PRIVATE_KEY`; set `CATALOG_NOTIFY_APP_ID` as a
-variable. The token action restricts the installation token to this repository
-and the Actions permission. This permission is not limited to one workflow, so
-all dispatchable catalog workflows must treat inputs as untrusted hints.
-Missing credentials fail notification visibly; no PAT or broader-token fallback.
+The catalog uses its own workflow token to read public release metadata and
+maintain its release ledger. No notification GitHub App or PAT is required.
+Manual dispatch inputs remain untrusted hints, not download authority.
 
 In the catalog repository:
 
@@ -53,9 +57,13 @@ In the catalog repository:
   reviewers for routine releases. Provision only online role keys in
   `CATALOG_SIGNERS` (`targets`, `snapshot`, `timestamp`, each an array of PKCS#8
   PEM strings). Never place the offline root key in CI.
-- Provision dedicated scoped `R2_ACCESS_KEY_ID` / `R2_SECRET_ACCESS_KEY` and
-  `CATALOG_R2_BUCKET_NAME` / `CATALOG_CLOUDFLARE_ACCOUNT_ID`. Do not revoke a
-  credential used by another project. Keys are materialized only for signing
+- The operator approved reuse of organization `R2_ACCESS_KEY_ID` /
+  `R2_SECRET_ACCESS_KEY`, with selected-repository access including this repository.
+  These shared credentials are not restricted to the signing environment or
+  catalog prefix. Preserve other repositories' access and never revoke shared
+  credentials for this migration. Configure environment variables
+  `CATALOG_R2_BUCKET_NAME` / `CATALOG_CLOUDFLARE_ACCOUNT_ID`.
+  Signing keys are materialized only for signing
   into 0700/0600 runner-temporary paths and removed on success or failure.
 - Keep `CATALOG_PRODUCTION_ENABLED` unset/false until the maintenance acceptance
   in [MIGRATION.md](MIGRATION.md) is complete. The committed migration record is

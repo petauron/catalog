@@ -30,6 +30,16 @@ test("pending publication only resumes original commit/request/recipe and exact 
   assert.throws(() => choosePlan(setup({ draft: true, expired: true })), /expired/);
 });
 
+test("a pending poll preserves exact bytes and revision without rediscovery", () => {
+  const input = setup({ draft: true });
+  input.request = { kind: "poll" };
+  input.bundles.get("catalog-r7").request = input.request;
+  const plan = choosePlan(input);
+  assert.equal(plan.resume, true);
+  assert.equal(plan.revision, 7);
+  assert.equal(plan.catalogBytes.toString(), JSON.stringify(reviewed));
+});
+
 test("reviewed recipes never silently revert automatic upstream version or digest", () => {
   const active = structuredClone(reviewed); active.apps[0].version = "0.1.0-alpha.5"; active.apps[0].images[0].reference = "accepted";
   const merged = mergeReviewedRecipes(reviewed, active);
