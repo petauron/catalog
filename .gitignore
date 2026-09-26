@@ -1,0 +1,7 @@
+/bin/
+/out/
+/node_modules/
+/coverage/
+*.key
+*.pem
+.env
