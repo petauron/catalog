@@ -7,23 +7,32 @@ Installing/upgrading an application still requires an administrator's action.
 
 ## Release request contract
 
-The protected `publish.yml` workflow accepts `kind=release` with `application`,
-`tag`, `sha`, and `run_id`. It also accepts `kind=reviewed` after a recipe PR,
-`kind=renew` to renew signed metadata, or `kind=poll` (the default). Every 30
-minutes the scheduled poll discovers upstream releases and checks metadata expiry.
-GitHub scheduling may be delayed; this is not a delivery-time guarantee.
-Discovery examines at most 100 recent releases and 100 matching workflow runs
-per source. Older releases remain available through the manual release contract.
-No new version and no pending renewal means no signed publication.
+The protected `publish.yml` workflow runs only through manual `workflow_dispatch`.
+After the application's release publishing job succeeds, an administrator selects
+`kind=release` and supplies `application`, `tag`, the tag's exact source `sha`, and
+the successful source release `run_id`. The GitHub Actions page exposes these
+fields; the equivalent CLI call is:
 
-`catalog/sources.json` is the reviewed source registry. Initially only Pulse is
-automated, including its Alpha releases. The publisher derives its repository,
+```sh
+gh workflow run publish.yml --repo petauron/catalog --ref main \
+  -f kind=release -f application=pulse -f tag=v0.1.0-alpha.5 \
+  -f sha=87316579282f6d1b874dd37e55bea5038d1ec6d7 -f run_id=36220147813
+```
+
+This example identifies an already published Pulse release; it is not a cutover
+command while the migration gates remain closed. Check the resulting catalog
+workflow run and public signed revision before claiming publication. `kind=reviewed`
+handles a reviewed recipe change, and `kind=renew` refreshes signed metadata.
+Neither an application release nor a catalog source change triggers publication
+automatically. No periodic workflow is configured.
+
+`catalog/sources.json` is the reviewed source registry. Pulse is the first
+registered source, including its Alpha releases. The publisher derives its repository,
 workflow, image repository and attachment names from that registry, not request
 URLs or checksums. It independently checks:
 
 - The exact tag commit belongs to protected source `main`; the identified push
-  run and its publishing job succeeded. The overall run may still be notifying
-  the catalog, or may previously have failed in notification only.
+  run and its publishing job succeeded.
 - Both public native archives match their release inventory and `SHA256SUMS`.
   GitHub attestations must match the repository, release workflow, tag ref and
   exact source/signer commit, with GitHub-hosted runners.
@@ -34,13 +43,11 @@ URLs or checksums. It independently checks:
   application binary or archive script is executed.
 
 Pulse does not notify the catalog and needs no cross-repository credentials.
-The catalog discovers the highest permitted semantic version, resolves its tag
-commit and successful publishing job, then applies the same full verification.
-Drafts, unapproved prereleases and older versions are not installed. An incomplete
-latest release fails closed for retry, not fallback to an older release. A pending
-publication resumes its exact recorded bytes before any new discovery, provided
-the original commit and recipe still match; otherwise operator recovery is required.
-Existing releases (including `v0.1.0-alpha.5`) need not be re-released.
+The administrator chooses a specific completed release. The catalog verifies its
+tag commit, release job, and artifacts against the reviewed source rule. Drafts,
+unapproved prereleases and older versions are rejected. A pending publication
+can resume only with its original request, commit, recipe and exact signed bytes;
+otherwise operator recovery is required. Existing releases need not be re-released.
 
 ## Credentials and GitHub settings
 
@@ -84,10 +91,10 @@ migration index; a changed or missing live digest blocks publication.
 
 Retries use the original catalog commit, input request and exact signed bytes.
 A different request cannot jump over a pending publication. Expired signatures,
-missing draft assets or unclear publication state stop automatic progress and
+missing draft assets or unclear publication state stop publication and
 require operator investigation; drafts are never deleted to reset the counter.
 The lower-level publisher retains an explicit supersession operation for a
-separately reviewed recovery; automated dispatch never enables it.
+separately reviewed recovery; the manual workflow never enables it.
 
 All versioned metadata and target objects are put with `If-None-Match: *`, and
 existing bytes must be identical. `timestamp.json` is activated last using the
@@ -98,15 +105,20 @@ is finalized. Original storage layout remains unchanged.
 Ordinary duplicates are no-ops. Older version hints are rejected, not installed.
 New upstream versions keep the reviewed `packageRevision`; a recipe change for
 an already published application version requires a higher revision. Refreshing
-metadata keeps package identities unchanged. Default validity is seven days;
-the daily job renews below 48 hours and warns below 30 days of root expiry.
+metadata keeps package identities unchanged. Default validity is seven days.
+Without a periodic job, the operator must manually run `kind=renew` before expiry,
+including during periods without new releases. A manual renewal publishes a fresh
+signed revision even if more than 48 hours remain; run early enough to leave time
+for failed-run investigation. Each manual run checks the
+offline root expiry and warns below 30 days; no run means no expiry warning.
+If a publication remains pending or fails, investigate its ledger before retrying.
 Workflow failure is actionable: preserve logs/ledger and inspect the failed run.
 Subscribe operators to repository workflow failure notifications; no third-party
 alert channel is silently added.
 
 ## External API references
 
-- [GitHub App workflow dispatch permissions](https://docs.github.com/en/rest/actions/workflows#create-a-workflow-dispatch-event)
+- [GitHub manual workflow dispatch](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/manually-run-a-workflow)
 - [GitHub concurrency queues](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
 - [GitHub attestation verification and source policy](https://cli.github.com/manual/gh_attestation_verify)
 - [R2 S3 conditional PutObject support](https://developers.cloudflare.com/r2/api/s3/api/)

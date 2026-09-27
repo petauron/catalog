@@ -5,7 +5,6 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validatePublication, verifyLedgerAsset } from "./publish-catalog.mjs";
 import { applyRelease, compareVersions, execute, sha256, validateRequest, verifyRelease } from "./release-source.mjs";
-import { discoverRelease } from "./poll-releases.mjs";
 
 export function loadImportedLedger(directory) {
   const index = JSON.parse(readFileSync(path.join(directory, "index.json")));
@@ -59,6 +58,10 @@ export function mergeReviewedRecipes(reviewed, active) {
   return next;
 }
 
+export function shouldPublish({ changed, renewalDue, request }) {
+  return changed || renewalDue || request.kind === "renew";
+}
+
 export function choosePlan({ releases, bundles, commit, request, reviewed, recipesSHA256, now = new Date() }) {
   const entries = releases.filter(entry => /^catalog-r[1-9][0-9]*$/.test(entry.tag_name)).sort((a, b) => Number(b.tag_name.slice(9)) - Number(a.tag_name.slice(9)));
   const latest = entries[0];
@@ -104,24 +107,16 @@ export async function preparePublication(env = process.env, run = execute, verif
   const registry = JSON.parse(readFileSync("catalog/sources.json"));
   const request = env.CATALOG_REQUEST_KIND === "release" ? { application: env.CATALOG_APPLICATION, runId: env.CATALOG_SOURCE_RUN_ID, sha: env.CATALOG_SOURCE_SHA, tag: env.CATALOG_SOURCE_TAG } : { kind: env.CATALOG_REQUEST_KIND };
   if (request.kind === undefined) validateRequest(request, registry);
-  else if (!["poll", "renew", "reviewed"].includes(request.kind)) throw new Error("Unsupported publication request");
+  else if (!["renew", "reviewed"].includes(request.kind)) throw new Error("Unsupported publication request");
   const reviewedBytes = readFileSync("catalog/catalog.json");
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
   if (!plan.resume) {
-    if (request.kind === "poll") {
-      for (const application of Object.keys(registry.sources).sort()) {
-        const discovered = discoverRelease(application, registry, plan.candidate, run);
-        if (!discovered) continue;
-        const verified = await verify(discovered, registry, path.join(work, `upstream-${application}`));
-        plan.candidate = applyRelease(plan.candidate, verified, registry.sources[application]);
-      }
-    }
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));
       plan.candidate = applyRelease(plan.candidate, verified, registry.sources[request.application]);
     }
     const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps);
-    if (!changed && !plan.renewalDue) return { noop: true };
+    if (!shouldPublish({ changed, renewalDue: plan.renewalDue, request })) return { noop: true };
     plan.candidate.generatedAt = new Date().toISOString();
     plan.catalogBytes = Buffer.from(JSON.stringify(plan.candidate));
   }

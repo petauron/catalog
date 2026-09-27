@@ -10,11 +10,14 @@ declarative runtime validation, native artifact verification, and TUF trust and
 publication tools. Vastora consumes a pinned release of this module; the catalog
 pipeline does not update Vastora source or deploy applications.
 
-Every 30 minutes the catalog polls releases from the reviewed source registry;
-applications need no notification App or cross-repository credentials. The publisher
+After an application's release build succeeds, an administrator manually starts
+the catalog publication workflow with its tag, source SHA, and release run ID.
+Applications need no notification App or cross-repository credentials. The publisher
 independently verifies source provenance and both platform artifacts, records
 immutable signed bytes, and activates the catalog with a conditional write.
-Normal updates do not create source commits. Pulse is the first registered source.
+Normal version updates do not create source commits. Pulse is the first registered
+source. Metadata renewal is also manual and must occur before its seven-day
+signature validity expires, including when no new application version exists.
 
 - [Publication, credentials, and recovery](docs/PUBLISHING.md)
 - [Maintenance-window migration and acceptance](docs/MIGRATION.md)

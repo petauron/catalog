@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { choosePlan, mergeReviewedRecipes, preparePublication } from "./catalog-plan.mjs";
+import { readFileSync } from "node:fs";
+import { choosePlan, mergeReviewedRecipes, preparePublication, shouldPublish } from "./catalog-plan.mjs";
 import { sha256 } from "./release-source.mjs";
 
 const commit = "a".repeat(40), recipesSHA256 = "b".repeat(64);
@@ -21,6 +22,19 @@ test("allocates monotonic revisions under the serialized workflow and detects re
   assert.throws(() => choosePlan({ ...setup(), releases: [] }), /existing history/);
 });
 
+test("manual renewal publishes even before the 48-hour window; duplicate release remains a no-op", () => {
+  assert.equal(shouldPublish({ changed: false, renewalDue: false, request: { kind: "renew" } }), true);
+  assert.equal(shouldPublish({ changed: false, renewalDue: false, request: { application: "pulse" } }), false);
+  assert.equal(shouldPublish({ changed: false, renewalDue: true, request: { application: "pulse" } }), true);
+});
+
+test("catalog publication only has a manual trigger", () => {
+  const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
+  assert.match(workflow, /workflow_dispatch:/);
+  assert.doesNotMatch(workflow, /(^|\n)\s*schedule:/);
+  assert.doesNotMatch(workflow, /\bpoll\b|CATALOG_NOTIFY|create-github-app-token/);
+});
+
 test("pending publication only resumes original commit/request/recipe and exact signed input", () => {
   const input = setup({ draft: true });
   const next = choosePlan(input);
@@ -28,16 +42,6 @@ test("pending publication only resumes original commit/request/recipe and exact 
   assert.equal(next.catalogBytes.toString(), JSON.stringify(reviewed));
   for (const override of [{ commit: "c".repeat(40) }, { request: { kind: "reviewed" } }, { recipesSHA256: "c".repeat(64) }]) assert.throws(() => choosePlan({ ...input, ...override }), /Pending/);
   assert.throws(() => choosePlan(setup({ draft: true, expired: true })), /expired/);
-});
-
-test("a pending poll preserves exact bytes and revision without rediscovery", () => {
-  const input = setup({ draft: true });
-  input.request = { kind: "poll" };
-  input.bundles.get("catalog-r7").request = input.request;
-  const plan = choosePlan(input);
-  assert.equal(plan.resume, true);
-  assert.equal(plan.revision, 7);
-  assert.equal(plan.catalogBytes.toString(), JSON.stringify(reviewed));
 });
 
 test("reviewed recipes never silently revert automatic upstream version or digest", () => {
