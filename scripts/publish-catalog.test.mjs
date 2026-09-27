@@ -49,7 +49,10 @@ function fixture(t) {
       return Buffer.from(JSON.stringify({ ETag: '"previous-etag"' }));
     }
     assert.equal(command, "gh");
-    if (args[0] === "api") return Buffer.from(JSON.stringify(args.at(-1).includes("/releases/tags/") ? releases.find(release => release.tag_name === args.at(-1).split("/").at(-1)) : [releases]));
+    if (args[0] === "api") {
+      if (args.at(-1).includes("/releases/tags/")) throw new Error("GitHub does not expose draft releases by tag");
+      return Buffer.from(JSON.stringify([releases]));
+    }
     assert.equal(args[0], "release");
     const tag = args[2];
     if (args[1] === "create") {
@@ -328,7 +331,10 @@ test("a changed draft identity on upload confirmation never reaches storage", t 
   const f = fixture(t);
   const run = (command, args) => {
     const value = f.run(command, args);
-    if (command === "gh" && args[0] === "api" && args.at(-1).includes("/releases/tags/")) return Buffer.from(JSON.stringify({ ...JSON.parse(value), target_commitish: "b".repeat(40) }));
+    if (command === "gh" && args[0] === "api" && f.releases.some(release => release.draft)) {
+      const pages = JSON.parse(value);
+      return Buffer.from(JSON.stringify(pages.map(page => page.map(release => ({ ...release, target_commitish: "b".repeat(40) })))));
+    }
     return value;
   };
   assert.throws(() => publishCatalog(f.options, run, f.upload), /identity changed/);
