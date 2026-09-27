@@ -58,10 +58,6 @@ export function mergeReviewedRecipes(reviewed, active) {
   return next;
 }
 
-export function shouldPublish({ changed, renewalDue, request }) {
-  return changed || renewalDue || request.kind === "renew";
-}
-
 export function choosePlan({ releases, bundles, commit, request, reviewed, recipesSHA256, now = new Date() }) {
   const entries = releases.filter(entry => /^catalog-r[1-9][0-9]*$/.test(entry.tag_name)).sort((a, b) => Number(b.tag_name.slice(9)) - Number(a.tag_name.slice(9)));
   const latest = entries[0];
@@ -76,7 +72,7 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
     return { revision, resume: true, catalogBytes: Buffer.from(bundle.inputCatalog, "base64"), request, recipesSHA256 };
   }
   if (!Number.isSafeInteger(revision + 1)) throw new Error("Publication revision exhausted");
-  return { revision: revision + 1, resume: false, active, candidate: mergeReviewedRecipes(reviewed, active), renewalDue: Date.parse(expiresAt) - now.getTime() < 48 * 3600 * 1000, request, recipesSHA256 };
+  return { revision: revision + 1, resume: false, active, candidate: mergeReviewedRecipes(reviewed, active), request, recipesSHA256 };
 }
 
 export async function preparePublication(env = process.env, run = execute, verify = verifyRelease) {
@@ -107,7 +103,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   const registry = JSON.parse(readFileSync("catalog/sources.json"));
   const request = env.CATALOG_REQUEST_KIND === "release" ? { application: env.CATALOG_APPLICATION, runId: env.CATALOG_SOURCE_RUN_ID, sha: env.CATALOG_SOURCE_SHA, tag: env.CATALOG_SOURCE_TAG } : { kind: env.CATALOG_REQUEST_KIND };
   if (request.kind === undefined) validateRequest(request, registry);
-  else if (!["renew", "reviewed"].includes(request.kind)) throw new Error("Unsupported publication request");
+  else if (request.kind !== "reviewed") throw new Error("Unsupported publication request");
   const reviewedBytes = readFileSync("catalog/catalog.json");
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
   if (!plan.resume) {
@@ -116,7 +112,7 @@ export async function preparePublication(env = process.env, run = execute, verif
       plan.candidate = applyRelease(plan.candidate, verified, registry.sources[request.application]);
     }
     const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps);
-    if (!shouldPublish({ changed, renewalDue: plan.renewalDue, request })) return { noop: true };
+    if (!changed) return { noop: true };
     plan.candidate.generatedAt = new Date().toISOString();
     plan.catalogBytes = Buffer.from(JSON.stringify(plan.candidate));
   }

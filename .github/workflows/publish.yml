@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: Publish a verified release, reviewed recipe change, or metadata renewal
+        description: Publish a verified release or reviewed recipe change
         type: choice
-        options: [release, reviewed, renew]
+        options: [release, reviewed]
         default: release
       application:
         description: Reviewed source identifier (release only)

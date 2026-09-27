@@ -33,6 +33,9 @@ func BuildOfficialRepository(rootBytes, targetBytes []byte, channel string, prev
 	if !root.Signed.ConsistentSnapshot || !root.Signed.Expires.After(now) {
 		return nil, errors.New("catalog: publication requires an unexpired consistent-snapshot root")
 	}
+	if root.Signed.Expires.Before(acceptance.ExpiresAt) {
+		return nil, errors.New("catalog: root expires before published catalog metadata")
+	}
 	// An online publication role must not share a key with the offline root.
 	// Otherwise compromise of the routine publisher also permits trust rotation.
 	rootKeys := make(map[string]bool)
@@ -74,9 +77,9 @@ func BuildOfficialRepository(rootBytes, targetBytes []byte, channel string, prev
 		return nil, err
 	}
 	files[fmt.Sprintf("%d.snapshot.json", version)] = snapshotBytes
-	// Use the explicitly approved publication lifetime for every online role.
-	// A hidden shorter timestamp expiry would disable installations before the
-	// operator's stated renewal deadline. The client still enforces root expiry.
+	// Every role shares the reviewed long-lived publication expiry. New clients
+	// cannot detect a mirror that withholds later revisions; accepted clients
+	// still enforce their local revision high-water mark.
 	timestamp := metadata.Timestamp(acceptance.ExpiresAt)
 	timestamp.Signed.Version = version
 	timestamp.Signed.Meta["snapshot.json"] = officialMetaFile(version, snapshotBytes)
