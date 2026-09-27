@@ -31,7 +31,17 @@ function fixture(t) {
   const run = (command, args) => {
     calls.push({ command, args });
     const flag = name => args[args.indexOf(name) + 1];
-    if (command.endsWith("/catalog-publish")) { stage(flag("--output"), Number(flag("--revision"))); return Buffer.from(""); }
+    if (command.endsWith("/catalog-publish")) {
+      const output = flag("--output");
+      stage(output, Number(flag("--revision")));
+      for (const key of ["--ui-bundle", "--ui-style"]) {
+        if (!args.includes(key)) continue;
+        const source = flag(key);
+        const raw = readFileSync(source);
+        writeFileSync(path.join(output, "targets", `${checksum(raw)}.${path.basename(source)}`), raw);
+      }
+      return Buffer.from("");
+    }
     if (command.endsWith("/catalog-verify")) return Buffer.from("{}");
     if (command === "aws") {
       if (!active) { const error = new Error("absent"); error.stderr = "An error occurred (NoSuchKey)"; throw error; }
@@ -120,6 +130,28 @@ test("new revision carries full prior history and uses a matching storage ETag",
   const uploaded = f.calls.filter(call => call.command === "upload").at(-1);
   assert.equal(uploaded.options.previousETag, '"previous-etag"');
   assert.equal(uploaded.options.bootstrap, false);
+});
+
+test("signed Meridian UI assets are version-bound, immutable, and exact on retry", t => {
+  const f = fixture(t);
+  writeFileSync(f.options.catalog, '{"apps":[{"id":"meridian","version":"1.2.3"}]}');
+  const script = path.join(f.directory, "ui-meridian-1.2.3.js");
+  const style = path.join(f.directory, "ui-meridian-1.2.3.css");
+  writeFileSync(script, "export const app = 'meridian';");
+  writeFileSync(style, "body { color: green; }");
+  const options = { ...f.options, uiBundle: script, uiStyle: style };
+  assert.throws(() => publishCatalog({ ...options, uiStyle: undefined, work: path.join(f.directory, "missing-pair") }, f.run, f.upload), /together/);
+  publishCatalog(options, f.run, f.upload);
+  const signed = f.calls.find(call => call.command.endsWith("/catalog-publish"));
+  assert.ok(signed.args.includes("--ui-bundle") && signed.args.includes("--ui-style"));
+  const bundle = JSON.parse(f.ledgers.get("catalog-r1"));
+  const signedScript = Object.keys(bundle.files).find(name => name.endsWith(".ui-meridian-1.2.3.js"));
+  assert.equal(Buffer.from(bundle.files[signedScript], "base64").toString(), readFileSync(script, "utf8"));
+  assert.throws(() => validatePublication({ ...bundle, files: { ...bundle.files, [signedScript]: Buffer.from("changed").toString("base64") } }), /digest/);
+  writeFileSync(script, "export const app = 'changed';");
+  assert.throws(() => publishCatalog({ ...options, work: path.join(f.directory, "retry") }, f.run, f.upload), /Retry UI differs/);
+  assert.throws(() => publishCatalog({ ...options, revision: 2, bootstrap: false, work: path.join(f.directory, "new-revision") }, f.run, f.upload), /changed without an application version/);
+  assert.throws(() => publishCatalog({ ...f.options, revision: 2, bootstrap: false, work: path.join(f.directory, "omitted") }, f.run, f.upload), /cannot be omitted/);
 });
 
 test("unexpected storage bytes block a newer activation", t => {

@@ -15,8 +15,8 @@ import (
 // BuildOfficialRepository produces immutable objects and the final timestamp
 // pointer. It cannot generate/rotate roots or upload content. Publish all other
 // files before timestamp.json, under an exclusive channel publication lock.
-func BuildOfficialRepository(rootBytes, targetBytes []byte, channel string, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
-	_, acceptance, err := ValidateOfficialTarget(targetBytes, channel, previous, now)
+func BuildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, channel string, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
+	value, acceptance, err := ValidateOfficialTarget(targetBytes, channel, previous, now)
 	if err != nil {
 		return nil, err
 	}
@@ -64,6 +64,33 @@ func BuildOfficialRepository(rootBytes, targetBytes []byte, channel string, prev
 	targets := metadata.Targets(acceptance.ExpiresAt)
 	targets.Signed.Version = version
 	targets.Signed.Targets[channel+".json"] = target
+	allowedUI := make(map[string]struct{})
+	for _, app := range value.Apps {
+		script, err := OfficialUITargetName(app.ID, app.Version)
+		if err != nil {
+			continue
+		}
+		style, _ := OfficialUIStylesheetTargetName(app.ID, app.Version)
+		allowedUI[script] = struct{}{}
+		allowedUI[style] = struct{}{}
+		_, scriptPresent := uiBundles[script]
+		_, stylePresent := uiBundles[style]
+		if scriptPresent != stylePresent {
+			return nil, fmt.Errorf("catalog: incomplete official UI bundle for %q", app.ID)
+		}
+	}
+	for name, raw := range uiBundles {
+		if _, ok := allowedUI[name]; !ok || len(raw) == 0 || len(raw) > MaxOfficialUIBytes {
+			return nil, fmt.Errorf("catalog: invalid official UI target %q", name)
+		}
+		file, err := metadata.TargetFile().FromBytes(name, raw, "sha256")
+		if err != nil {
+			return nil, err
+		}
+		targets.Signed.Targets[name] = file
+		bundleHash := sha256.Sum256(raw)
+		files["targets/"+hex.EncodeToString(bundleHash[:])+"."+name] = raw
+	}
 	targetsBytes, err := signOfficialRole(root, "targets", targets, signers["targets"])
 	if err != nil {
 		return nil, err
