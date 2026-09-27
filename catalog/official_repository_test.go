@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,7 +108,7 @@ func TestOfficialUIAssetsAreVersionBoundAndIndependentlyVerified(t *testing.T) {
 		t.Fatalf("verified UI bundle mismatch: %v", err)
 	}
 	for name := range files {
-		if filepath.Base(name) == script {
+		if strings.HasSuffix(name, "."+script) {
 			if err := os.WriteFile(filepath.Join(dir, name), []byte("tampered"), 0600); err != nil {
 				t.Fatal(err)
 			}
