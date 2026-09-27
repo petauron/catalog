@@ -218,8 +218,11 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
     gh("release", "create", tag, asset, "--draft", "--prerelease", "--latest=false", "--target", commit, "--title", `Official catalog r${revision}`, "--notes", `Application catalog only; no Center/Agent release.\nReviewed commit: ${commit}\nApproval/run: ${runURL}\nTarget SHA256: ${state.sha256}${plan.superseded ? `\nSupersedes pending revision: ${plan.previous.revision}; prior ledger retained.` : ""}`);
     // Do not publish R2 bytes unless durable storage of these exact signatures
     // has been confirmed. Failed verification leaves a draft for investigation.
-    const savedRelease = JSON.parse(execute("gh", ["api", `repos/${repository}/releases/tags/${tag}`]));
-    if (savedRelease.tag_name !== tag || savedRelease.target_commitish !== commit || savedRelease.draft !== true) throw new Error("Durable publication release identity changed");
+    // GitHub's release-by-tag endpoint returns 404 for drafts. Re-read the
+    // paginated release inventory, which includes drafts, before any R2 write.
+    const saved = JSON.parse(execute("gh", ["api", "--paginate", "--slurp", `repos/${repository}/releases?per_page=100`])).flat().filter(release => release.tag_name === tag);
+    if (saved.length !== 1 || saved[0].target_commitish !== commit || saved[0].draft !== true) throw new Error("Durable publication release identity changed");
+    const savedRelease = saved[0];
     const persisted = readLedger({ ...savedRelease, revision });
     if (JSON.stringify(persisted) !== JSON.stringify(bundle)) throw new Error("Durable publication ledger did not verify");
   }
