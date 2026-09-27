@@ -47,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$CATALOG_PRODUCTION_ENABLED" = true
-          jq -e '.completed and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
+          jq -e '.publisherCutoverCompleted and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
           gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
             jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
