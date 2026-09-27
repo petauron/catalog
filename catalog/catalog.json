@@ -517,7 +517,7 @@
     },
     {
       "id": "pulse",
-      "version": "0.1.0-alpha.4",
+      "version": "0.1.0-alpha.5",
       "name": {
         "en": "Pulse",
         "zh-CN": "Pulse 监控主机"
@@ -530,7 +530,7 @@
       "images": [
         {
           "name": "pulse",
-          "reference": "ghcr.io/petauron/pulse:v0.1.0-alpha.4@sha256:a84105ad3fa303e3461cd0887c07b000ed1a87ad43091f3407e9fd67bad2e617"
+          "reference": "ghcr.io/petauron/pulse@sha256:164e0c7c5ff851fe665e38426866d4677b9fda4f47a344a4915e5c912cc0e635"
         }
       ],
       "services": [
@@ -630,7 +630,7 @@
     },
     {
       "id": "pulse-agent",
-      "version": "0.1.0-alpha.3",
+      "version": "0.1.0-alpha.5",
       "name": {
         "en": "Pulse Agent",
         "zh-CN": "Pulse 探针"
@@ -646,8 +646,8 @@
           "name": "pulse-agent",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.3/pulse-v0.1.0-alpha.3-linux-x86_64.tar.gz",
-          "sha256": "e1f4a6d895df0569413546fddbd688ec4c82df99e502eca7a558e51e3a75a34b",
+          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.5/pulse-v0.1.0-alpha.5-linux-x86_64.tar.gz",
+          "sha256": "7928ec768d464a724520e82b1bfb166ff502c8f703f12418c7e6a9200335c31e",
           "format": "tar.gz",
           "stripComponents": 1
         },
@@ -655,8 +655,8 @@
           "name": "pulse-agent",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.3/pulse-v0.1.0-alpha.3-linux-aarch64.tar.gz",
-          "sha256": "129ae613720edee9217c9295e35413616d021ad8de849f4751369c3eb7724050",
+          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.5/pulse-v0.1.0-alpha.5-linux-aarch64.tar.gz",
+          "sha256": "30fe045b9e2acb5634bb09f000d877f90b510acc3c1df380ec66cfd8df2bdeeb",
           "format": "tar.gz",
           "stripComponents": 1
         }
