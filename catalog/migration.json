@@ -1,12 +1,12 @@
 {
   "schemaVersion": 1,
-  "completed": false,
+  "publisherCutoverCompleted": true,
   "source": "petauron/vastora",
   "sourceIdentity": "vastora-official",
   "channel": "stable",
-  "oldWriterDisabled": false,
-  "consumerCompatibilityVerified": false,
-  "lastLegacyRevision": null,
-  "baselineSHA256": null,
-  "rootSHA256": null
+  "oldWriterDisabled": true,
+  "consumerCompatibilityVerified": true,
+  "lastLegacyRevision": 7,
+  "baselineSHA256": "68b62afde9c47e8e5a4305bf9ff7567192338047d72025295d1e0b19f296f228",
+  "rootSHA256": "12a54c90500e312440b6429a07d57ab119f6e97d5dc194924e0d77d1839e42f6"
 }

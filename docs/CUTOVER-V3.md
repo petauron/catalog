@@ -21,8 +21,9 @@ recipes and runtime implementation remain deferred.
    credentials or alter Center/Agent/application state.
 4. In a second reviewed catalog change, record the observed last legacy
    revision, imported ledger index hash, initial trusted root hash, old-writer
-   disabled evidence, and schema 3 consumer compatibility. Mark the cutover
-   complete only after those checks. Enable `CATALOG_PRODUCTION_ENABLED=true`
+   disabled evidence, and schema 3 consumer compatibility. Mark
+   `publisherCutoverCompleted` only after those checks. Enable
+   `CATALOG_PRODUCTION_ENABLED=true`
    in the protected catalog signing environment.
 5. Manually dispatch `kind=release` for Pulse alpha.5 with exact tag, source
    SHA, and successful release run ID from [PUBLISHING.md](PUBLISHING.md).

@@ -78,7 +78,7 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
 export async function preparePublication(env = process.env, run = execute, verify = verifyRelease) {
   if (env.GITHUB_REPOSITORY !== "petauron/catalog" || env.GITHUB_REF !== "refs/heads/main" || env.CATALOG_PRODUCTION_ENABLED !== "true") throw new Error("Production catalog is disabled or source is not protected main");
   const migration = JSON.parse(readFileSync("catalog/migration.json"));
-  if (migration.completed !== true || migration.source !== "petauron/vastora" || migration.sourceIdentity !== "vastora-official" || migration.channel !== "stable" || migration.oldWriterDisabled !== true || migration.consumerCompatibilityVerified !== true) throw new Error("Publisher cutover is not complete");
+  if (migration.publisherCutoverCompleted !== true || migration.source !== "petauron/vastora" || migration.sourceIdentity !== "vastora-official" || migration.channel !== "stable" || migration.oldWriterDisabled !== true || migration.consumerCompatibilityVerified !== true) throw new Error("Publisher cutover is not complete");
   const imported = loadImportedLedger("catalog/legacy-ledger");
   const importedRevision = Math.max(...imported.map(item => Number(item.release.tag_name.slice(9))));
   if (migration.lastLegacyRevision !== importedRevision || migration.baselineSHA256 !== sha256(readFileSync("catalog/legacy-ledger/index.json")) || migration.rootSHA256 !== sha256(readFileSync("catalog/trust/1.root.json"))) throw new Error("Migration acceptance does not match reviewed roots and history");
