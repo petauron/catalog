@@ -1,7 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { choosePlan, mergeReviewedRecipes, preparePublication, shouldPublish } from "./catalog-plan.mjs";
+import { choosePlan, mergeReviewedRecipes, preparePublication } from "./catalog-plan.mjs";
 import { sha256 } from "./release-source.mjs";
 
 const commit = "a".repeat(40), recipesSHA256 = "b".repeat(64);
@@ -11,28 +11,21 @@ function setup({ draft = false, expired = false } = {}) {
   const target = Buffer.from(JSON.stringify({ catalog: reviewed, expiresAt: expired ? "2026-09-25T00:00:00Z" : "2026-10-03T00:00:00Z" }));
   const digest = sha256(target);
   const inputCatalog = Buffer.from(JSON.stringify(reviewed));
-  const bundle = { schemaVersion: 1, revision: 7, commit, catalogSHA256: sha256(inputCatalog), inputCatalog: inputCatalog.toString("base64"), request: { kind: "renew" }, recipesSHA256, files: Object.fromEntries(Object.entries({ "publication-state.json": JSON.stringify({ revision: 7, channel: "stable", sha256: digest }), "manifest-history.json": '{"pulse":{"0.1.0-alpha.4":"digest"}}', [`targets/${digest}.stable.json`]: target, "timestamp.json": "{}", "7.targets.json": "{}", "7.snapshot.json": "{}" }).map(([name, bytes]) => [name, Buffer.from(bytes).toString("base64")])) };
-  return { releases: [{ tag_name: "catalog-r7", target_commitish: commit, draft }], bundles: new Map([["catalog-r7", bundle]]), commit, request: { kind: "renew" }, reviewed, recipesSHA256, now };
+  const bundle = { schemaVersion: 1, revision: 7, commit, catalogSHA256: sha256(inputCatalog), inputCatalog: inputCatalog.toString("base64"), request: { kind: "reviewed" }, recipesSHA256, files: Object.fromEntries(Object.entries({ "publication-state.json": JSON.stringify({ revision: 7, channel: "stable", sha256: digest }), "manifest-history.json": '{"pulse":{"0.1.0-alpha.4":"digest"}}', [`targets/${digest}.stable.json`]: target, "timestamp.json": "{}", "7.targets.json": "{}", "7.snapshot.json": "{}" }).map(([name, bytes]) => [name, Buffer.from(bytes).toString("base64")])) };
+  return { releases: [{ tag_name: "catalog-r7", target_commitish: commit, draft }], bundles: new Map([["catalog-r7", bundle]]), commit, request: { kind: "reviewed" }, reviewed, recipesSHA256, now };
 }
 
-test("allocates monotonic revisions under the serialized workflow and detects renewal window", () => {
+test("allocates monotonic revisions under the serialized workflow", () => {
   assert.equal(choosePlan(setup()).revision, 8);
-  assert.equal(choosePlan(setup()).renewalDue, false);
-  assert.equal(choosePlan(setup({ expired: true })).renewalDue, true);
+  assert.equal(choosePlan(setup({ expired: true })).revision, 8);
   assert.throws(() => choosePlan({ ...setup(), releases: [] }), /existing history/);
-});
-
-test("manual renewal publishes even before the 48-hour window; duplicate release remains a no-op", () => {
-  assert.equal(shouldPublish({ changed: false, renewalDue: false, request: { kind: "renew" } }), true);
-  assert.equal(shouldPublish({ changed: false, renewalDue: false, request: { application: "pulse" } }), false);
-  assert.equal(shouldPublish({ changed: false, renewalDue: true, request: { application: "pulse" } }), true);
 });
 
 test("catalog publication only has a manual trigger", () => {
   const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_dispatch:/);
   assert.doesNotMatch(workflow, /(^|\n)\s*schedule:/);
-  assert.doesNotMatch(workflow, /\bpoll\b|CATALOG_NOTIFY|create-github-app-token/);
+  assert.doesNotMatch(workflow, /\bpoll\b|\brenew\b|CATALOG_NOTIFY|create-github-app-token/);
 });
 
 test("pending publication only resumes original commit/request/recipe and exact signed input", () => {
@@ -40,7 +33,7 @@ test("pending publication only resumes original commit/request/recipe and exact 
   const next = choosePlan(input);
   assert.equal(next.revision, 7); assert.equal(next.resume, true);
   assert.equal(next.catalogBytes.toString(), JSON.stringify(reviewed));
-  for (const override of [{ commit: "c".repeat(40) }, { request: { kind: "reviewed" } }, { recipesSHA256: "c".repeat(64) }]) assert.throws(() => choosePlan({ ...input, ...override }), /Pending/);
+  for (const override of [{ commit: "c".repeat(40) }, { request: { application: "pulse" } }, { recipesSHA256: "c".repeat(64) }]) assert.throws(() => choosePlan({ ...input, ...override }), /Pending/);
   assert.throws(() => choosePlan(setup({ draft: true, expired: true })), /expired/);
 });
 

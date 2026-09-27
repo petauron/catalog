@@ -82,7 +82,7 @@ test("verified signatures enter a durable draft before R2 and public verificatio
   assert.equal(f.calls.at(-1).args[1], "edit");
   assert.equal(f.releases[0].draft, false);
   const signer = f.calls.find(call => call.command.endsWith("/catalog-publish"));
-  assert.equal(signer.args[signer.args.indexOf("--valid-for") + 1], "168h");
+  assert.ok(!signer.args.includes("--valid-for"));
   assert.ok(!f.ledgers.get("catalog-r1").includes(Buffer.from("PRIVATE KEY")));
 });
 

@@ -73,7 +73,11 @@ func TestPublicationRequiresExplicitBootstrapOrPreviousState(t *testing.T) {
 
 func TestPublisherCLIProducesIndependentlyVerifiedUpgradeAndRetainsHistory(t *testing.T) {
 	directory := t.TempDir()
-	root := metadata.Root(time.Now().UTC().Add(48 * time.Hour))
+	expires, err := time.Parse(time.RFC3339, catalog.OfficialLongLivedExpiry)
+	if err != nil {
+		t.Fatal(err)
+	}
+	root := metadata.Root(expires)
 	root.Signed.ConsistentSnapshot = true
 	var rootSigner signature.Signer
 	args := []string{"--root", filepath.Join(directory, "root.json")}
@@ -143,6 +147,9 @@ func TestPublisherCLIProducesIndependentlyVerifiedUpgradeAndRetainsHistory(t *te
 	initial, err := catalog.VerifyOfficialRepository(context.Background(), first, "stable", rootBytes)
 	if err != nil || initial.State.Acceptance.Revision != 1 {
 		t.Fatalf("first signed CLI publication failed independent verification: %v", err)
+	}
+	if got := initial.State.Acceptance.ExpiresAt.Format(time.RFC3339); got != catalog.OfficialLongLivedExpiry {
+		t.Fatalf("signed catalog expires at %s", got)
 	}
 	appID, oldVersion := value.Apps[0].ID, value.Apps[0].Version
 	value.Apps[0].Version = "99.0.0"

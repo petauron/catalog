@@ -16,8 +16,9 @@ Applications need no notification App or cross-repository credentials. The publi
 independently verifies source provenance and both platform artifacts, records
 immutable signed bytes, and activates the catalog with a conditional write.
 Normal version updates do not create source commits. Pulse is the first registered
-source. Metadata renewal is also manual and must occur before its seven-day
-signature validity expires, including when no new application version exists.
+source. Signed metadata uses a long-lived expiry, so an unchanged catalog remains
+installable without scheduled or manual renewal. Previously accepted clients
+reject older revisions; a new client cannot detect a mirror hiding newer releases.
 
 - [Publication, credentials, and recovery](docs/PUBLISHING.md)
 - [Maintenance-window migration and acceptance](docs/MIGRATION.md)

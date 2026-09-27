@@ -35,7 +35,6 @@ func run(args []string) error {
 	bootstrap := f.Bool("bootstrap", false, "explicit first publication; incompatible with --previous")
 	channel := f.String("channel", "stable", "catalog channel")
 	revision := f.Uint64("revision", 0, "strictly increasing publication revision")
-	lifetime := f.Duration("valid-for", 7*24*time.Hour, "signed target lifetime (default 7 days, maximum 30 days)")
 	output := f.String("output", "", "new output directory; must not exist")
 	keyFiles := map[string]*string{}
 	for _, role := range []string{"targets", "snapshot", "timestamp"} {
@@ -44,8 +43,8 @@ func run(args []string) error {
 	if err := f.Parse(args); err != nil {
 		return err
 	}
-	if f.NArg() != 0 || *output == "" || *rootPath == "" || *bootstrap == (*previousPath != "") || *lifetime <= 0 || *lifetime > 30*24*time.Hour {
-		return errors.New("catalog-publish: root, new output, and exactly one of bootstrap/previous are required; lifetime must be within 30 days")
+	if f.NArg() != 0 || *output == "" || *rootPath == "" || *bootstrap == (*previousPath != "") {
+		return errors.New("catalog-publish: root, new output, and exactly one of bootstrap/previous are required")
 	}
 	var previous catalog.OfficialAcceptance
 	var history catalog.OfficialManifestHistory
@@ -94,7 +93,11 @@ func run(args []string) error {
 		return err
 	}
 	now := time.Now().UTC().Truncate(time.Second)
-	target, err := json.Marshal(catalog.OfficialTarget{Source: catalog.OfficialSourceIdentity, Channel: *channel, Revision: *revision, GeneratedAt: now, ExpiresAt: now.Add(*lifetime), Catalog: payload})
+	expires, err := time.Parse(time.RFC3339, catalog.OfficialLongLivedExpiry)
+	if err != nil {
+		return err
+	}
+	target, err := json.Marshal(catalog.OfficialTarget{Source: catalog.OfficialSourceIdentity, Channel: *channel, Revision: *revision, GeneratedAt: now, ExpiresAt: expires, Catalog: payload})
 	if err != nil {
 		return err
 	}

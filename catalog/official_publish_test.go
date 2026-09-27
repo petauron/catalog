@@ -112,6 +112,13 @@ func TestOfficialPublicationVerifiesWithIndependentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	tooLong, err := json.Marshal(OfficialTarget{Source: OfficialSourceIdentity, Channel: "stable", Revision: 1, GeneratedAt: now, ExpiresAt: now.Add(72 * time.Hour), Catalog: payload})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := BuildOfficialRepository(rootBytes, tooLong, "stable", OfficialAcceptance{}, now, signers); err == nil {
+		t.Fatal("catalog metadata outlived its trusted root")
+	}
 	files, err := BuildOfficialRepository(rootBytes, targetBytes, "stable", OfficialAcceptance{}, now, signers)
 	if err != nil {
 		t.Fatal(err)

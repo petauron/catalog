@@ -35,6 +35,21 @@ func signedOfficialRoot(t *testing.T, root *metadata.Metadata[metadata.RootType]
 	return raw
 }
 
+func TestReviewedLongLivedRootIsAuthorizedAndValidDecadesLater(t *testing.T) {
+	when := time.Date(2050, 1, 1, 0, 0, 0, 0, time.UTC)
+	if err := ValidateOfficialRootDirectory("trust", when); err != nil {
+		t.Fatalf("reviewed root chain rejected in 2050: %v", err)
+	}
+	raw, err := os.ReadFile("trust/2.root.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	root, err := metadata.Root().FromBytes(raw)
+	if err != nil || root.Signed.Version != 2 || root.Signed.Expires.Format(time.RFC3339) != OfficialLongLivedExpiry {
+		t.Fatalf("reviewed long-lived root is invalid: %v", err)
+	}
+}
+
 func TestOfficialRootDirectoryVerifiesConsecutiveRotation(t *testing.T) {
 	now := time.Now().UTC().Truncate(time.Second)
 	// Expired historical roots are necessary to authorize their replacements.

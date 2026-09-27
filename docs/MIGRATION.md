@@ -26,8 +26,8 @@ GitHub Secrets. A source/CI pass does not prove a live migration succeeded.
    volume names, paths, users, private addresses, config hashes and pairing.
    Ambiguous ownership stops adoption. Do not mix 3x-ui-to-Meridian migration into
    this maintenance window.
-5. Provision the independent online-role signing environment and dedicated
-   storage credential using an operator-secure channel. Disable the old workflow
+5. Verify the independent online-role signing environment and the operator-approved
+   selected-repository organization R2 credentials. Disable the old workflow
    and its ability to write the catalog prefix before enabling the new writer;
    confirm credentials shared by unrelated projects remain usable. Never try to
    read an existing GitHub Secret value back out of the old repository.
@@ -35,7 +35,9 @@ GitHub Secrets. A source/CI pass does not prove a live migration succeeded.
    `completed`, `oldWriterDisabled`, `consumersUpgraded` become true; set the
    captured `lastLegacyRevision`, SHA256 of `legacy-ledger/index.json`, and SHA256
    of the byte-identical initial trusted `1.root.json`. Preserve the original
-   offline trusted root/rotation chain and all TUF high-water marks. The first
+   offline trusted root/rotation chain and all TUF high-water marks. Review the
+   v2 public root extension separately; the first schema 4 publication uploads
+   it before the timestamp pointer. The first
    new revision is allocated above every historical reservation.
 7. Enable `CATALOG_PRODUCTION_ENABLED=true`. Dispatch `kind=reviewed` for the first
    schema 4 snapshot, or a verified Pulse release hint to include alpha.5 in that

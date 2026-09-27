@@ -151,7 +151,7 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   if (plan.resume) {
     unpackPublication(bundle, staged);
   } else {
-    const args = ["--catalog", catalog, "--revision", String(revision), "--output", staged, "--valid-for", "168h"];
+    const args = ["--catalog", catalog, "--revision", String(revision), "--output", staged];
     if (previous) {
       const prior = path.join(work, "previous");
       unpackPublication(previous, prior);

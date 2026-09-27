@@ -10,6 +10,11 @@ import (
 
 const OfficialSourceIdentity = "vastora-official"
 
+// OfficialLongLivedExpiry is the reviewed publication policy. TUF metadata
+// requires an expiry field, but routine releases do not require time-based
+// re-signing. A fresh client cannot detect an indefinitely frozen mirror.
+const OfficialLongLivedExpiry = "9999-12-31T23:59:59Z"
+
 // Distribution location is not a trust anchor: independent TUF verification
 // remains mandatory even when using the project's default download origin.
 const OfficialOrigin = "https://downloads.petauron.com/vastora/catalog/"

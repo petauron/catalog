@@ -22,7 +22,7 @@ gh workflow run publish.yml --repo petauron/catalog --ref main \
 This example identifies an already published Pulse release; it is not a cutover
 command while the migration gates remain closed. Check the resulting catalog
 workflow run and public signed revision before claiming publication. `kind=reviewed`
-handles a reviewed recipe change, and `kind=renew` refreshes signed metadata.
+handles a reviewed recipe change.
 Neither an application release nor a catalog source change triggers publication
 automatically. No periodic workflow is configured.
 
@@ -90,8 +90,8 @@ Historical imports additionally pin their original bytes in the reviewed
 migration index; a changed or missing live digest blocks publication.
 
 Retries use the original catalog commit, input request and exact signed bytes.
-A different request cannot jump over a pending publication. Expired signatures,
-missing draft assets or unclear publication state stop publication and
+A different request cannot jump over a pending publication. Missing draft assets
+or unclear publication state stop publication and
 require operator investigation; drafts are never deleted to reset the counter.
 The lower-level publisher retains an explicit supersession operation for a
 separately reviewed recovery; the manual workflow never enables it.
@@ -104,14 +104,17 @@ is finalized. Original storage layout remains unchanged.
 
 Ordinary duplicates are no-ops. Older version hints are rejected, not installed.
 New upstream versions keep the reviewed `packageRevision`; a recipe change for
-an already published application version requires a higher revision. Refreshing
-metadata keeps package identities unchanged. Default validity is seven days.
-Without a periodic job, the operator must manually run `kind=renew` before expiry,
-including during periods without new releases. A manual renewal publishes a fresh
-signed revision even if more than 48 hours remain; run early enough to leave time
-for failed-run investigation. Each manual run checks the
-offline root expiry and warns below 30 days; no run means no expiry warning.
-If a publication remains pending or fails, investigate its ledger before retrying.
+an already published application version requires a higher revision. Signed target,
+timestamp, snapshot, targets and reviewed root v2 expire at the end of year 9999.
+There is no renewal workflow: an unchanged catalog remains installable for the
+practical lifetime of the system. Root v1 remains byte-for-byte unchanged and
+still anchors the authorized v2 rotation. Existing clients retain their accepted
+revision high-water mark; a fresh client cannot detect a mirror that withholds
+newer revisions. This explicitly trades TUF's bounded freeze detection for
+long-lived availability. Signature verification, release provenance, immutable
+ledger and digest checks remain mandatory. Root key revocation still requires a
+reviewed root rotation and publication. If a publication remains pending or fails,
+investigate its ledger before retrying.
 Workflow failure is actionable: preserve logs/ledger and inspect the failed run.
 Subscribe operators to repository workflow failure notifications; no third-party
 alert channel is silently added.
