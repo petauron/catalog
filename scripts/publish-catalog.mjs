@@ -11,7 +11,8 @@ import { uploadCatalog } from "./upload-catalog-r2.mjs";
 const assetName = "catalog-publication.json";
 const origin = "https://downloads.petauron.com/vastora/catalog/";
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
-const fileName = name => /^(?:[1-9][0-9]*\.(?:root|targets|snapshot)\.json|targets\/[a-f0-9]{64}\.stable\.json|timestamp\.json|publication-state\.json|manifest-history\.json)$/.test(name);
+const uiTargetName = name => /^ui-meridian-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.(?:js|css)$/.test(name);
+const fileName = name => /^(?:[1-9][0-9]*\.(?:root|targets|snapshot)\.json|targets\/[a-f0-9]{64}\.stable\.json|timestamp\.json|publication-state\.json|manifest-history\.json)$/.test(name) || /^targets\/[a-f0-9]{64}\./.test(name) && uiTargetName(name.slice(73));
 
 function hasDurableLedger(release) {
   // GitHub creates a release before uploading its assets. A failed upload can
@@ -85,6 +86,7 @@ export function validatePublication(bundle) {
     const raw = Buffer.from(encoded, "base64");
     bytes += raw.length;
     if (raw.toString("base64") !== encoded || raw.length === 0 || raw.length > 5 * 1024 * 1024 || bytes > 30 * 1024 * 1024) throw new Error("Invalid ledger encoding or size");
+    if (name.startsWith("targets/") && uiTargetName(name.slice(73)) && (raw.length > 4 * 1024 * 1024 || hash(raw) !== name.slice(8, 72))) throw new Error("Invalid signed UI asset digest or size");
   }
   const state = JSON.parse(Buffer.from(bundle.files["publication-state.json"] ?? "", "base64"));
   const history = JSON.parse(Buffer.from(bundle.files["manifest-history.json"] ?? "", "base64"));
@@ -102,11 +104,21 @@ export function unpackPublication(bundle, directory) {
 }
 
 export function publishCatalog(options, run = execFileSync, upload = uploadCatalog) {
-  const { revision, commit, repository, work, rootDirectory, catalog, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL } = options;
+  const { revision, commit, repository, work, rootDirectory, catalog, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL, uiBundle, uiStyle } = options;
   // Report only fixed stage names. Child-process errors may contain protected
   // signer or storage details, so the workflow must never print them.
   const stage = name => console.error(`Catalog publication stage: ${name}`);
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "") || !work || !rootDirectory || !binDirectory || !catalog) throw new Error("Invalid publication configuration");
+  if (Boolean(uiBundle) !== Boolean(uiStyle)) throw new Error("Official UI script and stylesheet must be supplied together");
+  if (uiBundle) {
+    const meridian = JSON.parse(readFileSync(catalog)).apps?.find(app => app.id === "meridian");
+    const base = `ui-meridian-${meridian?.version ?? ""}`;
+    if (!uiTargetName(`${base}.js`) || path.basename(uiBundle) !== `${base}.js` || path.basename(uiStyle) !== `${base}.css`) throw new Error("Reviewed Meridian UI version differs from catalog");
+    for (const asset of [uiBundle, uiStyle]) {
+      const stat = lstatSync(asset);
+      if (!stat.isFile() || stat.isSymbolicLink() || stat.size < 1 || stat.size > 4 * 1024 * 1024) throw new Error("Invalid reviewed Meridian UI asset");
+    }
+  }
   mkdirSync(work, { mode: 0o700 }); // caller supplies a new, isolated workspace
   const execute = (command, args) => run(command, args, { stdio: ["ignore", "pipe", "pipe"], maxBuffer: 40 * 1024 * 1024 });
   const gh = (...args) => execute("gh", [...args, "--repo", repository]);
@@ -140,6 +152,13 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   if (plan.resume) {
     bundle = readLedger(plan.resume);
     if (bundle.catalogSHA256 !== catalogSHA256) throw new Error("Retry catalog differs from the approved publication");
+    if (uiBundle) {
+      for (const asset of [uiBundle, uiStyle]) {
+        const name = path.basename(asset);
+        const targetName = Object.keys(bundle.files).find(file => file.startsWith("targets/") && file.endsWith(`.${name}`));
+        if (!targetName || !Buffer.from(bundle.files[targetName], "base64").equals(readFileSync(asset))) throw new Error("Retry UI differs from the approved publication");
+      }
+    }
     if (bundle.supersedesRevision !== undefined) {
       if (bundle.supersedesRevision !== plan.previous?.revision) throw new Error("Supersession predecessor differs from protected ledger");
       plan.superseded = plan.predecessors;
@@ -148,10 +167,19 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   const storagePredecessors = plan.superseded?.filter(hasDurableLedger);
   const predecessor = storagePredecessors ? storagePredecessors[0] : plan.previous;
   if (predecessor) previous = readLedger(predecessor);
+  if (!uiBundle && Object.keys(previous?.files ?? {}).some(file => /^targets\/[a-f0-9]{64}\.ui-meridian-/.test(file))) throw new Error("Meridian UI cannot be omitted after its first signed publication");
   if (plan.resume) {
     unpackPublication(bundle, staged);
   } else {
     const args = ["--catalog", catalog, "--revision", String(revision), "--output", staged];
+    if (uiBundle) {
+      for (const asset of [uiBundle, uiStyle]) {
+        const name = path.basename(asset);
+        const previousName = Object.keys(previous?.files ?? {}).find(file => file.startsWith("targets/") && file.endsWith(`.${name}`));
+        if (previousName && !Buffer.from(previous.files[previousName], "base64").equals(readFileSync(asset))) throw new Error("Official UI changed without an application version change");
+      }
+      args.push("--ui-bundle", uiBundle, "--ui-style", uiStyle);
+    }
     if (previous) {
       const prior = path.join(work, "previous");
       unpackPublication(previous, prior);

@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { createHash } from "node:crypto";
 import { mkdtempSync, mkdirSync, writeFileSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -40,6 +41,20 @@ test("immutable files are verified before timestamp; ledger metadata is not uplo
   assert.equal(f.objects.size, 5);
   assert.ok(!f.calls.some(call => call.key.includes("publication-state")));
   assert.ok(!f.calls.some(call => call.key.includes("manifest-history")));
+});
+
+test("versioned UI targets use immutable uploads and their own media types", t => {
+  const f = fixture(t);
+  for (const [extension, bytes] of [["js", "export default 1"], ["css", "body{}"]]) {
+    const digest = createHash("sha256").update(bytes).digest("hex");
+    writeFileSync(path.join(f.options.directory, "targets", `${digest}.ui-meridian-1.2.3.${extension}`), bytes);
+  }
+  uploadCatalog(f.options, f.run);
+  for (const [extension, media] of [["js", "text/javascript"], ["css", "text/css"]]) {
+    const upload = f.calls.find(call => call.operation === "put-object" && call.key.endsWith(`.ui-meridian-1.2.3.${extension}`));
+    assert.ok(upload?.args.includes("--if-none-match"));
+    assert.equal(upload.args[upload.args.indexOf("--content-type") + 1], media);
+  }
 });
 
 test("conflicting immutable bytes prevent activation", t => {

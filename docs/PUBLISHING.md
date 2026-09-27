@@ -104,8 +104,19 @@ is finalized. Original storage layout remains unchanged.
 
 Ordinary duplicates are no-ops. Older version hints are rejected, not installed.
 New upstream versions keep the reviewed `packageRevision`; a recipe change for
-an already published application version requires a higher revision. Signed target,
-timestamp, snapshot, targets and reviewed root v2 expire at the end of year 9999.
+an already published application version requires a higher revision.
+
+Meridian's application-owned workspace remains a product integration, not an
+installation allowlist. For each publication the workflow checks out the reviewed,
+full source commits pinned in `publish.yml` for Meridian UI and its Vastora web
+contract, builds the version-matched JS/CSS pair before loading signing credentials,
+and signs both exact assets as TUF targets. A new Meridian UI version requires a
+reviewed update to those pins. Retrying a pending publication must reproduce the
+saved bytes; changing UI bytes at the same application version or omitting an
+already-signed UI pair is rejected.
+
+Signed target, timestamp, snapshot, targets and reviewed root v2 expire at the
+end of year 9999.
 There is no renewal workflow: an unchanged catalog remains installable for the
 practical lifetime of the system. Root v1 remains byte-for-byte unchanged and
 still anchors the authorized v2 rotation. Existing clients retain their accepted

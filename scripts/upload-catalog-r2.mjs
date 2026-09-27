@@ -21,7 +21,7 @@ export function uploadCatalog({ directory, bucket, endpoint, previousETag, boots
     } else files.push(entry);
   }
   for (const name of files) {
-    if (!/^(?:[1-9][0-9]*\.(?:root|targets|snapshot)\.json|targets\/[a-f0-9]{64}\.stable\.json|timestamp\.json)$/.test(name)) throw new Error("Unexpected publication file");
+    if (!/^(?:[1-9][0-9]*\.(?:root|targets|snapshot)\.json|targets\/[a-f0-9]{64}\.(?:stable\.json|ui-meridian-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.(?:js|css))|timestamp\.json)$/.test(name)) throw new Error("Unexpected publication file");
     const stat = lstatSync(path.join(directory, name));
     if (!stat.isFile() || stat.isSymbolicLink() || stat.size <= 0 || stat.size > 5 * 1024 * 1024) throw new Error("Invalid publication file");
   }
@@ -33,7 +33,8 @@ export function uploadCatalog({ directory, bucket, endpoint, previousETag, boots
       const local = path.join(directory, name);
       const key = `vastora/catalog/${name}`;
       try {
-        aws("put-object", "--key", key, "--body", local, "--if-none-match", "*", "--content-type", "application/json", "--cache-control", "public,max-age=31536000,immutable");
+        const contentType = name.endsWith(".js") ? "text/javascript" : name.endsWith(".css") ? "text/css" : "application/json";
+        aws("put-object", "--key", key, "--body", local, "--if-none-match", "*", "--content-type", contentType, "--cache-control", "public,max-age=31536000,immutable");
       } catch {
         // A failed conditional write is harmless only if the existing bytes
         // exactly match. Permissions/network failures still fail this read.

@@ -116,10 +116,10 @@ func TestOfficialPublicationVerifiesWithIndependentRoot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := BuildOfficialRepository(rootBytes, tooLong, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(rootBytes, tooLong, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("catalog metadata outlived its trusted root")
 	}
-	files, err := BuildOfficialRepository(rootBytes, targetBytes, "stable", OfficialAcceptance{}, now, signers)
+	files, err := BuildOfficialRepository(rootBytes, targetBytes, nil, "stable", OfficialAcceptance{}, now, signers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,7 +152,7 @@ func TestOfficialPublicationVerifiesWithIndependentRoot(t *testing.T) {
 		t.Fatal("tampered target accepted")
 	}
 	signers["targets"] = signers["timestamp"]
-	if _, err := BuildOfficialRepository(rootBytes, targetBytes, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(rootBytes, targetBytes, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("unauthorized role key accepted")
 	}
 	sharedRoot, err := metadata.Root().FromBytes(rootBytes)
@@ -169,7 +169,7 @@ func TestOfficialPublicationVerifiesWithIndependentRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	signers["targets"] = signers["root"]
-	if _, err := BuildOfficialRepository(sharedBytes, targetBytes, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(sharedBytes, targetBytes, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("online publisher was allowed to share the offline root key")
 	}
 }
