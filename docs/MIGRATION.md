@@ -1,5 +1,9 @@
 # Maintenance-window cutover checklist
 
+> This checklist is for the deferred schema 4 Center/Agent migration only. It
+> is **not** the current publisher-only cutover. For the current schema 3
+> catalog and Pulse alpha.5 release, follow [CUTOVER-V3.md](CUTOVER-V3.md).
+
 Production is intentionally disabled in the checked-in state. This document is
 not permission to replace production containers, erase trust state, or export
 GitHub Secrets. A source/CI pass does not prove a live migration succeeded.

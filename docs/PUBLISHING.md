@@ -20,7 +20,8 @@ gh workflow run publish.yml --repo petauron/catalog --ref main \
 ```
 
 This example identifies an already published Pulse release; it is not a cutover
-command while the migration gates remain closed. Check the resulting catalog
+command while the publisher gates remain closed. Follow
+[CUTOVER-V3.md](CUTOVER-V3.md) first. Check the resulting catalog
 workflow run and public signed revision before claiming publication. `kind=reviewed`
 handles a reviewed recipe change.
 Neither an application release nor a catalog source change triggers publication
@@ -38,7 +39,7 @@ URLs or checksums. It independently checks:
   exact source/signer commit, with GitHub-hosted runners.
 - The OCI index contains exactly one Linux amd64 and arm64 entry, is pinned by
   its independently computed digest and passes the same attestation policy.
-- `catalog-check --artifacts` then independently validates both OCI platform
+- The pinned deployed Vastora schema 3 `catalog-check --artifacts` then independently validates both OCI platform
   configs and declared native archive members / ELF headers. No downloaded
   application binary or archive script is executed.
 
@@ -72,8 +73,8 @@ In the catalog repository:
   `CATALOG_R2_BUCKET_NAME` / `CATALOG_CLOUDFLARE_ACCOUNT_ID`.
   Signing keys are materialized only for signing
   into 0700/0600 runner-temporary paths and removed on success or failure.
-- Keep `CATALOG_PRODUCTION_ENABLED` unset/false until the maintenance acceptance
-  in [MIGRATION.md](MIGRATION.md) is complete. The committed migration record is
+- Keep `CATALOG_PRODUCTION_ENABLED` unset/false until the publisher-only acceptance
+  in [CUTOVER-V3.md](CUTOVER-V3.md) is complete. The committed cutover record is
   an independent second gate. Neither gate is an operational bypass.
 
 ## Immutable publication and recovery
@@ -103,8 +104,9 @@ public-origin verifier confirms the accepted revision before the release record
 is finalized. Original storage layout remains unchanged.
 
 Ordinary duplicates are no-ops. Older version hints are rejected, not installed.
-New upstream versions keep the reviewed `packageRevision`; a recipe change for
-an already published application version requires a higher revision.
+The schema 3 publisher retains version-only manifest identity: changing an
+already published application version's recipe is rejected. Schema 4
+`packageRevision` remains deferred with the runtime migration.
 
 Meridian's application-owned workspace remains a product integration, not an
 installation allowlist. For each publication the workflow checks out the reviewed,

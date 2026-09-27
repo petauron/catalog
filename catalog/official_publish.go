@@ -20,6 +20,20 @@ func BuildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string
 	if err != nil {
 		return nil, err
 	}
+	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, channel, value.Apps, acceptance, previous, now, signers)
+}
+
+// BuildLegacyOfficialRepository signs the deployed schema 3 wire format while
+// retaining the same TUF root, channel, monotonic revision, and expiry policy.
+func BuildLegacyOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, channel string, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
+	value, acceptance, err := ValidateLegacyOfficialTarget(targetBytes, channel, previous, now)
+	if err != nil {
+		return nil, err
+	}
+	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, channel, value.appReferences(), acceptance, previous, now, signers)
+}
+
+func buildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, channel string, apps []AppManifest, acceptance, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
 	if acceptance.Revision <= previous.Revision {
 		return nil, errors.New("catalog: publication requires a new revision")
 	}
@@ -65,7 +79,7 @@ func BuildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string
 	targets.Signed.Version = version
 	targets.Signed.Targets[channel+".json"] = target
 	allowedUI := make(map[string]struct{})
-	for _, app := range value.Apps {
+	for _, app := range apps {
 		script, err := OfficialUITargetName(app.ID, app.Version)
 		if err != nil {
 			continue

@@ -6,7 +6,7 @@ import { sha256 } from "./release-source.mjs";
 
 const commit = "a".repeat(40), recipesSHA256 = "b".repeat(64);
 const now = new Date("2026-09-26T00:00:00Z");
-const reviewed = { schemaVersion: 4, apps: [{ id: "pulse", version: "0.1.0-alpha.4", packageRevision: 1, images: [{ name: "pulse", reference: "old" }] }] };
+const reviewed = { schemaVersion: 3, apps: [{ id: "pulse", version: "0.1.0-alpha.4", images: [{ name: "pulse", reference: "old" }] }] };
 function setup({ draft = false, expired = false } = {}) {
   const target = Buffer.from(JSON.stringify({ catalog: reviewed, expiresAt: expired ? "2026-09-25T00:00:00Z" : "2026-10-03T00:00:00Z" }));
   const digest = sha256(target);
@@ -41,8 +41,11 @@ test("reviewed recipes never silently revert automatic upstream version or diges
   const active = structuredClone(reviewed); active.apps[0].version = "0.1.0-alpha.5"; active.apps[0].images[0].reference = "accepted";
   const merged = mergeReviewedRecipes(reviewed, active);
   assert.equal(merged.apps[0].version, "0.1.0-alpha.5"); assert.equal(merged.apps[0].images[0].reference, "accepted");
-  active.apps[0].packageRevision = 2;
-  assert.throws(() => mergeReviewedRecipes(reviewed, active), /revision rollback/);
+  const newerRecipe = structuredClone(reviewed);
+  newerRecipe.apps[0].packageRevision = 2;
+  const olderRecipe = structuredClone(reviewed);
+  olderRecipe.apps[0].packageRevision = 1;
+  assert.throws(() => mergeReviewedRecipes(olderRecipe, newerRecipe), /revision rollback/);
 });
 
 test("a reviewed same-version recipe revision can change its pinned artifact without being overwritten", () => {
@@ -59,4 +62,12 @@ test("disabled production never contacts GitHub or creates a signing plan", asyn
   let contacted = false;
   await assert.rejects(preparePublication({ GITHUB_REPOSITORY: "petauron/catalog", GITHUB_REF: "refs/heads/main", CATALOG_PRODUCTION_ENABLED: "false" }, () => { contacted = true; }), /disabled/);
   assert.equal(contacted, false);
+});
+
+test("production recipe is the deployed schema 3 wire format", () => {
+  const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog-v3.json", import.meta.url)));
+  assert.equal(recipe.schemaVersion, 3);
+  assert.equal(recipe.apps.find(app => app.id === "pulse").version, "0.1.0-alpha.4");
+  assert.equal(recipe.apps.find(app => app.id === "pulse-agent").version, "0.1.0-alpha.3");
+  assert.ok(recipe.apps.every(app => !("packageRevision" in app) && !("runtime" in app)));
 });

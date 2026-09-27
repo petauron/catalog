@@ -104,7 +104,7 @@ export function unpackPublication(bundle, directory) {
 }
 
 export function publishCatalog(options, run = execFileSync, upload = uploadCatalog) {
-  const { revision, commit, repository, work, rootDirectory, catalog, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL, uiBundle, uiStyle } = options;
+  const { revision, commit, repository, work, rootDirectory, catalog, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL, uiBundle, uiStyle, legacyV3 = false } = options;
   // Report only fixed stage names. Child-process errors may contain protected
   // signer or storage details, so the workflow must never print them.
   const stage = name => console.error(`Catalog publication stage: ${name}`);
@@ -172,6 +172,7 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
     unpackPublication(bundle, staged);
   } else {
     const args = ["--catalog", catalog, "--revision", String(revision), "--output", staged];
+    if (legacyV3) args.push("--legacy-v3");
     if (uiBundle) {
       for (const asset of [uiBundle, uiStyle]) {
         const name = path.basename(asset);
@@ -204,9 +205,10 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   const state = validatePublication(bundle);
   const verifyArgs = ["--root", path.join(rootDirectory, "1.root.json"), "--revision", String(revision), "--sha256", state.sha256];
   stage("verify-staged-catalog");
-  execute(path.join(binDirectory, "catalog-verify"), ["--directory", staged, ...verifyArgs]);
+  const verifier = path.join(binDirectory, legacyV3 ? "vastora-v3-catalog-verify" : "catalog-verify");
+  execute(verifier, ["--directory", staged, ...verifyArgs]);
   if (plan.resume && !plan.resume.draft) {
-    execute(path.join(binDirectory, "catalog-verify"), ["--origin", origin, ...verifyArgs]);
+    execute(verifier, ["--origin", origin, ...verifyArgs]);
     return; // already complete: do not write or sign again
   }
   if (!plan.resume) {
@@ -254,7 +256,7 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
     upload({ directory: staged, bucket, endpoint, bootstrap: !previousETag, previousETag }, run);
   }
   stage("verify-public-catalog");
-  execute(path.join(binDirectory, "catalog-verify"), ["--origin", origin, ...verifyArgs]);
+  execute(verifier, ["--origin", origin, ...verifyArgs]);
   stage("complete-release-ledger");
   gh("release", "edit", tag, "--draft=false", "--prerelease", "--latest=false");
 }

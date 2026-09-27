@@ -47,7 +47,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           test "$CATALOG_PRODUCTION_ENABLED" = true
-          jq -e '.completed and .oldWriterDisabled and .consumersUpgraded' catalog/migration.json >/dev/null
+          jq -e '.completed and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
           gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
           gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
             jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
@@ -62,6 +62,13 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: petauron/vastora
+          # The deployed schema 3 consumer and its artifact admission checks.
+          ref: 270e92cc90a4d095dd4db245ec9e83bd7101688a
+          path: ui-dependency
+          persist-credentials: false
       - name: Test and build from the protected catalog commit
         run: |
           npm ci --ignore-scripts
@@ -71,6 +78,8 @@ jobs:
           go build -o "$CATALOG_BIN/catalog-check" ./cmd/catalog-check
           go build -o "$CATALOG_BIN/catalog-publish" ./cmd/catalog-publish
           go build -o "$CATALOG_BIN/catalog-verify" ./cmd/catalog-verify
+          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-v3-catalog-check" ./cmd/catalog-check)
+          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-v3-catalog-verify" ./cmd/catalog-verify)
       - name: Warn before offline root rotation is required
         run: node scripts/root-expiry.mjs
       - name: Resolve source, verify artifacts, and allocate a durable revision
@@ -89,13 +98,6 @@ jobs:
           repository: petauron/meridian
           ref: 6a1b8b2bff5337eec3b24c813154322ce37be7fb
           path: meridian-ui
-          persist-credentials: false
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: steps.prepare.outputs.publish == 'true'
-        with:
-          repository: petauron/vastora
-          ref: 270e92cc90a4d095dd4db245ec9e83bd7101688a
-          path: ui-dependency
           persist-credentials: false
       - name: Build reviewed Meridian UI without publication credentials
         if: steps.prepare.outputs.publish == 'true'

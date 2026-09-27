@@ -42,7 +42,7 @@ function fixture(t) {
       }
       return Buffer.from("");
     }
-    if (command.endsWith("/catalog-verify")) return Buffer.from("{}");
+    if (command.endsWith("catalog-verify")) return Buffer.from("{}");
     if (command === "aws") {
       if (!active) { const error = new Error("absent"); error.stderr = "An error occurred (NoSuchKey)"; throw error; }
       writeFileSync(args[args.indexOf("--key") + 2], active);
@@ -94,6 +94,15 @@ test("verified signatures enter a durable draft before R2 and public verificatio
   const signer = f.calls.find(call => call.command.endsWith("/catalog-publish"));
   assert.ok(!signer.args.includes("--valid-for"));
   assert.ok(!f.ledgers.get("catalog-r1").includes(Buffer.from("PRIVATE KEY")));
+});
+
+test("schema 3 publication uses the deployed consumer verifier and legacy signer mode", t => {
+  const f = fixture(t);
+  publishCatalog({ ...f.options, legacyV3: true }, f.run, f.upload);
+  const signer = f.calls.find(call => call.command.endsWith("/catalog-publish"));
+  assert.ok(signer.args.includes("--legacy-v3"));
+  const verifiers = f.calls.filter(call => call.command.endsWith("/vastora-v3-catalog-verify"));
+  assert.equal(verifiers.length, 2);
 });
 
 test("lost activation response resumes exact saved signatures without re-signing or overwriting", t => {

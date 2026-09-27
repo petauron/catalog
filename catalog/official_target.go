@@ -42,8 +42,19 @@ type OfficialAcceptance struct {
 }
 
 func ValidateOfficialTarget(raw []byte, channel string, previous OfficialAcceptance, now time.Time) (Catalog, OfficialAcceptance, error) {
-	reject := func(message string) (Catalog, OfficialAcceptance, error) {
-		return Catalog{}, OfficialAcceptance{}, errors.New("catalog: " + message)
+	return validateOfficialTargetWith(raw, channel, previous, now, ParseCatalog)
+}
+
+// ValidateLegacyOfficialTarget is used only by the schema 3 compatibility
+// publisher; the current runtime never installs from this legacy value.
+func ValidateLegacyOfficialTarget(raw []byte, channel string, previous OfficialAcceptance, now time.Time) (LegacyCatalog, OfficialAcceptance, error) {
+	return validateOfficialTargetWith(raw, channel, previous, now, ParseLegacyCatalog)
+}
+
+func validateOfficialTargetWith[T any](raw []byte, channel string, previous OfficialAcceptance, now time.Time, parse func([]byte) (T, error)) (T, OfficialAcceptance, error) {
+	reject := func(message string) (T, OfficialAcceptance, error) {
+		var zero T
+		return zero, OfficialAcceptance{}, errors.New("catalog: " + message)
 	}
 	if len(raw) == 0 || int64(len(raw)) > MaxEnvelopeBytes {
 		return reject("official target exceeds size limits")
@@ -69,9 +80,10 @@ func ValidateOfficialTarget(raw []byte, channel string, previous OfficialAccepta
 	if target.Revision == previous.Revision && digest != previous.SHA256 {
 		return reject("official target revision content changed")
 	}
-	value, err := ParseCatalog(target.Catalog)
+	value, err := parse(target.Catalog)
 	if err != nil {
-		return Catalog{}, OfficialAcceptance{}, err
+		var zero T
+		return zero, OfficialAcceptance{}, err
 	}
 	return value, OfficialAcceptance{Channel: channel, Revision: target.Revision, SHA256: digest, ObservedAt: now.UTC(), ExpiresAt: target.ExpiresAt.UTC()}, nil
 }
