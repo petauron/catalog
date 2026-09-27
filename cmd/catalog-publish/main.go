@@ -29,6 +29,7 @@ func main() {
 func run(args []string) error {
 	f := flag.NewFlagSet("catalog-publish", flag.ContinueOnError)
 	input := f.String("catalog", "catalog/catalog.json", "reviewed catalog JSON")
+	legacyV3 := f.Bool("legacy-v3", false, "publish schema 3 for the deployed Vastora consumer")
 	rootPath := f.String("root", "", "independently approved root JSON")
 	previousPath := f.String("previous", "", "previous accepted publication state JSON")
 	historyPath := f.String("history", "", "protected complete manifest history (required with previous)")
@@ -79,16 +80,29 @@ func run(args []string) error {
 	if err != nil {
 		return err
 	}
-	value, err := catalog.ParseCatalog(payload)
-	if err != nil {
-		return err
-	}
-	if err := catalog.ValidateCatalog(value); err != nil {
-		return err
-	}
-	history, err = catalog.ExtendOfficialManifestHistory(history, value)
-	if err != nil {
-		return err
+	var apps []catalog.AppManifest
+	if *legacyV3 {
+		value, err := catalog.ParseLegacyCatalog(payload)
+		if err != nil {
+			return err
+		}
+		history, err = catalog.ExtendLegacyManifestHistory(history, value)
+		if err != nil {
+			return err
+		}
+		for _, app := range value.Apps {
+			apps = append(apps, catalog.AppManifest{ID: app.ID, Version: app.Version})
+		}
+	} else {
+		value, err := catalog.ParseCatalog(payload)
+		if err != nil {
+			return err
+		}
+		history, err = catalog.ExtendOfficialManifestHistory(history, value)
+		if err != nil {
+			return err
+		}
+		apps = value.Apps
 	}
 	root, err := os.ReadFile(*rootPath)
 	if err != nil {
@@ -118,7 +132,7 @@ func run(args []string) error {
 	}
 	var uiBundles map[string][]byte
 	if *uiBundlePath != "" {
-		for _, app := range value.Apps {
+		for _, app := range apps {
 			if app.ID != "meridian" {
 				continue
 			}
@@ -144,11 +158,21 @@ func run(args []string) error {
 			uiBundles[filepath.Base(path)] = bundle
 		}
 	}
-	files, err := catalog.BuildOfficialRepository(root, target, uiBundles, *channel, previous, now, signers)
+	var files map[string][]byte
+	if *legacyV3 {
+		files, err = catalog.BuildLegacyOfficialRepository(root, target, uiBundles, *channel, previous, now, signers)
+	} else {
+		files, err = catalog.BuildOfficialRepository(root, target, uiBundles, *channel, previous, now, signers)
+	}
 	if err != nil {
 		return err
 	}
-	_, acceptance, err := catalog.ValidateOfficialTarget(target, *channel, previous, now)
+	var acceptance catalog.OfficialAcceptance
+	if *legacyV3 {
+		_, acceptance, err = catalog.ValidateLegacyOfficialTarget(target, *channel, previous, now)
+	} else {
+		_, acceptance, err = catalog.ValidateOfficialTarget(target, *channel, previous, now)
+	}
 	if err != nil {
 		return err
 	}

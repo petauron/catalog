@@ -78,7 +78,7 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
 export async function preparePublication(env = process.env, run = execute, verify = verifyRelease) {
   if (env.GITHUB_REPOSITORY !== "petauron/catalog" || env.GITHUB_REF !== "refs/heads/main" || env.CATALOG_PRODUCTION_ENABLED !== "true") throw new Error("Production catalog is disabled or source is not protected main");
   const migration = JSON.parse(readFileSync("catalog/migration.json"));
-  if (migration.completed !== true || migration.source !== "petauron/vastora" || migration.sourceIdentity !== "vastora-official" || migration.channel !== "stable" || migration.oldWriterDisabled !== true || migration.consumersUpgraded !== true) throw new Error("Maintenance migration is not complete");
+  if (migration.completed !== true || migration.source !== "petauron/vastora" || migration.sourceIdentity !== "vastora-official" || migration.channel !== "stable" || migration.oldWriterDisabled !== true || migration.consumerCompatibilityVerified !== true) throw new Error("Publisher cutover is not complete");
   const imported = loadImportedLedger("catalog/legacy-ledger");
   const importedRevision = Math.max(...imported.map(item => Number(item.release.tag_name.slice(9))));
   if (migration.lastLegacyRevision !== importedRevision || migration.baselineSHA256 !== sha256(readFileSync("catalog/legacy-ledger/index.json")) || migration.rootSHA256 !== sha256(readFileSync("catalog/trust/1.root.json"))) throw new Error("Migration acceptance does not match reviewed roots and history");
@@ -104,7 +104,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   const request = env.CATALOG_REQUEST_KIND === "release" ? { application: env.CATALOG_APPLICATION, runId: env.CATALOG_SOURCE_RUN_ID, sha: env.CATALOG_SOURCE_SHA, tag: env.CATALOG_SOURCE_TAG } : { kind: env.CATALOG_REQUEST_KIND };
   if (request.kind === undefined) validateRequest(request, registry);
   else if (request.kind !== "reviewed") throw new Error("Unsupported publication request");
-  const reviewedBytes = readFileSync("catalog/catalog.json");
+  const reviewedBytes = readFileSync("catalog/catalog-v3.json");
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
   if (!plan.resume) {
     if (!request.kind) {
@@ -120,8 +120,8 @@ export async function preparePublication(env = process.env, run = execute, verif
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
-  run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
-  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
+  run(path.join(env.CATALOG_BIN, "vastora-v3-catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
+  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, legacyV3: true, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
   return result;
 }

@@ -7,6 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"time"
 )
 
@@ -32,6 +33,92 @@ type legacyArtifact struct {
 	Architecture    string `json:"architecture"`
 	URL             string `json:"url"`
 	SHA256          string `json:"sha256"`
+}
+
+// LegacyCatalog is the exact schema 3 wire shape used by deployed Vastora
+// consumers. It is a publication-only compatibility format, never a v4 runtime.
+type LegacyCatalog struct {
+	SchemaVersion int              `json:"schemaVersion"`
+	GeneratedAt   time.Time        `json:"generatedAt"`
+	Apps          []legacyManifest `json:"apps"`
+}
+
+func (value LegacyCatalog) appReferences() []AppManifest {
+	apps := make([]AppManifest, 0, len(value.Apps))
+	for _, app := range value.Apps {
+		apps = append(apps, AppManifest{ID: app.ID, Version: app.Version})
+	}
+	return apps
+}
+
+// ExtendLegacyManifestHistory preserves schema 3's version-only identity and
+// rejects any edit to an already published version.
+func ExtendLegacyManifestHistory(previous OfficialManifestHistory, value LegacyCatalog) (OfficialManifestHistory, error) {
+	result := make(OfficialManifestHistory, len(previous))
+	for id, versions := range previous {
+		if !identifierPattern.MatchString(id) {
+			return nil, errors.New("catalog: invalid legacy history identity")
+		}
+		result[id] = make(map[string]string, len(versions))
+		for version, digest := range versions {
+			if !semverPattern.MatchString(version) || !sha256Pattern.MatchString(digest) {
+				return nil, errors.New("catalog: invalid legacy history entry")
+			}
+			result[id][version] = digest
+		}
+	}
+	for _, app := range value.Apps {
+		raw, err := json.Marshal(app)
+		if err != nil {
+			return nil, err
+		}
+		digest, err := LegacyManifestDigest(raw)
+		if err != nil {
+			return nil, err
+		}
+		if result[app.ID] == nil {
+			result[app.ID] = make(map[string]string)
+		}
+		if old := result[app.ID][app.Version]; old != "" && old != digest {
+			return nil, fmt.Errorf("catalog: published legacy content changed for %s@%s", app.ID, app.Version)
+		}
+		result[app.ID][app.Version] = digest
+	}
+	return result, nil
+}
+
+func ParseLegacyCatalog(raw []byte) (LegacyCatalog, error) {
+	var value LegacyCatalog
+	if len(raw) == 0 || int64(len(raw)) > MaxEnvelopeBytes {
+		return value, errors.New("catalog: invalid legacy catalog size")
+	}
+	if err := validateCatalogJSONShape(raw); err != nil {
+		return value, err
+	}
+	if err := decodeStrictJSON(raw, &value); err != nil {
+		return value, err
+	}
+	if value.SchemaVersion != 3 || value.GeneratedAt.IsZero() {
+		return value, errors.New("catalog: invalid legacy catalog header")
+	}
+	if _, offset := value.GeneratedAt.Zone(); offset != 0 {
+		return value, errors.New("catalog: legacy generatedAt must be UTC")
+	}
+	seen := make(map[string]bool, len(value.Apps))
+	for _, app := range value.Apps {
+		encoded, err := json.Marshal(app)
+		if err != nil {
+			return value, err
+		}
+		if _, err := LegacyManifestDigest(encoded); err != nil {
+			return value, fmt.Errorf("catalog: invalid legacy app %q: %w", app.ID, err)
+		}
+		if seen[app.ID] {
+			return value, fmt.Errorf("catalog: duplicate legacy app %q", app.ID)
+		}
+		seen[app.ID] = true
+	}
+	return value, nil
 }
 
 type LegacyManifestEvidence struct {

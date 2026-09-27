@@ -5,7 +5,7 @@
   "sourceIdentity": "vastora-official",
   "channel": "stable",
   "oldWriterDisabled": false,
-  "consumersUpgraded": false,
+  "consumerCompatibilityVerified": false,
   "lastLegacyRevision": null,
   "baselineSHA256": null,
   "rootSHA256": null
