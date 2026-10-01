@@ -96,7 +96,7 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/meridian
-          ref: ee5fae3400c2cbf3f0effa8c58d3aa5a14f45c95
+          ref: 0f33cb7338f9327ea3ea387a2483050d956a1229
           path: meridian-ui
           persist-credentials: false
       - name: Build reviewed Meridian UI without publication credentials
