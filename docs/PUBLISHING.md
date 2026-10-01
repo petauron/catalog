@@ -19,9 +19,10 @@ gh workflow run publish.yml --repo petauron/catalog --ref main \
   -f sha=87316579282f6d1b874dd37e55bea5038d1ec6d7 -f run_id=36220147813
 ```
 
-This example identifies an already published Pulse release; it is not a cutover
-command while the publisher gates remain closed. Follow
-[CUTOVER-V3.md](CUTOVER-V3.md) first. Check the resulting catalog
+This exact Pulse release was delivered by
+[catalog-r8](https://github.com/petauron/catalog/releases/tag/catalog-r8).
+The completed schema 3 publisher cutover is recorded in `catalog/migration.json`;
+[CUTOVER-V3.md](CUTOVER-V3.md) preserves its acceptance procedure. Check the resulting catalog
 workflow run and public signed revision before claiming publication. `kind=reviewed`
 handles a reviewed recipe change.
 Neither an application release nor a catalog source change triggers publication
@@ -49,6 +50,41 @@ tag commit, release job, and artifacts against the reviewed source rule. Drafts,
 unapproved prereleases and older versions are rejected. A pending publication
 can resume only with its original request, commit, recipe and exact signed bytes;
 otherwise operator recovery is required. Existing releases need not be re-released.
+
+## Pulse upgrade handoff
+
+One verified Pulse release updates both catalog entries together: `pulse` pins
+the multiarchitecture Service image digest, and `pulse-agent` pins the amd64 and
+arm64 archive URLs and checksums. The completed release ledger contains the
+exact candidate and source request, so operators can review what was published.
+Normal version changes use this manual release-input workflow; PRs review changes
+to source policy, recipes and publishing code rather than copy release coordinates
+into source. A later reviewed recipe publication preserves newer accepted release
+coordinates and cannot silently revert the application version.
+
+After publication, refresh the official catalog in Vastora Settings and verify
+its revision and signature status. Open the installed applications to see available
+updates. Pulse Service and Pulse Agent are separate upgrade targets: upgrading
+the Service does not upgrade any collector, and refreshing the catalog upgrades
+neither. Use each application's managed upgrade flow and verify its completed
+task and installed version. Check collector connectivity and reported version in
+Pulse as well; a saved target version alone is not runtime evidence.
+
+Collectors alpha.3 and later support country discovery. With no manual country,
+the default GeoJS request shares the node's public egress IP and Agent version
+with GeoJS, never Pulse credentials or metrics. In the collector configuration,
+`node_region` sets the manual country (which takes precedence) and
+`geoip_provider=disabled` disables discovery. Upgrading an existing collector
+retains its identity, credentials, manual region and explicit disabled setting;
+do not reenroll it to obtain location support. See the
+[Vastora collector contract](https://github.com/petauron/vastora/blob/main/docs/pulse-collector-config.md)
+and [Pulse operations guide](https://github.com/petauron/pulse/blob/main/docs/OPERATIONS.md)
+for the supported settings and privacy behavior.
+
+If publication or upgrade fails, inspect that operation before retrying. A failed
+catalog publication cannot be bypassed with manually edited installed manifests;
+an unavailable collector remains an independent deployment problem. Keep its
+existing credentials and recovery evidence intact.
 
 ## Credentials and GitHub settings
 

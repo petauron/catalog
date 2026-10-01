@@ -22,7 +22,8 @@ reject older revisions; a new client cannot detect a mirror hiding newer release
 
 - [Publication, credentials, and recovery](docs/PUBLISHING.md)
 - [Maintenance-window migration and acceptance](docs/MIGRATION.md)
-- [Reviewed application recipes](catalog/catalog.json)
+- [Production schema 3 recipes](catalog/catalog-v3.json)
+- [Deferred schema 4 recipes](catalog/catalog.json)
 - [Reviewed release sources](catalog/sources.json)
 
 Development is through feature branches and PRs. Run `npm ci --ignore-scripts`,
@@ -31,11 +32,12 @@ Development is through feature branches and PRs. Run `npm ci --ignore-scripts`,
 catalog/trust` validates reviewed recipes and roots without fetching app binaries;
 `--artifacts` additionally downloads and checks artifacts but never executes them.
 
-Production publishing remains disabled until the schema 4 maintenance migration,
-trust-chain/history import, and operator-provisioned signing environment have
-passed acceptance checks. The committed legacy ledger is a read-only initial
-capture, not evidence of a live cutover. See the migration checklist before
-changing either production gate.
+The production publisher uses the existing schema 3 wire format. Its completed
+cutover is recorded in `catalog/migration.json`; [catalog-r8](https://github.com/petauron/catalog/releases/tag/catalog-r8)
+delivered Pulse Service and Agent alpha.5 through the verified release-input path.
+Schema 4 recipes and the runtime migration remain deferred. Publication still
+requires both the reviewed cutover record and the protected environment gate;
+neither may be bypassed to recover a failed publication.
 
 ## License and provenance
 
