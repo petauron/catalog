@@ -66,7 +66,7 @@ jobs:
         with:
           repository: petauron/vastora
           # Reviewed schema 3 consumer and its artifact admission checks.
-          ref: d194199dbc0dfac0f84f8218e61526a865ba0753
+          ref: 583e2f23ae3fbc91671ed6633b8776dbce4f9b95
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
@@ -96,7 +96,7 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/meridian
-          ref: aa43856ea1cc2bcfbf39e32e7bcdd1931ee776ab
+          ref: b499bcfa7cf522a4fc2b031608770d766983060d
           path: meridian-ui
           persist-credentials: false
       - name: Build reviewed Meridian UI without publication credentials
