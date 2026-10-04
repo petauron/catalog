@@ -1,8 +1,8 @@
 # Schema 4 consumer rollout
 
 The publisher-only schema 3 cutover is complete. The schema 4 consumer is
-Vastora commit `42326414cf787fb3031aa8334317e974e14941ae` (PR #716), pinned in
-publication and consumer CI. The production recipe input is `catalog/catalog.json`.
+Vastora commit `42326414cf787fb3031aa8334317e974e14941ae` (PR #716), pinned in consumer CI. Publication keeps the existing released Meridian UI
+build dependency so that the same UI version retains identical bytes. The production recipe input is `catalog/catalog.json`.
 The old schema 3 fixture remains historical evidence, not a production input.
 
 1. Require the pinned consumer and catalog PR checks to pass. Preserve the

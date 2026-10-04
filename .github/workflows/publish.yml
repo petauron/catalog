@@ -65,8 +65,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: petauron/vastora
-          # Reviewed schema 4 consumer and its artifact admission checks.
-          ref: 42326414cf787fb3031aa8334317e974e14941ae
+          # Immutable build dependency of the released Meridian UI.
+          # Schema 4 consumer admission is checked separately in CI.
+          ref: cacfbe913f3ea307b6c2959fb4c3aae97524a73c
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
