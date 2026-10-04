@@ -104,7 +104,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   const request = env.CATALOG_REQUEST_KIND === "release" ? { application: env.CATALOG_APPLICATION, runId: env.CATALOG_SOURCE_RUN_ID, sha: env.CATALOG_SOURCE_SHA, tag: env.CATALOG_SOURCE_TAG } : { kind: env.CATALOG_REQUEST_KIND };
   if (request.kind === undefined) validateRequest(request, registry);
   else if (request.kind !== "reviewed") throw new Error("Unsupported publication request");
-  const reviewedBytes = readFileSync("catalog/catalog-v3.json");
+  const reviewedBytes = readFileSync("catalog/catalog.json");
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
   if (!plan.resume) {
     if (!request.kind) {
@@ -120,8 +120,8 @@ export async function preparePublication(env = process.env, run = execute, verif
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
-  run(path.join(env.CATALOG_BIN, "vastora-v3-catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
-  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, legacyV3: true, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
+  run(path.join(env.CATALOG_BIN, "vastora-catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
+  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
   return result;
 }

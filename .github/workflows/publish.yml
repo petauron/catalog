@@ -65,8 +65,8 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: petauron/vastora
-          # Reviewed schema 3 consumer and its artifact admission checks.
-          ref: cacfbe913f3ea307b6c2959fb4c3aae97524a73c
+          # Reviewed schema 4 consumer and its artifact admission checks.
+          ref: 42326414cf787fb3031aa8334317e974e14941ae
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
@@ -78,8 +78,8 @@ jobs:
           go build -o "$CATALOG_BIN/catalog-check" ./cmd/catalog-check
           go build -o "$CATALOG_BIN/catalog-publish" ./cmd/catalog-publish
           go build -o "$CATALOG_BIN/catalog-verify" ./cmd/catalog-verify
-          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-v3-catalog-check" ./cmd/catalog-check)
-          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-v3-catalog-verify" ./cmd/catalog-verify)
+          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-catalog-check" ./cmd/catalog-check)
+          (cd ui-dependency && GOWORK=off go build -o "$CATALOG_BIN/vastora-catalog-verify" ./cmd/catalog-verify)
       - name: Warn before offline root rotation is required
         run: node scripts/root-expiry.mjs
       - name: Resolve source, verify artifacts, and allocate a durable revision
