@@ -113,6 +113,12 @@ In the catalog repository:
   in [CUTOVER-V3.md](CUTOVER-V3.md) is complete. The committed cutover record is
   an independent second gate. Neither gate is an operational bypass.
 
+## Schema 4 consumer rollout
+
+Production planning now uses `catalog/catalog.json` and the reviewed schema 4
+consumer pinned in CI. Follow [CUTOVER-V4.md](CUTOVER-V4.md) for the coordinated
+consumer upgrade. The completed publisher-only schema 3 cutover remains history.
+
 ## Immutable publication and recovery
 
 The workflow queues up to GitHub's supported pending limit with `queue: max` and

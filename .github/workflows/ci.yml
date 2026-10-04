@@ -34,10 +34,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: petauron/vastora
-          ref: 270e92cc90a4d095dd4db245ec9e83bd7101688a
-          path: vastora-v3-consumer
+          ref: 42326414cf787fb3031aa8334317e974e14941ae
+          path: vastora-consumer
           persist-credentials: false
-      - name: Validate production recipe with the deployed schema 3 consumer
+      - name: Validate production recipe with the reviewed schema 4 consumer
         run: |
-          (cd vastora-v3-consumer && GOWORK=off go build -o "$RUNNER_TEMP/vastora-v3-catalog-check" ./cmd/catalog-check)
-          "$RUNNER_TEMP/vastora-v3-catalog-check" --catalog catalog/catalog-v3.json --root-directory catalog/trust
+          (cd vastora-consumer && sh scripts/check-independent-catalog.sh --catalog ../catalog/catalog.json --root-directory ../catalog/trust)
