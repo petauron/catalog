@@ -120,7 +120,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
-  run(path.join(env.CATALOG_BIN, "vastora-catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
+  run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
   const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
   return result;
