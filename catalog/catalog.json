@@ -851,7 +851,11 @@
             "zh-CN": "Telegram API ID"
           },
           "required": true,
-          "secret": false
+          "secret": false,
+          "description": {
+            "en": "API ID from your Telegram application.",
+            "zh-CN": "Telegram 应用的 API ID。"
+          }
         },
         {
           "key": "tg_api_hash",
@@ -861,7 +865,11 @@
             "zh-CN": "Telegram API Hash"
           },
           "required": true,
-          "secret": true
+          "secret": true,
+          "description": {
+            "en": "API hash stored as a private credential file.",
+            "zh-CN": "Telegram API Hash，以私密凭据文件提供。"
+          }
         },
         {
           "key": "tg_phone",
@@ -871,7 +879,11 @@
             "zh-CN": "Telegram 手机号"
           },
           "required": true,
-          "secret": true
+          "secret": true,
+          "description": {
+            "en": "Telegram account phone number including country code.",
+            "zh-CN": "Telegram 账号手机号，包含国际区号。"
+          }
         },
         {
           "key": "web_password",
@@ -881,7 +893,11 @@
             "zh-CN": "管理密码"
           },
           "required": true,
-          "secret": true
+          "secret": true,
+          "description": {
+            "en": "Unique dashboard password of at least eight characters.",
+            "zh-CN": "管理面板独立密码，至少八个字符。"
+          }
         },
         {
           "key": "web_username",
@@ -892,7 +908,11 @@
           },
           "required": false,
           "secret": false,
-          "default": "admin"
+          "default": "admin",
+          "description": {
+            "en": "Administrator login name.",
+            "zh-CN": "管理面板登录账号。"
+          }
         },
         {
           "key": "collector_enabled",
@@ -903,7 +923,11 @@
           },
           "required": false,
           "secret": false,
-          "default": false
+          "default": false,
+          "description": {
+            "en": "Keep disabled until session migration or interactive login is complete. Never run two collectors on one session.",
+            "zh-CN": "完成会话迁移或交互登录后开启，同一会话不要同时运行两个采集器。"
+          }
         },
         {
           "key": "cookie_secure",
@@ -914,7 +938,11 @@
           },
           "required": false,
           "secret": false,
-          "default": true
+          "default": true,
+          "description": {
+            "en": "Enable for HTTPS access; disable only for local HTTP setup.",
+            "zh-CN": "使用 HTTPS 访问时开启；仅本地 HTTP 初始化时关闭。"
+          }
         }
       ],
       "runtime": {
