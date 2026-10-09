@@ -57,9 +57,20 @@ export async function fetchBounded(rawURL, maximum, headers = {}, fetcher = fetc
   throw new Error("Artifact redirect limit exceeded");
 }
 
+export function releaseSourceRef(request, rule, run) {
+  // Resolve only authenticated push refs, never an arbitrary caller-provided ref.
+  // Existing tagged releases remain immutable; new Release Please publications
+  // run on protected main in the same workflow that creates the release.
+  if (run.event !== "push") throw new Error("Release run is not a push");
+  if (run.head_branch === rule.branch) return `refs/heads/${rule.branch}`;
+  if (run.head_branch === request.tag) return `refs/tags/${request.tag}`;
+  throw new Error("Release run source ref is not trusted");
+}
+
 export function verifyReleaseIdentity(request, rule, { release, run, jobs, tag, comparison, branch }) {
   if (release.tag_name !== request.tag || release.draft !== false || !release.published_at || release.prerelease !== request.tag.includes("-") || !Array.isArray(release.assets)) throw new Error("Release is not fully published");
   if (run.head_sha !== request.sha || String(run.id) !== request.runId || run.event !== "push" || run.path !== rule.workflow || run.head_repository?.full_name !== rule.repository || run.repository?.full_name !== rule.repository) throw new Error("Release run identity mismatch");
+  releaseSourceRef(request, rule, run);
   // The notify job belongs to this same run; requiring overall success here
   // would race its still-running status. The publishing job must be complete.
   const publishing = jobs.filter(job => job.name === rule.publishJob);
@@ -87,7 +98,8 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     return raw;
   };
   const sums = parseChecksums((await asset("SHA256SUMS", 64 * 1024)).toString());
-  const attest = location => runCommand("gh", ["attestation", "verify", location, "--repo", rule.repository, "--signer-workflow", `${rule.repository}/${rule.workflow}`, "--source-digest", request.sha, "--signer-digest", request.sha, "--source-ref", `refs/tags/${request.tag}`, "--deny-self-hosted-runners"]);
+  const sourceRef = releaseSourceRef(request, rule, run);
+  const attest = location => runCommand("gh", ["attestation", "verify", location, "--repo", rule.repository, "--signer-workflow", `${rule.repository}/${rule.workflow}`, "--source-digest", request.sha, "--signer-digest", request.sha, "--source-ref", sourceRef, "--deny-self-hosted-runners"]);
   const artifacts = [];
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");

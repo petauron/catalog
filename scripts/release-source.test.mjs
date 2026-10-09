@@ -9,7 +9,7 @@ const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", impo
 const rule = registry.sources.pulse;
 const request = { application: "pulse", runId: "123", sha: "a".repeat(40), tag: "v0.1.0-alpha.5" };
 function identity() {
-  return { release: { tag_name: request.tag, draft: false, published_at: "2026-09-26T00:00:00Z", prerelease: true, assets: [] }, run: { id: 123, head_sha: request.sha, path: rule.workflow, event: "push", head_repository: { full_name: rule.repository }, repository: { full_name: rule.repository }, status: "in_progress", conclusion: null }, jobs: [{ name: rule.publishJob, status: "completed", conclusion: "success" }], tag: request.sha, comparison: { status: "ahead" }, branch: { protected: true } };
+  return { release: { tag_name: request.tag, draft: false, published_at: "2026-09-26T00:00:00Z", prerelease: true, assets: [] }, run: { id: 123, head_sha: request.sha, head_branch: request.tag, path: rule.workflow, event: "push", head_repository: { full_name: rule.repository }, repository: { full_name: rule.repository }, status: "in_progress", conclusion: null }, jobs: [{ name: rule.publishJob, status: "completed", conclusion: "success" }], tag: request.sha, comparison: { status: "ahead" }, branch: { protected: true } };
 }
 
 test("source input contains no URL/digest authority and must map to a reviewed source", () => {
@@ -85,6 +85,27 @@ test("release verification independently attests both archives and exact multiar
   const attestations = fixture.calls.filter(args => args[0] === "attestation");
   assert.equal(attestations.length, 3);
   for (const args of attestations) { assert.ok(args.includes("--source-digest")); assert.ok(args.includes(request.sha)); assert.ok(args.includes("--signer-digest")); assert.ok(args.includes(`refs/tags/${request.tag}`)); assert.ok(args.includes("--deny-self-hosted-runners")); }
+});
+
+test("same-workflow main releases pin all attestations to main and exact source SHA", async t => {
+  const fixture = releaseFixture(t);
+  fixture.info.run.head_branch = "main";
+  await fixture.verify();
+  const attestations = fixture.calls.filter(args => args[0] === "attestation");
+  assert.equal(attestations.length, 3);
+  for (const args of attestations) {
+    assert.ok(args.includes("refs/heads/main"));
+    assert.equal(args[args.indexOf("--source-digest") + 1], request.sha);
+    assert.equal(args[args.indexOf("--signer-digest") + 1], request.sha);
+  }
+});
+
+test("untrusted or absent release refs fail closed", () => {
+  for (const head_branch of [undefined, "feature/release", "v9.9.9", "refs/heads/main"]) {
+    const value = identity();
+    value.run.head_branch = head_branch;
+    assert.throws(() => verifyReleaseIdentity(request, rule, value), /source ref/);
+  }
 });
 
 test("incomplete or unverified Pulse releases never produce an update candidate", async t => {
