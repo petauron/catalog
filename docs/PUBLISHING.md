@@ -33,11 +33,12 @@ registered source, including its Alpha releases. The publisher derives its repos
 workflow, image repository and attachment names from that registry, not request
 URLs or checksums. It independently checks:
 
-- The exact tag commit belongs to protected source `main`; the identified push
-  run and its publishing job succeeded.
+- The exact tag commit belongs to protected source `main`; the identified release
+  run and its publishing job succeeded. Manual recovery requires an explicit
+  reviewed `recovery` policy and the additional checks below.
 - Both public native archives match their release inventory and `SHA256SUMS`.
-  GitHub attestations must match the repository, release workflow, tag ref and
-  exact source/signer commit, with GitHub-hosted runners.
+  GitHub attestations must match the repository, release workflow, authenticated
+  execution ref and exact workflow commit, with GitHub-hosted runners.
 - The OCI index contains exactly one Linux amd64 and arm64 entry, is pinned by
   its independently computed digest and passes the same attestation policy.
 - The pinned deployed Vastora schema 3 `catalog-check --artifacts` then independently validates both OCI platform
@@ -50,6 +51,30 @@ tag commit, release job, and artifacts against the reviewed source rule. Drafts,
 unapproved prereleases and older versions are rejected. A pending publication
 can resume only with its original request, commit, recipe and exact signed bytes;
 otherwise operator recovery is required. Existing releases need not be re-released.
+
+### Recovering a source release without changing its tag
+
+For a source registry that explicitly enables `recovery`, a successful
+`workflow_dispatch` on protected `main` may publish an existing immutable draft
+using a repaired workflow. Supply the original tag's product `sha` and the new,
+completed recovery `run_id`; never substitute the workflow SHA for the product SHA.
+The publisher requires:
+
+- The tag and release target still equal the product SHA. Both product and
+  workflow commits belong to protected `main`, with product ancestral to workflow.
+- The recovery run and its source-verification and publishing jobs succeeded.
+  The newest push CI for each exact commit succeeded, including the registry's
+  real required CI gate (a skipped gate is not success).
+- Cryptographic attestation verification pins the actual workflow commit and
+  `refs/heads/main`. Only the CLI's verified statement output is accepted.
+- The standard SLSA workflow predicate binds the original `release-source` SHA,
+  workflow SHA, exact `release_tag` input, repository IDs, GitHub-hosted runner,
+  builder identity, run ID and latest attempt. Both native archives and the
+  immutable multiarchitecture image must pass independently.
+
+A generic manual workflow, stale attempt, fork, unchecked commit or mismatched
+provenance is rejected. No bypass, source re-release, moved tag, rewritten asset,
+extra workflow credential or relaxed signing environment is needed.
 
 ## Pulse upgrade handoff
 

@@ -3,13 +3,44 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { applyRelease, compareVersions, fetchBounded, parseChecksums, sha256, validateRequest, verifyRelease, verifyReleaseIdentity } from "./release-source.mjs";
+import { applyRelease, compareVersions, fetchBounded, parseChecksums, sha256, validateRequest, verifyRelease, verifyReleaseIdentity, verifyRecoveryProvenance } from "./release-source.mjs";
 
 const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url)));
 const rule = registry.sources.pulse;
 const request = { application: "pulse", runId: "123", sha: "a".repeat(40), tag: "v0.1.0-alpha.5" };
 function identity() {
   return { release: { tag_name: request.tag, draft: false, published_at: "2026-09-26T00:00:00Z", prerelease: true, assets: [] }, run: { id: 123, head_sha: request.sha, head_branch: request.tag, path: rule.workflow, event: "push", head_repository: { full_name: rule.repository }, repository: { full_name: rule.repository }, status: "in_progress", conclusion: null }, jobs: [{ name: rule.publishJob, status: "completed", conclusion: "success" }], tag: request.sha, comparison: { status: "ahead" }, branch: { protected: true } };
+}
+
+function recoveryIdentity() {
+  const info = identity();
+  Object.assign(info.run, { event: "workflow_dispatch", head_branch: "main", head_sha: "b".repeat(40), status: "completed", conclusion: "success", run_attempt: 2 });
+  info.run.repository.id = 1234;
+  info.run.repository.owner = { id: 5678 };
+  info.release.target_commitish = request.sha;
+  info.signerComparison = { status: "ahead" };
+  info.sourceToSigner = { status: "ahead" };
+  info.jobs.push({ name: rule.recovery.verifyJob, status: "completed", conclusion: "success" });
+  return info;
+}
+
+function recoveryStatements(run) {
+  const repository = `https://github.com/${rule.repository}`;
+  return [{ verificationResult: { statement: {
+    predicateType: "https://slsa.dev/provenance/v1",
+    predicate: {
+      buildDefinition: {
+        buildType: "https://actions.github.io/buildtypes/workflow/v1",
+        externalParameters: { workflow: { repository, path: rule.workflow, ref: "refs/heads/main" }, inputs: { release_tag: request.tag } },
+        internalParameters: { github: { event_name: "workflow_dispatch", runner_environment: "github-hosted", repository_id: "1234", repository_owner_id: "5678" } },
+        resolvedDependencies: [
+          { uri: `git+${repository}@refs/heads/main`, digest: { gitCommit: run.head_sha } },
+          { name: "release-source", uri: `git+${repository}@${request.sha}`, digest: { gitCommit: request.sha } },
+        ],
+      },
+      runDetails: { builder: { id: `${repository}/${rule.workflow}@refs/heads/main` }, metadata: { invocationId: `${repository}/actions/runs/${run.id}/attempts/${run.run_attempt}` } },
+    },
+  } } }];
 }
 
 test("source input contains no URL/digest authority and must map to a reviewed source", () => {
@@ -33,6 +64,53 @@ test("source SHA, trusted tag, protected main and successful publishing job are 
   }
   // A previous notify-only failure must remain independently retryable.
   const value = identity(); value.run.conclusion = "failure"; verifyReleaseIdentity(request, rule, value);
+});
+
+test("recovery requires opt-in policy, protected source/signer ancestry and completed successful gates", () => {
+  verifyReleaseIdentity(request, rule, recoveryIdentity());
+  assert.throws(() => verifyReleaseIdentity(request, { ...rule, recovery: undefined }, recoveryIdentity()), /not trusted/);
+  for (const mutate of [
+    x => { x.run.head_branch = request.tag; },
+    x => { x.run.event = "pull_request_target"; },
+    x => { x.run.status = "in_progress"; },
+    x => { x.run.conclusion = "failure"; },
+    x => { x.run.run_attempt = 0; },
+    x => { x.run.head_sha = "main"; },
+    x => { x.run.head_repository.full_name = "fork/pulse"; },
+    x => { x.release.target_commitish = "main"; },
+    x => { x.signerComparison.status = "diverged"; },
+    x => { x.sourceToSigner.status = "behind"; },
+    x => { x.jobs[1].conclusion = "skipped"; },
+    x => { x.jobs.pop(); },
+    x => { x.jobs.push({ ...x.jobs[1] }); },
+    x => { x.branch.protected = false; },
+  ]) {
+    const info = recoveryIdentity(); mutate(info);
+    assert.throws(() => verifyReleaseIdentity(request, rule, info));
+  }
+});
+
+test("verified recovery statements bind source, signer, exact tag and latest publication attempt", () => {
+  const run = recoveryIdentity().run;
+  verifyRecoveryProvenance(recoveryStatements(run), request, rule, run);
+  for (const mutate of [
+    s => { s.predicateType = "untrusted"; },
+    s => { s.predicate.buildDefinition.buildType = "custom"; },
+    s => { s.predicate.buildDefinition.externalParameters.inputs.release_tag = "v0.1.0-alpha.6"; },
+    s => { s.predicate.buildDefinition.externalParameters.workflow.ref = "refs/heads/feature"; },
+    s => { s.predicate.buildDefinition.resolvedDependencies.pop(); },
+    s => { s.predicate.buildDefinition.resolvedDependencies[0].digest.gitCommit = request.sha; },
+    s => { s.predicate.buildDefinition.resolvedDependencies[1].digest.gitCommit = run.head_sha; },
+    s => { s.predicate.buildDefinition.resolvedDependencies.push(s.predicate.buildDefinition.resolvedDependencies[1]); },
+    s => { s.predicate.buildDefinition.internalParameters.github.repository_id = "1"; },
+    s => { s.predicate.buildDefinition.internalParameters.github.runner_environment = "self-hosted"; },
+    s => { s.predicate.runDetails.builder.id = "https://github.com/other/workflow"; },
+    s => { s.predicate.runDetails.metadata.invocationId = `https://github.com/${rule.repository}/actions/runs/${run.id}/attempts/1`; },
+  ]) {
+    const results = recoveryStatements(run); mutate(results[0].verificationResult.statement);
+    assert.throws(() => verifyRecoveryProvenance(results, request, rule, run), /does not bind/);
+  }
+  for (const results of [[], {}, null, [{ statement: recoveryStatements(run)[0].verificationResult.statement }]]) assert.throws(() => verifyRecoveryProvenance(results, request, rule, run));
 });
 
 test("checksum parser rejects duplicate, unsafe, and malformed names", () => {
@@ -67,9 +145,18 @@ function releaseFixture(t) {
     assert.equal(command, "gh"); calls.push(args);
     if (args[0] === "attestation") {
       if (fixture.rejectAttestation) throw new Error("fixture attestation rejected");
-      return Buffer.from("");
+      return Buffer.from(args.includes("--format") ? JSON.stringify(fixture.statements ?? recoveryStatements(info.run)) : "");
     }
     const endpoint = args.at(-1);
+    if (endpoint.includes("/actions/workflows/")) {
+      const sha = new URL(`https://fixture.invalid/${endpoint}`).searchParams.get("head_sha");
+      const ci = { ...info.run, id: sha === request.sha ? 201 : 202, run_number: 10, event: "push", head_branch: "main", head_sha: sha, path: rule.recovery.ciWorkflow };
+      fixture.mutateCI?.(ci);
+      return Buffer.from(JSON.stringify([{ workflow_runs: [ci, { ...ci, run_number: 9, status: "completed", conclusion: "success" }] }]));
+    }
+    if (/\/actions\/runs\/20[12]\/jobs/.test(endpoint)) return Buffer.from(JSON.stringify([{ jobs: [{ name: rule.recovery.ciJob, status: "completed", conclusion: fixture.ciGate ?? "success" }] }]));
+    if (endpoint.includes(`/compare/${info.run.head_sha}...main`) && info.run.event === "workflow_dispatch") return Buffer.from(JSON.stringify(info.signerComparison));
+    if (endpoint.includes(`/compare/${request.sha}...${info.run.head_sha}`) && info.run.event === "workflow_dispatch") return Buffer.from(JSON.stringify(info.sourceToSigner));
     const data = endpoint.includes("/releases/") ? info.release : endpoint.includes("/jobs?") ? [{ jobs: info.jobs }] : endpoint.includes("/actions/runs/") ? info.run : endpoint.includes("/git/ref/") ? { object: { type: "commit", sha: request.sha } } : endpoint.includes("/compare/") ? info.comparison : info.branch;
     return Buffer.from(JSON.stringify(data));
   };
@@ -85,6 +172,43 @@ test("release verification independently attests both archives and exact multiar
   const attestations = fixture.calls.filter(args => args[0] === "attestation");
   assert.equal(attestations.length, 3);
   for (const args of attestations) { assert.ok(args.includes("--source-digest")); assert.ok(args.includes(request.sha)); assert.ok(args.includes("--signer-digest")); assert.ok(args.includes(`refs/tags/${request.tag}`)); assert.ok(args.includes("--deny-self-hosted-runners")); }
+});
+
+test("recovery attests every archive and image against workflow SHA and independently checks both CI commits", async t => {
+  const fixture = releaseFixture(t);
+  const assets = fixture.info.release.assets;
+  Object.assign(fixture.info, recoveryIdentity());
+  fixture.info.release.assets = assets;
+  const verified = await fixture.verify();
+  assert.equal(verified.artifacts.length, 2);
+  const checks = fixture.calls.filter(args => args[0] === "attestation");
+  assert.equal(checks.length, 3);
+  for (const args of checks) {
+    assert.equal(args[args.indexOf("--source-digest") + 1], fixture.info.run.head_sha);
+    assert.equal(args[args.indexOf("--signer-digest") + 1], fixture.info.run.head_sha);
+    assert.ok(args.includes("refs/heads/main"));
+    assert.ok(args.includes("json"));
+  }
+  const ciQueries = fixture.calls.filter(args => args.at(-1).includes("/actions/workflows/"));
+  assert.equal(ciQueries.length, 2);
+  for (const sha of [request.sha, fixture.info.run.head_sha]) assert.ok(ciQueries.some(args => args.at(-1).includes(`head_sha=${sha}`)));
+});
+
+test("recovery rejects unverified CI or provenance before returning an update candidate", async t => {
+  for (const [name, mutate] of [
+    ["latest CI failed despite older success", f => { f.mutateCI = ci => { ci.conclusion = "failure"; }; }],
+    ["wrong CI source SHA", f => { f.mutateCI = ci => { ci.head_sha = "c".repeat(40); }; }],
+    ["wrong CI event", f => { f.mutateCI = ci => { ci.event = "workflow_dispatch"; }; }],
+    ["skipped required gate", f => { f.ciGate = "skipped"; }],
+    ["no verified statements", f => { f.statements = []; }],
+    ["signature rejection", f => { f.rejectAttestation = true; }],
+  ]) await t.test(name, async t => {
+    const f = releaseFixture(t);
+    const assets = f.info.release.assets;
+    Object.assign(f.info, recoveryIdentity()); f.info.release.assets = assets;
+    mutate(f);
+    await assert.rejects(f.verify());
+  });
 });
 
 test("same-workflow main releases pin all attestations to main and exact source SHA", async t => {

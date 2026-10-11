@@ -20,6 +20,10 @@ SemVer code releases are independent of signed catalog-rN revisions. Manual
 catalog publication, signing protections and monotonic revision allocation remain
 unchanged. Source attestations are verified against the actual trusted push ref
 (main for the new Pulse release pipeline), plus exact source and signer digests.
+An explicitly reviewed recovery policy also admits completed manual recovery on
+protected main. Its attestation pins the workflow commit while the verified
+predicate separately pins the original product commit and exact recovery attempt;
+both commits need successful real CI. See `docs/PUBLISHING.md` for the gates.
 
 Local workflow edits alone do not activate releases. Push/review the changes,
 then verify the first version PR CI and release run before calling the migration

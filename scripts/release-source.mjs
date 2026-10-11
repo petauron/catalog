@@ -1,6 +1,7 @@
 // The notification is a hint, not authority. Every artifact and source identity
 // is independently resolved against the reviewed registry. Never execute assets.
 import { execFileSync } from "node:child_process";
+import { isDeepStrictEqual } from "node:util";
 import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
@@ -20,6 +21,7 @@ export function validateRequest(request, registry) {
   const rule = registry.sources?.[request.application];
   if (registry.schemaVersion !== 1 || !rule || !/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(rule.repository) || !/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.workflow) || rule.branch !== "main" || !rule.publishJob || !/^ghcr\.io\/[a-z0-9_.-]+\/[a-z0-9_.-]+$/.test(rule.image)) throw new Error("Application has no reviewed source policy");
   if (request.tag.includes("-") && rule.allowPrerelease !== true) throw new Error("Prerelease is not permitted by source policy");
+  if (rule.recovery && (!/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.recovery.ciWorkflow) || !rule.recovery.ciJob || !rule.recovery.verifyJob)) throw new Error("Invalid recovery source policy");
   return rule;
 }
 
@@ -58,19 +60,22 @@ export async function fetchBounded(rawURL, maximum, headers = {}, fetcher = fetc
 }
 
 export function releaseSourceRef(request, rule, run) {
-  // Resolve only authenticated push refs, never an arbitrary caller-provided ref.
-  // Existing tagged releases remain immutable; new Release Please publications
-  // run on protected main in the same workflow that creates the release.
-  if (run.event !== "push") throw new Error("Release run is not a push");
+  // Manual recovery is admitted only by an explicitly reviewed source policy.
+  if (run.event === "workflow_dispatch" && rule.recovery && run.head_branch === rule.branch) return `refs/heads/${rule.branch}`;
+  if (run.event !== "push") throw new Error("Release run event/ref is not trusted");
   if (run.head_branch === rule.branch) return `refs/heads/${rule.branch}`;
   if (run.head_branch === request.tag) return `refs/tags/${request.tag}`;
   throw new Error("Release run source ref is not trusted");
 }
 
-export function verifyReleaseIdentity(request, rule, { release, run, jobs, tag, comparison, branch }) {
+export function verifyReleaseIdentity(request, rule, { release, run, jobs, tag, comparison, branch, signerComparison, sourceToSigner }) {
   if (release.tag_name !== request.tag || release.draft !== false || !release.published_at || release.prerelease !== request.tag.includes("-") || !Array.isArray(release.assets)) throw new Error("Release is not fully published");
-  if (run.head_sha !== request.sha || String(run.id) !== request.runId || run.event !== "push" || run.path !== rule.workflow || run.head_repository?.full_name !== rule.repository || run.repository?.full_name !== rule.repository) throw new Error("Release run identity mismatch");
+  if (!/^[a-f0-9]{40}$/.test(run.head_sha) || String(run.id) !== request.runId || run.path !== rule.workflow || run.head_repository?.full_name !== rule.repository || run.repository?.full_name !== rule.repository) throw new Error("Release run identity mismatch");
   releaseSourceRef(request, rule, run);
+  if (run.event === "workflow_dispatch") {
+    const gates = jobs.filter(job => job.name === rule.recovery.verifyJob);
+    if (run.status !== "completed" || run.conclusion !== "success" || !Number.isSafeInteger(run.run_attempt) || run.run_attempt < 1 || !Number.isSafeInteger(run.repository.id) || !Number.isSafeInteger(run.repository.owner?.id) || release.target_commitish !== request.sha || !["identical", "ahead"].includes(signerComparison?.status) || !["identical", "ahead"].includes(sourceToSigner?.status) || gates.length !== 1 || gates[0].status !== "completed" || gates[0].conclusion !== "success") throw new Error("Recovery source or signer is not verified on protected main");
+  } else if (run.head_sha !== request.sha) throw new Error("Release run identity mismatch");
   // The notify job belongs to this same run; requiring overall success here
   // would race its still-running status. The publishing job must be complete.
   const publishing = jobs.filter(job => job.name === rule.publishJob);
@@ -78,15 +83,56 @@ export function verifyReleaseIdentity(request, rule, { release, run, jobs, tag, 
   if (tag !== request.sha || branch.protected !== true || !["identical", "ahead"].includes(comparison.status)) throw new Error("Release source is not on protected main");
 }
 
+// CLI verification binds the certificate to the actual workflow commit, not
+// the older product commit. Only its verified statements may bind that product.
+export function verifyRecoveryProvenance(results, request, rule, run) {
+  const repository = `https://github.com/${rule.repository}`;
+  const ref = `refs/heads/${rule.branch}`;
+  if (!Array.isArray(results) || results.length === 0) throw new Error("Missing verified recovery provenance");
+  const matched = results.some(result => {
+    const statement = result.verificationResult?.statement;
+    const definition = statement?.predicate?.buildDefinition;
+    const details = statement?.predicate?.runDetails;
+    const github = definition?.internalParameters?.github;
+    return statement?.predicateType === "https://slsa.dev/provenance/v1" &&
+      definition?.buildType === "https://actions.github.io/buildtypes/workflow/v1" &&
+      isDeepStrictEqual(definition.externalParameters, { workflow: { repository, path: rule.workflow, ref }, inputs: { release_tag: request.tag } }) &&
+      isDeepStrictEqual(definition.resolvedDependencies, [
+        { uri: `git+${repository}@${ref}`, digest: { gitCommit: run.head_sha } },
+        { name: "release-source", uri: `git+${repository}@${request.sha}`, digest: { gitCommit: request.sha } },
+      ]) &&
+      github?.event_name === "workflow_dispatch" && github.runner_environment === "github-hosted" &&
+      github.repository_id === String(run.repository.id) && github.repository_owner_id === String(run.repository.owner?.id) &&
+      details?.builder?.id === `${repository}/${rule.workflow}@${ref}` &&
+      details?.metadata?.invocationId === `${repository}/actions/runs/${run.id}/attempts/${run.run_attempt}`;
+  });
+  if (!matched) throw new Error("Recovery provenance does not bind the exact source, signer, tag and run attempt");
+}
+
+function requireRecoveryCI(pages, rule, sha) {
+  const workflow = rule.recovery.ciWorkflow.split("/").at(-1);
+  const runs = pages(`actions/workflows/${workflow}/runs?head_sha=${sha}&event=push&per_page=100`).flatMap(page => page.workflow_runs);
+  // Select the newest run, never cherry-pick an older green result after failure.
+  const run = runs.sort((a, b) => b.run_number - a.run_number)[0];
+  if (!run || run.head_sha !== sha || run.head_branch !== rule.branch || run.event !== "push" || run.path !== rule.recovery.ciWorkflow || run.repository?.full_name !== rule.repository || run.head_repository?.full_name !== rule.repository || run.status !== "completed" || run.conclusion !== "success") throw new Error("Recovery commit has no successful exact main CI");
+  const jobs = pages(`actions/runs/${run.id}/jobs?filter=latest&per_page=100`).flatMap(page => page.jobs).filter(job => job.name === rule.recovery.ciJob);
+  if (jobs.length !== 1 || jobs[0].status !== "completed" || jobs[0].conclusion !== "success") throw new Error("Recovery commit required CI gate did not succeed");
+}
+
 export async function verifyRelease(request, registry, work, runCommand = execute, download = fetchBounded) {
   const rule = validateRequest(request, registry);
   const api = endpoint => JSON.parse(runCommand("gh", ["api", `repos/${rule.repository}/${endpoint}`]));
+  const pages = endpoint => JSON.parse(runCommand("gh", ["api", "--paginate", "--slurp", `repos/${rule.repository}/${endpoint}`]));
   const release = api(`releases/tags/${request.tag}`);
   const run = api(`actions/runs/${request.runId}`);
-  const jobs = JSON.parse(runCommand("gh", ["api", "--paginate", "--slurp", `repos/${rule.repository}/actions/runs/${request.runId}/jobs?filter=latest&per_page=100`])).flatMap(page => page.jobs);
+  const jobs = pages(`actions/runs/${request.runId}/jobs?filter=latest&per_page=100`).flatMap(page => page.jobs);
   let ref = api(`git/ref/tags/${request.tag}`).object;
   for (let i = 0; ref?.type === "tag" && i < 4; i++) ref = api(`git/tags/${ref.sha}`).object;
-  verifyReleaseIdentity(request, rule, { release, run, jobs, tag: ref?.type === "commit" ? ref.sha : undefined, comparison: api(`compare/${request.sha}...${rule.branch}`), branch: api(`branches/${rule.branch}`) });
+  const recovery = run.event === "workflow_dispatch";
+  verifyReleaseIdentity(request, rule, { release, run, jobs, tag: ref?.type === "commit" ? ref.sha : undefined, comparison: api(`compare/${request.sha}...${rule.branch}`), branch: api(`branches/${rule.branch}`),
+    ...(recovery ? { signerComparison: api(`compare/${run.head_sha}...${rule.branch}`), sourceToSigner: api(`compare/${request.sha}...${run.head_sha}`) } : {}),
+  });
+  if (recovery) for (const sha of new Set([request.sha, run.head_sha])) requireRecoveryCI(pages, rule, sha);
   mkdirSync(work, { mode: 0o700 });
   const asset = async (name, maximum) => {
     const found = release.assets.filter(item => item.name === name);
@@ -99,7 +145,10 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   };
   const sums = parseChecksums((await asset("SHA256SUMS", 64 * 1024)).toString());
   const sourceRef = releaseSourceRef(request, rule, run);
-  const attest = location => runCommand("gh", ["attestation", "verify", location, "--repo", rule.repository, "--signer-workflow", `${rule.repository}/${rule.workflow}`, "--source-digest", request.sha, "--signer-digest", request.sha, "--source-ref", sourceRef, "--deny-self-hosted-runners"]);
+  const attest = location => {
+    const result = runCommand("gh", ["attestation", "verify", location, "--repo", rule.repository, "--signer-workflow", `${rule.repository}/${rule.workflow}`, "--source-digest", run.head_sha, "--signer-digest", run.head_sha, "--source-ref", sourceRef, "--deny-self-hosted-runners", ...(recovery ? ["--format", "json"] : [])]);
+    if (recovery) verifyRecoveryProvenance(JSON.parse(result), request, rule, run);
+  };
   const artifacts = [];
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");
