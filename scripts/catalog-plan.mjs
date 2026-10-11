@@ -76,6 +76,7 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
 }
 
 export async function preparePublication(env = process.env, run = execute, verify = verifyRelease) {
+  console.log("Catalog preparation stage: migration-and-ledger");
   if (env.GITHUB_REPOSITORY !== "petauron/catalog" || env.GITHUB_REF !== "refs/heads/main" || env.CATALOG_PRODUCTION_ENABLED !== "true") throw new Error("Production catalog is disabled or source is not protected main");
   const migration = JSON.parse(readFileSync("catalog/migration.json"));
   if (migration.publisherCutoverCompleted !== true || migration.source !== "petauron/vastora" || migration.sourceIdentity !== "vastora-official" || migration.channel !== "stable" || migration.oldWriterDisabled !== true || migration.consumerCompatibilityVerified !== true) throw new Error("Publisher cutover is not complete");
@@ -105,6 +106,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   if (request.kind === undefined) validateRequest(request, registry);
   else if (request.kind !== "reviewed") throw new Error("Unsupported publication request");
   const reviewedBytes = readFileSync("catalog/catalog.json");
+  console.log("Catalog preparation stage: reviewed-recipe-plan");
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
   if (!plan.resume) {
     if (!request.kind) {
@@ -120,6 +122,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
+  console.log("Catalog preparation stage: consumer-artifact-validation");
   run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
   const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
