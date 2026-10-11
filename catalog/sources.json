@@ -10,7 +10,7 @@
       "recovery": {
         "verifyJob": "Verify protected release source",
         "ciWorkflow": ".github/workflows/ci.yml",
-        "ciJob": "Rust gate"
+        "ciJob": "rust"
       },
       "image": "ghcr.io/petauron/pulse",
       "imageApp": "pulse",

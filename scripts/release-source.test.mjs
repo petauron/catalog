@@ -45,6 +45,7 @@ function recoveryStatements(run) {
 
 test("source input contains no URL/digest authority and must map to a reviewed source", () => {
   assert.equal(validateRequest(request, registry), rule);
+  assert.equal(rule.recovery.ciJob, "rust", "pin the actual upstream required-check name, not a UI step label");
   for (const override of [{ application: "other" }, { sha: "main" }, { runId: "1/../../x" }, { tag: "v01.0.0" }, { url: "https://evil.invalid" }]) assert.throws(() => validateRequest({ ...request, ...override }, registry));
   assert.throws(() => validateRequest(request, { schemaVersion: 1, sources: { pulse: { ...rule, allowPrerelease: false } } }));
 });
@@ -154,7 +155,7 @@ function releaseFixture(t) {
       fixture.mutateCI?.(ci);
       return Buffer.from(JSON.stringify([{ workflow_runs: [ci, { ...ci, run_number: 9, status: "completed", conclusion: "success" }] }]));
     }
-    if (/\/actions\/runs\/20[12]\/jobs/.test(endpoint)) return Buffer.from(JSON.stringify([{ jobs: [{ name: rule.recovery.ciJob, status: "completed", conclusion: fixture.ciGate ?? "success" }] }]));
+    if (/\/actions\/runs\/20[12]\/jobs/.test(endpoint)) return Buffer.from(JSON.stringify([{ jobs: [{ name: "rust", status: "completed", conclusion: fixture.ciGate ?? "success" }] }]));
     if (endpoint.includes(`/compare/${info.run.head_sha}...main`) && info.run.event === "workflow_dispatch") return Buffer.from(JSON.stringify(info.signerComparison));
     if (endpoint.includes(`/compare/${request.sha}...${info.run.head_sha}`) && info.run.event === "workflow_dispatch") return Buffer.from(JSON.stringify(info.sourceToSigner));
     const data = endpoint.includes("/releases/") ? info.release : endpoint.includes("/jobs?") ? [{ jobs: info.jobs }] : endpoint.includes("/actions/runs/") ? info.run : endpoint.includes("/git/ref/") ? { object: { type: "commit", sha: request.sha } } : endpoint.includes("/compare/") ? info.comparison : info.branch;

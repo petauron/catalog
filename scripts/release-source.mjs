@@ -120,6 +120,7 @@ function requireRecoveryCI(pages, rule, sha) {
 }
 
 export async function verifyRelease(request, registry, work, runCommand = execute, download = fetchBounded) {
+  console.log("Release verification stage: authenticated-source-identity");
   const rule = validateRequest(request, registry);
   const api = endpoint => JSON.parse(runCommand("gh", ["api", `repos/${rule.repository}/${endpoint}`]));
   const pages = endpoint => JSON.parse(runCommand("gh", ["api", "--paginate", "--slurp", `repos/${rule.repository}/${endpoint}`]));
@@ -132,7 +133,14 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   verifyReleaseIdentity(request, rule, { release, run, jobs, tag: ref?.type === "commit" ? ref.sha : undefined, comparison: api(`compare/${request.sha}...${rule.branch}`), branch: api(`branches/${rule.branch}`),
     ...(recovery ? { signerComparison: api(`compare/${run.head_sha}...${rule.branch}`), sourceToSigner: api(`compare/${request.sha}...${run.head_sha}`) } : {}),
   });
-  if (recovery) for (const sha of new Set([request.sha, run.head_sha])) requireRecoveryCI(pages, rule, sha);
+  if (recovery) {
+    console.log("Release verification stage: exact-product-ci");
+    requireRecoveryCI(pages, rule, request.sha);
+    if (run.head_sha !== request.sha) {
+      console.log("Release verification stage: exact-workflow-ci");
+      requireRecoveryCI(pages, rule, run.head_sha);
+    }
+  }
   mkdirSync(work, { mode: 0o700 });
   const asset = async (name, maximum) => {
     const found = release.assets.filter(item => item.name === name);
@@ -150,6 +158,7 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     if (recovery) verifyRecoveryProvenance(JSON.parse(result), request, rule, run);
   };
   const artifacts = [];
+  console.log("Release verification stage: native-archives-and-attestations");
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");
     const name = `pulse-${request.tag}-linux-${archiveArch}.tar.gz`;
@@ -162,6 +171,7 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     artifacts.push({ name: rule.artifactName, operatingSystem: "linux", architecture, url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}`, sha256: digest });
   }
   if (artifacts.length !== 2) throw new Error("Both native platforms are required");
+  console.log("Release verification stage: multiarch-image-and-attestation");
   const repositoryPath = rule.image.slice("ghcr.io/".length);
   const token = JSON.parse((await download(`https://ghcr.io/token?scope=repository:${repositoryPath}:pull`, 64 * 1024)).toString()).token;
   if (typeof token !== "string" || token.length > 16384) throw new Error("Registry authorization failed");
