@@ -470,8 +470,8 @@
       "id": "meridian",
       "version": "0.1.0-alpha.15",
       "name": {
-        "en": "Meridian",
-        "zh-CN": "Meridian"
+        "en": "Glivela",
+        "zh-CN": "Glivela"
       },
       "description": {
         "en": "Petauron's native managed access, subscription, shared-quota, and Xray data plane.",
@@ -486,7 +486,7 @@
           "reference": "ghcr.io/xtls/xray-core:26.7.28@sha256:b697cda1588faca696ab7f7755dd1161f60862af3ff6026300e44cff6aedd558"
         }
       ],
-      "packageRevision": 1,
+      "packageRevision": 2,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -519,8 +519,8 @@
       "id": "pulse",
       "version": "0.1.0-alpha.5",
       "name": {
-        "en": "Pulse",
-        "zh-CN": "Pulse 监控主机"
+        "en": "Senulun",
+        "zh-CN": "Senulun 监控主机"
       },
       "description": {
         "en": "One monitoring dashboard for nodes in every region. Add a private HTTPS access point before installing collectors.",
@@ -577,7 +577,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 1,
+      "packageRevision": 2,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -632,12 +632,12 @@
       "id": "pulse-agent",
       "version": "0.1.0-alpha.5",
       "name": {
-        "en": "Pulse Agent",
-        "zh-CN": "Pulse 探针"
+        "en": "Senulun Agent",
+        "zh-CN": "Senulun 探针"
       },
       "description": {
-        "en": "Native host monitoring, automatically enrolled with the global Pulse service. Requires Debian 12/13 or Ubuntu 24.04/26.04; no Docker required.",
-        "zh-CN": "自动接入全局 Pulse 监控主机，采集主机指标。支持 Debian 12/13、Ubuntu 24.04/26.04，无需 Docker。"
+        "en": "Native host monitoring, automatically enrolled with the global Senulun service. Requires Debian 12/13 or Ubuntu 24.04/26.04; no Docker required.",
+        "zh-CN": "自动接入全局 Senulun 监控主机，采集主机指标。支持 Debian 12/13、Ubuntu 24.04/26.04，无需 Docker。"
       },
       "license": "Apache-2.0",
       "hostAccess": true,
@@ -685,8 +685,8 @@
             "zh-CN": "自动国家或地区查询"
           },
           "description": {
-            "en": "geojs (default), ipinfo, or disabled. The provider sees the public egress IP and Agent version, never Pulse credentials or metrics. Omit on upgrade to retain the current choice.",
-            "zh-CN": "填写 geojs（默认）、ipinfo 或 disabled。查询服务会看到出口公网 IP 和探针版本，不会收到 Pulse 凭据或监控指标。升级时留空保留当前选择。"
+            "en": "geojs (default), ipinfo, or disabled. The provider sees the public egress IP and Agent version, never Senulun credentials or metrics. Omit on upgrade to retain the current choice.",
+            "zh-CN": "填写 geojs（默认）、ipinfo 或 disabled。查询服务会看到出口公网 IP 和探针版本，不会收到 Senulun 凭据或监控指标。升级时留空保留当前选择。"
           },
           "required": false,
           "secret": false,
@@ -696,8 +696,8 @@
           "key": "service_url",
           "type": "string",
           "label": {
-            "en": "Private Pulse service URL",
-            "zh-CN": "Private Pulse service URL"
+            "en": "Private Senulun service URL",
+            "zh-CN": "Private Senulun service URL"
           },
           "description": {
             "en": "Provided by the product integration or administrator.",
@@ -739,8 +739,8 @@
           "key": "enrollment_token",
           "type": "string",
           "label": {
-            "en": "Pulse enrollment token",
-            "zh-CN": "Pulse enrollment token"
+            "en": "Senulun enrollment token",
+            "zh-CN": "Senulun enrollment token"
           },
           "description": {
             "en": "Provided by the product integration or administrator.",
@@ -750,7 +750,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 1,
+      "packageRevision": 2,
       "runtime": {
         "kind": "systemd",
         "version": 1,
