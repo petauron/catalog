@@ -6,7 +6,7 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
-  ["meridian", "Glivela", "Glivela", "c05eb6f05d4d3e7c6585116c3f70015a1e6e206cb143e28f8ad8a858bd8a5627"],
+  ["meridian", "Glivela", "Glivela", "caf0e014f19e77ad8f032dc376f207d4157b5d120fa8129a896ec9be3b6a3c09"],
   ["pulse", "Senulun", "Senulun 监控主机", "4e3a01566d67cc1ab7a691dd55ea3e301dd5f016eef6ab4001f18b36e0d75c5a"],
   ["pulse-agent", "Senulun Agent", "Senulun 探针", "d3267f6d22115fe9f9d7f879400372890e779cd9efda32a82371c08ddf014a35"],
 ];
@@ -21,7 +21,7 @@ test("branding changes display metadata, not installation or artifact identities
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Captured from the pre-rename reviewed recipe. Includes all executable,
+    // Reviewed baseline includes Glivela alpha.16 and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
