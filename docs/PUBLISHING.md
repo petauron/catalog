@@ -11,15 +11,15 @@ The protected `publish.yml` workflow runs only through manual `workflow_dispatch
 After the application's release publishing job succeeds, an administrator selects
 `kind=release` and supplies `application`, `tag`, the tag's exact source `sha`, and
 the successful source release `run_id`. The GitHub Actions page exposes these
-fields; the equivalent CLI call is:
+fields; the equivalent CLI call for a completed, reviewed Senulun release is:
 
 ```sh
 gh workflow run publish.yml --repo petauron/catalog --ref main \
-  -f kind=release -f application=pulse -f tag=v0.1.0-alpha.5 \
-  -f sha=87316579282f6d1b874dd37e55bea5038d1ec6d7 -f run_id=36220147813
+  -f kind=release -f application=pulse -f tag="$RELEASE_TAG" \
+  -f sha="$RELEASE_SHA" -f run_id="$RELEASE_RUN_ID"
 ```
 
-This exact Pulse release was delivered by
+The historical Pulse alpha.5 release was delivered by
 [catalog-r8](https://github.com/petauron/catalog/releases/tag/catalog-r8).
 The completed schema 3 publisher cutover is recorded in `catalog/migration.json`;
 [CUTOVER-V3.md](CUTOVER-V3.md) preserves its acceptance procedure. Check the resulting catalog
@@ -44,6 +44,25 @@ URLs or checksums. It independently checks:
 - The pinned deployed Vastora schema 3 `catalog-check --artifacts` then independently validates both OCI platform
   configs and declared native archive members / ELF headers. No downloaded
   application binary or archive script is executed.
+
+### Canonical product repositories
+
+The `pulse` source key now resolves only to `petauron/senulun`, with future images
+at `ghcr.io/petauron/senulun`. New release requests and attestations must match
+that repository exactly; there is no fallback to the former signer. The app IDs
+`pulse` / `pulse-agent`, binary names and `pulse-<tag>-linux-<arch>.tar.gz` archive
+names remain installation contracts, not additional products.
+
+Glivela UI checkout uses `petauron/glivela` and retains the reviewed immutable
+commit pin and `ui-meridian-<version>` asset names. A GitHub repository rename
+does not authorize a new UI version or changing existing signed bytes.
+
+Historical recipes, release ledgers, image digests, download coordinates and
+attestations stay unchanged. Previously accepted releases need no re-publication;
+their original signer is not rewritten as Senulun. The example alpha.5 publication
+above is historical, not an input to rerun against the new source policy. Do not
+rename or delete the existing GHCR package. Merging this policy changes future
+verification only: it neither signs a catalog nor upgrades installed apps.
 
 Pulse does not notify the catalog and needs no cross-repository credentials.
 The administrator chooses a specific completed release. The catalog verifies its
@@ -103,7 +122,7 @@ with GeoJS, never Pulse credentials or metrics. In the collector configuration,
 retains its identity, credentials, manual region and explicit disabled setting;
 do not reenroll it to obtain location support. See the
 [Vastora collector contract](https://github.com/petauron/vastora/blob/main/docs/pulse-collector-config.md)
-and [Pulse operations guide](https://github.com/petauron/pulse/blob/main/docs/OPERATIONS.md)
+and [Senulun operations guide](https://github.com/petauron/senulun/blob/main/docs/OPERATIONS.md)
 for the supported settings and privacy behavior.
 
 If publication or upgrade fails, inspect that operation before retrying. A failed

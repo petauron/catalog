@@ -50,6 +50,21 @@ test("source input contains no URL/digest authority and must map to a reviewed s
   assert.throws(() => validateRequest(request, { schemaVersion: 1, sources: { pulse: { ...rule, allowPrerelease: false } } }));
 });
 
+test("canonical source migration preserves app identities and rejects the former signer", () => {
+  assert.equal(rule.repository, "petauron/senulun");
+  assert.equal(rule.image, "ghcr.io/petauron/senulun");
+  assert.equal(rule.imageApp, "pulse");
+  assert.equal(rule.artifactApp, "pulse-agent");
+  const info = identity();
+  info.run.repository.full_name = "petauron/pulse";
+  info.run.head_repository.full_name = "petauron/pulse";
+  assert.throws(() => verifyReleaseIdentity(request, rule, info), /identity mismatch/);
+  const run = recoveryIdentity().run;
+  const statements = recoveryStatements(run);
+  const former = JSON.parse(JSON.stringify(statements).replaceAll("petauron/senulun", "petauron/pulse"));
+  assert.throws(() => verifyRecoveryProvenance(former, request, rule, run), /does not bind/);
+});
+
 test("canonical versions correctly order prereleases, release and large numeric segments", () => {
   const values = ["0.1.0-alpha.4", "0.1.0-alpha.5", "0.1.0-alpha.10", "0.1.0-beta.1", "0.1.0-rc.1", "0.1.0", "0.2.0", "10.0.0"];
   values.forEach((value, index) => { assert.equal(compareVersions(value, value), 0); if (index) assert.equal(compareVersions(value, values[index - 1]), 1); });
@@ -138,7 +153,7 @@ function releaseFixture(t) {
   const raw = new Map([...["x86_64", "aarch64"].map(arch => [`pulse-${request.tag}-linux-${arch}.tar.gz`, Buffer.from(`fixture-${arch}`)])]);
   raw.set("SHA256SUMS", Buffer.from([...raw].map(([name, bytes]) => `${sha256(bytes)}  ${name}`).join("\n")));
   const info = identity();
-  info.release.assets = [...raw].map(([name, bytes]) => ({ name, size: bytes.length, state: "uploaded", digest: `sha256:${sha256(bytes)}`, browser_download_url: `https://github.com/petauron/pulse/releases/download/${request.tag}/${name}` }));
+  info.release.assets = [...raw].map(([name, bytes]) => ({ name, size: bytes.length, state: "uploaded", digest: `sha256:${sha256(bytes)}`, browser_download_url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}` }));
   const calls = [];
   const fixture = { directory, raw, info, calls, rejectAttestation: false,
     index: { manifests: ["amd64", "arm64"].map(architecture => ({ platform: { os: "linux", architecture }, digest: `sha256:${"c".repeat(64)}` })) } };
@@ -169,9 +184,13 @@ function releaseFixture(t) {
 test("release verification independently attests both archives and exact multiarch index", async t => {
   const fixture = releaseFixture(t);
   const verified = await fixture.verify();
-  assert.equal(verified.artifacts.length, 2); assert.equal(verified.image, `ghcr.io/petauron/pulse@sha256:${sha256(Buffer.from(JSON.stringify(fixture.index)))}`);
+  assert.equal(verified.artifacts.length, 2); assert.equal(verified.image, `ghcr.io/petauron/senulun@sha256:${sha256(Buffer.from(JSON.stringify(fixture.index)))}`);
   const attestations = fixture.calls.filter(args => args[0] === "attestation");
   assert.equal(attestations.length, 3);
+  for (const args of attestations) {
+    assert.equal(args[args.indexOf("--repo") + 1], "petauron/senulun");
+    assert.equal(args[args.indexOf("--signer-workflow") + 1], "petauron/senulun/.github/workflows/release.yml");
+  }
   for (const args of attestations) { assert.ok(args.includes("--source-digest")); assert.ok(args.includes(request.sha)); assert.ok(args.includes("--signer-digest")); assert.ok(args.includes(`refs/tags/${request.tag}`)); assert.ok(args.includes("--deny-self-hosted-runners")); }
 });
 
