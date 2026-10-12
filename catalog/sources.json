@@ -2,7 +2,7 @@
   "schemaVersion": 1,
   "sources": {
     "pulse": {
-      "repository": "petauron/pulse",
+      "repository": "petauron/senulun",
       "workflow": ".github/workflows/release.yml",
       "publishJob": "Publish GitHub release",
       "branch": "main",
@@ -12,7 +12,7 @@
         "ciWorkflow": ".github/workflows/ci.yml",
         "ciJob": "rust"
       },
-      "image": "ghcr.io/petauron/pulse",
+      "image": "ghcr.io/petauron/senulun",
       "imageApp": "pulse",
       "imageName": "pulse",
       "artifactApp": "pulse-agent",
