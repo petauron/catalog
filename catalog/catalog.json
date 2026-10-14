@@ -101,7 +101,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 1,
+      "packageRevision": 2,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -119,6 +119,10 @@
           },
           {
             "name": "plugins",
+            "persistent": true
+          },
+          {
+            "name": "management-panel",
             "persistent": true
           }
         ],
@@ -197,6 +201,10 @@
                 {
                   "storage": "plugins",
                   "target": "/CLIProxyAPI/plugins"
+                },
+                {
+                  "storage": "management-panel",
+                  "target": "/CLIProxyAPI/static"
                 }
               ],
               "ports": [

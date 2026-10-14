@@ -55,8 +55,11 @@ func TestCPARecipeUsesV8AndDisablesIndependentPanelUpdates(t *testing.T) {
 				t.Fatalf("obsolete root field retained: %s", key)
 			}
 		}
-		if len(container.Mounts) != 3 {
+		if len(container.Mounts) != 4 {
 			t.Fatal("persistent auth/log/plugin mounts changed")
+		}
+		if app.PackageRevision != 2 || container.Mounts[3].Storage != "management-panel" || container.Mounts[3].Target != "/CLIProxyAPI/static" {
+			t.Fatal("compatible management panel is not retained across container updates")
 		}
 		return
 	}
