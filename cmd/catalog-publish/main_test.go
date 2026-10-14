@@ -151,7 +151,7 @@ func TestPublisherCLIProducesIndependentlyVerifiedUpgradeAndRetainsHistory(t *te
 	if got := initial.State.Acceptance.ExpiresAt.Format(time.RFC3339); got != catalog.OfficialLongLivedExpiry {
 		t.Fatalf("signed catalog expires at %s", got)
 	}
-	appID, oldVersion := value.Apps[0].ID, value.Apps[0].Version
+	appID, oldVersion, packageRevision := value.Apps[0].ID, value.Apps[0].Version, value.Apps[0].PackageRevision
 	value.Apps[0].Version = "99.0.0"
 	writeCatalog()
 	second := filepath.Join(directory, "r2")
@@ -170,7 +170,7 @@ func TestPublisherCLIProducesIndependentlyVerifiedUpgradeAndRetainsHistory(t *te
 	if err := json.Unmarshal(raw, &history); err != nil {
 		t.Fatal(err)
 	}
-	if history[appID][catalog.PackageHistoryKey(oldVersion, 1)] == "" || history[appID][catalog.PackageHistoryKey("99.0.0", 1)] == "" {
+	if history[appID][catalog.PackageHistoryKey(oldVersion, packageRevision)] == "" || history[appID][catalog.PackageHistoryKey("99.0.0", packageRevision)] == "" {
 		t.Fatal("publisher lost immutable history of an earlier app version")
 	}
 	value.Apps[0].Version = oldVersion
