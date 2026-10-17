@@ -67,7 +67,7 @@ jobs:
           repository: petauron/vastora
           # Immutable build dependency of the released Meridian UI.
           # Schema 4 consumer admission is checked separately in CI.
-          ref: 489fb2000d263999ba238545353d6ae28582e508
+          ref: c85888a7d98717fdd4143dd4c70f022f6563632c
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
