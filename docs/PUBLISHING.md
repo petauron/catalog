@@ -28,7 +28,7 @@ handles a reviewed recipe change.
 Neither an application release nor a catalog source change triggers publication
 automatically. No periodic workflow is configured.
 
-`catalog/sources.json` is the reviewed source registry. Pulse is the first
+`catalog/sources.json` is the reviewed source registry. Senulun is the first
 registered source, including its Alpha releases. The publisher derives its repository,
 workflow, image repository and attachment names from that registry, not request
 URLs or checksums. It independently checks:
@@ -49,9 +49,12 @@ URLs or checksums. It independently checks:
 
 The `pulse` source key now resolves only to `petauron/senulun`, with future images
 at `ghcr.io/petauron/senulun`. New release requests and attestations must match
-that repository exactly; there is no fallback to the former signer. The app IDs
-`pulse` / `pulse-agent`, binary names and `pulse-<tag>-linux-<arch>.tar.gz` archive
-names remain installation contracts, not additional products.
+that repository exactly; there is no fallback to the former signer. Immutable
+app IDs `pulse` / `pulse-agent` remain installation identities. New verified
+releases use `senulun-<tag>-linux-<arch>.tar.gz`, canonical binary names and
+`SENULUN_*` configuration. `applyRelease` materializes that runtime recipe only
+with the verified new source assets; the historical base recipe is not rewritten.
+The matching Vastora migration must be present before upgrading installations.
 
 Glivela UI checkout uses `petauron/glivela` and retains the reviewed immutable
 commit pin and `ui-meridian-<version>` asset names. A GitHub repository rename
@@ -64,7 +67,7 @@ above is historical, not an input to rerun against the new source policy. Do not
 rename or delete the existing GHCR package. Merging this policy changes future
 verification only: it neither signs a catalog nor upgrades installed apps.
 
-Pulse does not notify the catalog and needs no cross-repository credentials.
+Senulun does not notify the catalog and needs no cross-repository credentials.
 The administrator chooses a specific completed release. The catalog verifies its
 tag commit, release job, and artifacts against the reviewed source rule. Drafts,
 unapproved prereleases and older versions are rejected. A pending publication
@@ -95,9 +98,9 @@ A generic manual workflow, stale attempt, fork, unchecked commit or mismatched
 provenance is rejected. No bypass, source re-release, moved tag, rewritten asset,
 extra workflow credential or relaxed signing environment is needed.
 
-## Pulse upgrade handoff
+## Senulun upgrade handoff
 
-One verified Pulse release updates both catalog entries together: `pulse` pins
+One verified Senulun release updates both catalog entries together: `pulse` pins
 the multiarchitecture Service image digest, and `pulse-agent` pins the amd64 and
 arm64 archive URLs and checksums. The completed release ledger contains the
 exact candidate and source request, so operators can review what was published.
@@ -108,15 +111,15 @@ coordinates and cannot silently revert the application version.
 
 After publication, refresh the official catalog in Vastora Settings and verify
 its revision and signature status. Open the installed applications to see available
-updates. Pulse Service and Pulse Agent are separate upgrade targets: upgrading
+updates. Senulun Service and Senulun Agent are separate upgrade targets: upgrading
 the Service does not upgrade any collector, and refreshing the catalog upgrades
 neither. Use each application's managed upgrade flow and verify its completed
 task and installed version. Check collector connectivity and reported version in
-Pulse as well; a saved target version alone is not runtime evidence.
+Senulun as well; a saved target version alone is not runtime evidence.
 
 Collectors alpha.3 and later support country discovery. With no manual country,
 the default GeoJS request shares the node's public egress IP and Agent version
-with GeoJS, never Pulse credentials or metrics. In the collector configuration,
+with GeoJS, never Senulun credentials or metrics. In the collector configuration,
 `node_region` sets the manual country (which takes precedence) and
 `geoip_provider=disabled` disables discovery. Upgrading an existing collector
 retains its identity, credentials, manual region and explicit disabled setting;
