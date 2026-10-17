@@ -124,7 +124,7 @@ with GeoJS, never Senulun credentials or metrics. In the collector configuration
 `geoip_provider=disabled` disables discovery. Upgrading an existing collector
 retains its identity, credentials, manual region and explicit disabled setting;
 do not reenroll it to obtain location support. See the
-[Vastora collector contract](https://github.com/petauron/vastora/blob/main/docs/pulse-collector-config.md)
+[Vastora collector contract](https://github.com/petauron/vastora/blob/main/docs/senulun-collector-config.md)
 and [Senulun operations guide](https://github.com/petauron/senulun/blob/main/docs/OPERATIONS.md)
 for the supported settings and privacy behavior.
 
