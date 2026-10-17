@@ -7,11 +7,12 @@ import { copyFileSync, lstatSync, mkdirSync, readFileSync, readdirSync, writeFil
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { uploadCatalog } from "./upload-catalog-r2.mjs";
+import semver from "semver";
 
 const assetName = "catalog-publication.json";
 const origin = "https://downloads.petauron.com/vastora/catalog/";
 const hash = bytes => createHash("sha256").update(bytes).digest("hex");
-const uiTargetName = name => /^ui-meridian-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.(?:js|css)$/.test(name);
+const uiTargetName = name => /^ui-(?:meridian|glivela)-[0-9]+\.[0-9]+\.[0-9]+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?\.(?:js|css)$/.test(name);
 const fileName = name => /^(?:[1-9][0-9]*\.(?:root|targets|snapshot)\.json|targets\/[a-f0-9]{64}\.stable\.json|timestamp\.json|publication-state\.json|manifest-history\.json)$/.test(name) || /^targets\/[a-f0-9]{64}\./.test(name) && uiTargetName(name.slice(73));
 
 function hasDurableLedger(release) {
@@ -111,8 +112,11 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   if (!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(repository ?? "") || !work || !rootDirectory || !binDirectory || !catalog) throw new Error("Invalid publication configuration");
   if (Boolean(uiBundle) !== Boolean(uiStyle)) throw new Error("Official UI script and stylesheet must be supplied together");
   if (uiBundle) {
-    const meridian = JSON.parse(readFileSync(catalog)).apps?.find(app => app.id === "meridian");
-    const base = `ui-meridian-${meridian?.version ?? ""}`;
+    const glivela = JSON.parse(readFileSync(catalog)).apps?.find(app => app.id === "meridian");
+    const version = glivela?.version ?? "";
+    if (!semver.valid(version)) throw new Error("Invalid reviewed Glivela version");
+    const brand = semver.lte(version, "0.1.0-alpha.21") ? "meridian" : "glivela";
+    const base = `ui-${brand}-${version}`;
     if (!uiTargetName(`${base}.js`) || path.basename(uiBundle) !== `${base}.js` || path.basename(uiStyle) !== `${base}.css`) throw new Error("Reviewed Meridian UI version differs from catalog");
     for (const asset of [uiBundle, uiStyle]) {
       const stat = lstatSync(asset);
@@ -167,7 +171,7 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   const storagePredecessors = plan.superseded?.filter(hasDurableLedger);
   const predecessor = storagePredecessors ? storagePredecessors[0] : plan.previous;
   if (predecessor) previous = readLedger(predecessor);
-  if (!uiBundle && Object.keys(previous?.files ?? {}).some(file => /^targets\/[a-f0-9]{64}\.ui-meridian-/.test(file))) throw new Error("Meridian UI cannot be omitted after its first signed publication");
+  if (!uiBundle && Object.keys(previous?.files ?? {}).some(file => /^targets\/[a-f0-9]{64}\.ui-(?:meridian|glivela)-/.test(file))) throw new Error("Glivela UI cannot be omitted after its first signed publication");
   if (plan.resume) {
     unpackPublication(bundle, staged);
   } else {

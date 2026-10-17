@@ -150,7 +150,7 @@ test("download origins, redirect credentials and streaming bounds fail closed", 
 function releaseFixture(t) {
   const directory = mkdtempSync(path.join(tmpdir(), "catalog-release-test-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const raw = new Map([...["x86_64", "aarch64"].map(arch => [`pulse-${request.tag}-linux-${arch}.tar.gz`, Buffer.from(`fixture-${arch}`)])]);
+  const raw = new Map([...["x86_64", "aarch64"].map(arch => [`senulun-${request.tag}-linux-${arch}.tar.gz`, Buffer.from(`fixture-${arch}`)])]);
   raw.set("SHA256SUMS", Buffer.from([...raw].map(([name, bytes]) => `${sha256(bytes)}  ${name}`).join("\n")));
   const info = identity();
   info.release.assets = [...raw].map(([name, bytes]) => ({ name, size: bytes.length, state: "uploaded", digest: `sha256:${sha256(bytes)}`, browser_download_url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}` }));
@@ -253,7 +253,7 @@ test("untrusted or absent release refs fail closed", () => {
 });
 
 test("incomplete or unverified Pulse releases never produce an update candidate", async t => {
-  const archive = `pulse-${request.tag}-linux-aarch64.tar.gz`;
+  const archive = `senulun-${request.tag}-linux-aarch64.tar.gz`;
   const scenarios = [
     ["missing arm64 archive", f => { f.info.release.assets = f.info.release.assets.filter(a => a.name !== archive); }, /absent or invalid/],
     ["archive upload unfinished", f => { f.info.release.assets.find(a => a.name === archive).state = "new"; }, /absent or invalid/],

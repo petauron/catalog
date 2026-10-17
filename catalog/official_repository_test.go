@@ -83,7 +83,7 @@ func TestOfficialUIAssetsAreVersionBoundAndIndependentlyVerified(t *testing.T) {
 	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: assets[script]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("unpaired UI script accepted")
 	}
-	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{"ui-meridian-9.9.9.js": assets[script]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{"ui-glivela-9.9.9.js": assets[script]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("UI for another version accepted")
 	}
 	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: make([]byte, MaxOfficialUIBytes+1), style: assets[style]}, "stable", OfficialAcceptance{}, now, signers); err == nil {

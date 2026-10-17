@@ -161,7 +161,8 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   console.log("Release verification stage: native-archives-and-attestations");
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");
-    const name = `pulse-${request.tag}-linux-${archiveArch}.tar.gz`;
+    if (rule.archivePrefix !== "senulun") throw new Error("Unreviewed archive naming contract");
+    const name = `${rule.archivePrefix}-${request.tag}-linux-${archiveArch}.tar.gz`;
     const raw = await asset(name, 128 * 1024 * 1024);
     const digest = sha256(raw);
     if (sums.get(name) !== digest) throw new Error("Release checksum mismatch");
@@ -204,7 +205,29 @@ export function applyRelease(catalog, verified, rule) {
         return { ...previous, url: artifact.url, sha256: artifact.sha256 };
       });
     }
+    if (rule.runtimeBrand === "senulun" && app.runtime) migrateSenulunRecipe(app, id === rule.imageApp);
     if (original.version === app.version && JSON.stringify(original) !== JSON.stringify(app)) throw new Error("Published application identity is immutable");
   }
   return next;
+}
+
+// Only materialize new runtime contracts alongside a newly verified release.
+// Never rewrite the reviewed historical recipe or its immutable release bytes.
+export function migrateSenulunRecipe(app, service) {
+  const renameEnvironment = environment => Object.fromEntries(Object.entries(environment ?? {}).map(([key, value]) => [key.replace(/^PULSE_/, "SENULUN_"), value]));
+  if (service) {
+    for (const container of app.runtime.docker.containers) {
+      container.environment = renameEnvironment(container.environment);
+      for (const mount of container.mounts ?? []) {
+        if (mount.storage === "data" && mount.target === "/var/lib/pulse") mount.target = "/var/lib/senulun";
+      }
+      container.arguments = [{ literal: "migrate-and-serve" }];
+    }
+  } else {
+    const native = app.runtime.systemd;
+    native.environment = renameEnvironment(native.environment);
+    native.executable = "senulun-agent";
+    native.user = "vastora-senulun";
+    native.files = native.files.map(file => file.path === "pulse-agent" ? { ...file, path: "senulun-agent" } : file);
+  }
 }

@@ -13,6 +13,8 @@
         "ciJob": "rust"
       },
       "image": "ghcr.io/petauron/senulun",
+      "archivePrefix": "senulun",
+      "runtimeBrand": "senulun",
       "imageApp": "pulse",
       "imageName": "pulse",
       "artifactApp": "pulse-agent",

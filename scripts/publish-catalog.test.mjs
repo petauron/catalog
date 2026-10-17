@@ -147,8 +147,8 @@ test("new revision carries full prior history and uses a matching storage ETag",
 test("signed Meridian UI assets are version-bound, immutable, and exact on retry", t => {
   const f = fixture(t);
   writeFileSync(f.options.catalog, '{"apps":[{"id":"meridian","version":"1.2.3"}]}');
-  const script = path.join(f.directory, "ui-meridian-1.2.3.js");
-  const style = path.join(f.directory, "ui-meridian-1.2.3.css");
+  const script = path.join(f.directory, "ui-glivela-1.2.3.js");
+  const style = path.join(f.directory, "ui-glivela-1.2.3.css");
   writeFileSync(script, "export const app = 'meridian';");
   writeFileSync(style, "body { color: green; }");
   const options = { ...f.options, uiBundle: script, uiStyle: style };
@@ -157,7 +157,7 @@ test("signed Meridian UI assets are version-bound, immutable, and exact on retry
   const signed = f.calls.find(call => call.command.endsWith("/catalog-publish"));
   assert.ok(signed.args.includes("--ui-bundle") && signed.args.includes("--ui-style"));
   const bundle = JSON.parse(f.ledgers.get("catalog-r1"));
-  const signedScript = Object.keys(bundle.files).find(name => name.endsWith(".ui-meridian-1.2.3.js"));
+  const signedScript = Object.keys(bundle.files).find(name => name.endsWith(".ui-glivela-1.2.3.js"));
   assert.equal(Buffer.from(bundle.files[signedScript], "base64").toString(), readFileSync(script, "utf8"));
   assert.throws(() => validatePublication({ ...bundle, files: { ...bundle.files, [signedScript]: Buffer.from("changed").toString("base64") } }), /digest/);
   writeFileSync(script, "export const app = 'changed';");
