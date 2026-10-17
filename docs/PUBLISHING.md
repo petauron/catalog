@@ -56,9 +56,16 @@ releases use `senulun-<tag>-linux-<arch>.tar.gz`, canonical binary names and
 with the verified new source assets; the historical base recipe is not rewritten.
 The matching Vastora migration must be present before upgrading installations.
 
-Glivela UI checkout uses `petauron/glivela` and retains the reviewed immutable
-commit pin and `ui-meridian-<version>` asset names. A GitHub repository rename
-does not authorize a new UI version or changing existing signed bytes.
+Glivela UI checkout uses `petauron/glivela`. Published versions through alpha.21
+retain `ui-meridian-<version>` names. Subsequent versions use
+`ui-glivela-<version>`; the publisher and Center derive exactly one name from
+the version. They do not retry another name on a failed verification. Historical
+ledger validation retains both signed formats without rewriting either.
+
+The current protected workflow still pins the previously released source.
+After the canonical source release, review and advance the Glivela source pin,
+its matching Center dependency, recipe version, and build output paths together.
+Do not publish the canonical bundle as alpha.21 or alter existing signed bytes.
 
 Historical recipes, release ledgers, image digests, download coordinates and
 attestations stay unchanged. Previously accepted releases need no re-publication;

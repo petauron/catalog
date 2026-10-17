@@ -47,11 +47,11 @@ test("versioned UI targets use immutable uploads and their own media types", t =
   const f = fixture(t);
   for (const [extension, bytes] of [["js", "export default 1"], ["css", "body{}"]]) {
     const digest = createHash("sha256").update(bytes).digest("hex");
-    writeFileSync(path.join(f.options.directory, "targets", `${digest}.ui-meridian-1.2.3.${extension}`), bytes);
+    writeFileSync(path.join(f.options.directory, "targets", `${digest}.ui-glivela-1.2.3.${extension}`), bytes);
   }
   uploadCatalog(f.options, f.run);
   for (const [extension, media] of [["js", "text/javascript"], ["css", "text/css"]]) {
-    const upload = f.calls.find(call => call.operation === "put-object" && call.key.endsWith(`.ui-meridian-1.2.3.${extension}`));
+    const upload = f.calls.find(call => call.operation === "put-object" && call.key.endsWith(`.ui-glivela-1.2.3.${extension}`));
     assert.ok(upload?.args.includes("--if-none-match"));
     assert.equal(upload.args[upload.args.indexOf("--content-type") + 1], media);
   }
