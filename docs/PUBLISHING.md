@@ -62,9 +62,10 @@ retain `ui-meridian-<version>` names. Subsequent versions use
 the version. They do not retry another name on a failed verification. Historical
 ledger validation retains both signed formats without rewriting either.
 
-The current protected workflow still pins the previously released source.
-After the canonical source release, review and advance the Glivela source pin,
-its matching Center dependency, recipe version, and build output paths together.
+The protected workflow pins Glivela alpha.22 and its Vastora alpha.321 web
+dependency, with the alpha.22 recipe and canonical `ui-glivela` output paths.
+For subsequent releases, advance the source pin, matching Center dependency,
+recipe version, and build output paths together after source CI and publication.
 Do not publish the canonical bundle as alpha.21 or alter existing signed bytes.
 
 Historical recipes, release ledgers, image digests, download coordinates and
