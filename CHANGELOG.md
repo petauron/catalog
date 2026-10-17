@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.1](https://github.com/petauron/catalog/compare/v0.3.0...v0.3.1) (2026-10-17)
+
+
+### Bug Fixes
+
+* **catalog:** deliver Glivela alpha.20 with complete dialog styles ([#42](https://github.com/petauron/catalog/issues/42)) ([e241b2e](https://github.com/petauron/catalog/commit/e241b2ee4834e2fe14497f34a3d907b028f6fb9c))
+* **catalog:** deliver Glivela alpha.21 sorting and scrolling fixes ([#43](https://github.com/petauron/catalog/issues/43)) ([68910ca](https://github.com/petauron/catalog/commit/68910ca3bc5c64e168e2b67ff43d459357d7f68e))
+* **catalog:** publish reviewed Glivela alpha.16 UI ([b024d90](https://github.com/petauron/catalog/commit/b024d90af1819df0426be599bfb3c15e4260eb8e))
+* **catalog:** publish Telegram Bot source-quality alpha.4 ([#37](https://github.com/petauron/catalog/issues/37)) ([6114b34](https://github.com/petauron/catalog/commit/6114b34b5a28313c08dc35ff7b394bcd8d3ef12e))
+* **catalog:** update Glivela to alpha.19 ([a48ae4e](https://github.com/petauron/catalog/commit/a48ae4e69bddfcfcd62a8ac4ff6788ad4e556d60))
+* **cpa:** retain management panel across container upgrades ([f90e4dc](https://github.com/petauron/catalog/commit/f90e4dc17deed97c9e923abd4707e442978ef20f))
+* **cpa:** upgrade to v8 and disable independent panel updates ([bf43967](https://github.com/petauron/catalog/commit/bf4396775cfce0eea74e2cc6575d09100a063817))
+* publish official-Xray Glivela alpha.17 workspace ([0fcd6b2](https://github.com/petauron/catalog/commit/0fcd6b25fdd87011acfdc4088af2d1ae17043b4b))
+
 ## [0.3.0](https://github.com/petauron/catalog/compare/v0.2.0...v0.3.0) (2026-10-12)
 
 
