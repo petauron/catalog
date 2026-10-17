@@ -67,7 +67,7 @@ jobs:
           repository: petauron/vastora
           # Immutable build dependency of the released Meridian UI.
           # Schema 4 consumer admission is checked separately in CI.
-          ref: 398fd585dd2083a9645b1b873ca1c40803cdd15d
+          ref: 489fb2000d263999ba238545353d6ae28582e508
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
@@ -95,7 +95,7 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/glivela
-          ref: 4958229ca4b4f4bbb843a491cbef1b14943effd1
+          ref: 495013a9bc11dfadf871c1418e56a7962f7fbf29
           path: meridian-ui
           persist-credentials: false
       - name: Build reviewed Meridian UI without publication credentials
@@ -109,8 +109,8 @@ jobs:
           npm test --prefix meridian-ui/ui
           npm run build --prefix meridian-ui/ui
           version="$(jq -r '.apps[] | select(.id == "meridian") | .version' "$CATALOG_WORK/candidate.json")"
-          script="meridian-ui/ui/dist/ui-meridian-$version.js"
-          style="meridian-ui/ui/dist/ui-meridian-$version.css"
+          script="meridian-ui/ui/dist/ui-glivela-$version.js"
+          style="meridian-ui/ui/dist/ui-glivela-$version.css"
           test -s "$script" && test -s "$style"
           test "$(wc -c < "$script")" -le 4194304
           test "$(wc -c < "$style")" -le 4194304
