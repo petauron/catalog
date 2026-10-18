@@ -50,7 +50,7 @@
           "artifact": "bundle",
           "executable": "xray",
           "files": [{"path": "xray", "executable": true}],
-          "arguments": [{"literal": "run"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration"}}]
+          "arguments": [{"literal": "run"}, {"literal": "-format"}, {"literal": "json"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration"}}]
         }
       }
     ]

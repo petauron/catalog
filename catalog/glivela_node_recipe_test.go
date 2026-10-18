@@ -41,6 +41,17 @@ func TestGlivelaNodeNativeRecipe(t *testing.T) {
 	if node.Start != "automatic" || worker.Start != "manual" || worker.ManagedUser != "xray" || worker.Process.User != "" || len(worker.WritableState) != 0 {
 		t.Fatal("worker isolation changed")
 	}
+	var arguments []string
+	for _, value := range worker.Process.Arguments {
+		arg, err := ResolveString(value, nil, nil, map[string]string{"credential-file:configuration": "/run/example-worker/configuration"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		arguments = append(arguments, arg)
+	}
+	if strings.Join(arguments, " ") != "run -format json -config /run/example-worker/configuration" {
+		t.Fatal("extensionless systemd credential must explicitly select JSON")
+	}
 	values := map[string]string{
 		"state-directory:node-state":  "/var/lib/example-node-state",
 		"credential-file:certificate": "/run/example-node/certificate",
