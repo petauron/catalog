@@ -142,3 +142,15 @@ func TestNativeServiceScopedReferencesAndWritableState(t *testing.T) {
 		t.Fatal("ownerless writable state accepted")
 	}
 }
+
+func TestSystemdV2ExecutorSupportsExistingV1OnlyByExplicitContract(t *testing.T) {
+	a := nativeServicesFixture()
+	process := a.Runtime.NativeServices.Services[0].Process
+	a.Runtime = &RuntimeSpec{Kind: "systemd", Version: 1, Systemd: &process, RequiredCapabilities: []string{"root"}}
+	if !CheckRuntimeSupport(a, ExecutorSupport{Versions: map[string]int{"systemd": 2}, Capabilities: []string{"root"}}).Supported {
+		t.Fatal("existing native application lost support")
+	}
+	if CheckRuntimeSupport(a, ExecutorSupport{Versions: map[string]int{"systemd": 3}, Capabilities: []string{"root"}}).Supported {
+		t.Fatal("unknown future executor implicitly accepted")
+	}
+}

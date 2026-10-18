@@ -480,7 +480,13 @@ func CheckRuntimeSupport(app AppManifest, available ExecutorSupport) SupportResu
 		return SupportResult{Reasons: []string{"runtime specification is missing"}}
 	}
 	r := app.Runtime
-	if !knownRuntimeVersion(r.Kind, r.Version) || available.Versions[r.Kind] != r.Version {
+	versionSupported := available.Versions[r.Kind] == r.Version
+	// The systemd v2 executor implements both released native contracts. This
+	// is an explicit promise, not a general assumption about future versions.
+	if r.Kind == "systemd" && r.Version == 1 && available.Versions[r.Kind] == 2 {
+		versionSupported = true
+	}
+	if !knownRuntimeVersion(r.Kind, r.Version) || !versionSupported {
 		result.Reasons = append(result.Reasons, fmt.Sprintf("runtime %s version %d is unsupported", r.Kind, r.Version))
 	}
 	for _, required := range r.RequiredCapabilities {

@@ -9,6 +9,14 @@ the version 1 `systemd` object. Unknown/unsupported contracts remain readable
 but must not be executed. Executors must explicitly advertise support for both
 this version and the `native-services` capability before accepting a task.
 
+An executor advertising systemd version 2 explicitly supports the still-used
+released version 1 contract as well. This promise does not extend to unknown
+future versions. It is not an instance migration: an installed version 1 receipt
+cannot be upgraded into version 2 implicitly. Executors select uninstall and
+maintenance behavior from the installed receipt, and validate the supplied
+manifest against that receipt before mutation. Older single-service receipts
+without an explicit runtime version represent version 1 only.
+
 ## Declarations
 
 - `users` is an explicit array of logical application-owned account identifiers
