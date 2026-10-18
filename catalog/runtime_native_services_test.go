@@ -114,3 +114,31 @@ func TestNativeArtifactFilesUnion(t *testing.T) {
 		t.Fatalf("v1 extraction changed: %v, %v", got, err)
 	}
 }
+
+func TestNativeServiceScopedReferencesAndWritableState(t *testing.T) {
+	a := nativeServicesFixture()
+	service := &a.Runtime.NativeServices.Services[0]
+	service.WritableState = []string{"data"}
+	service.Process.Environment = map[string]Value{
+		"UNIT":  {Runtime: &RuntimeValue{Kind: "native-unit", Name: "worker"}},
+		"USER":  {Runtime: &RuntimeValue{Kind: "managed-user", Name: "worker"}},
+		"STATE": {Runtime: &RuntimeValue{Kind: "state-directory", Name: "data"}},
+	}
+	if err := ValidateRuntime(a); err != nil {
+		t.Fatal(err)
+	}
+	service.WritableState = nil
+	if err := ValidateRuntime(a); err == nil {
+		t.Fatal("undeclared state access accepted")
+	}
+	service.WritableState = []string{"data"}
+	service.Process.Environment["UNIT"] = Value{Runtime: &RuntimeValue{Kind: "native-unit", Name: "sshd"}}
+	if err := ValidateRuntime(a); err == nil {
+		t.Fatal("foreign unit reference accepted")
+	}
+	service.Process.Environment["UNIT"] = Value{Runtime: &RuntimeValue{Kind: "native-unit", Name: "worker"}}
+	a.Runtime.NativeServices.Services[1].Process.StateDirectories = nil
+	if err := ValidateRuntime(a); err == nil {
+		t.Fatal("ownerless writable state accepted")
+	}
+}

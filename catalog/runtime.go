@@ -141,10 +141,11 @@ type NativeServicesRuntime struct {
 }
 
 type NativeService struct {
-	Name        string         `json:"name"`
-	Start       string         `json:"start"` // automatic or manual; manual units are not enabled
-	ManagedUser string         `json:"managedUser,omitempty"`
-	Process     SystemdRuntime `json:"process"`
+	Name          string         `json:"name"`
+	Start         string         `json:"start"` // automatic or manual; manual units are not enabled
+	ManagedUser   string         `json:"managedUser,omitempty"`
+	WritableState []string       `json:"writableState,omitempty"`
+	Process       SystemdRuntime `json:"process"`
 }
 
 type ExecutorSupport struct {

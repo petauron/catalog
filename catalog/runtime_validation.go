@@ -246,7 +246,10 @@ func ValidateRuntime(app AppManifest) error {
 	if r.Systemd == nil || r.Docker != nil {
 		return errors.New("catalog: systemd runtime requires only systemd specification")
 	}
-	s := r.Systemd
+	return validateSystemdProcess(app, r.Systemd, caps, storage, nil)
+}
+
+func validateSystemdProcess(app AppManifest, s *SystemdRuntime, caps, storage map[string]bool, writableState []string) error {
 	artifactFound := false
 	for _, artifact := range app.Artifacts {
 		if artifact.Name == s.Artifact {
@@ -272,6 +275,9 @@ func ValidateRuntime(app AppManifest) error {
 		return err
 	}
 	availableState := map[string]bool{}
+	for _, directory := range writableState {
+		availableState[directory] = true
+	}
 	for _, directory := range s.StateDirectories {
 		availableState[directory] = true
 	}
@@ -398,7 +404,7 @@ func validateNestedValue(value Value, fields []ConfigField, allowSecret bool, de
 			if r.Name != "" {
 				return errors.New("catalog: private-address cannot specify a name")
 			}
-		case "service-address", "state-directory", "credential-file":
+		case "service-address", "state-directory", "credential-file", "native-unit", "managed-user":
 			if !runtimeName.MatchString(r.Name) {
 				return errors.New("catalog: invalid named runtime value")
 			}

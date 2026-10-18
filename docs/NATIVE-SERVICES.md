@@ -26,6 +26,13 @@ this version and the `native-services` capability before accepting a task.
   It cannot contain shell hooks or arbitrary systemd directives.
 - State directories may be shared only by services with the same owner. The
   executor must not change ownership recursively to resolve conflicting claims.
+- `writableState` permits a service to write another declared, owned state
+  directory without changing its owner. It grants no arbitrary host paths and
+  does not bypass normal Unix file permissions. A root controller can use this
+  for worker configuration without claiming the worker's state ownership.
+- `native-unit` and `managed-user` runtime references resolve only declared
+  resources in this application. They are not selectors for existing host
+  services/accounts and are rejected in version 1 contracts.
 - Services referencing the same artifact share one authenticated extraction
   allowlist. Conflicting executable modes, unsafe paths and oversized combined
   allowlists are rejected before extraction.

@@ -29,6 +29,10 @@ func validateNativeServices(app AppManifest, caps map[string]bool) error {
 	usedUsers := map[string]bool{}
 	names := map[string]bool{}
 	stateOwners := map[string]string{}
+	storage := map[string]bool{}
+	for _, s := range r.Storage {
+		storage[s.Name] = true
+	}
 	for _, service := range b.Services {
 		if !runtimeName.MatchString(service.Name) || names[service.Name] {
 			return errors.New("catalog: invalid or duplicate native service name")
@@ -55,16 +59,27 @@ func validateNativeServices(app AppManifest, caps map[string]bool) error {
 			}
 			stateOwners[state] = owner
 		}
-		// A validation-only projection. Executors must use the original v2
-		// declaration and its app-owned account, never this v1 representation.
-		projected := *r
-		projected.Version = 1
-		projected.NativeServices = nil
-		projected.Systemd = &process
-		child := app
-		child.Runtime = &projected
-		if err := ValidateRuntime(child); err != nil {
+		seenWrite := map[string]bool{}
+		for _, state := range service.WritableState {
+			if !storage[state] || seenWrite[state] {
+				return errors.New("catalog: invalid or duplicate writable state reference")
+			}
+			seenWrite[state] = true
+			for _, owned := range process.StateDirectories {
+				if owned == state {
+					return errors.New("catalog: owned state is already writable")
+				}
+			}
+		}
+		if err := validateSystemdProcess(app, &process, caps, storage, service.WritableState); err != nil {
 			return err
+		}
+	}
+	for _, service := range b.Services {
+		for _, state := range service.WritableState {
+			if _, exists := stateOwners[state]; !exists {
+				return errors.New("catalog: writable state must have a declared owner")
+			}
 		}
 	}
 	if len(usedUsers) != len(users) {

@@ -44,7 +44,7 @@
     "runtimeValue": {
       "type": "object", "additionalProperties": false, "required": ["kind"],
       "properties": {
-        "kind": { "enum": ["private-address", "service-address", "state-directory", "config-file", "credential-file"] },
+        "kind": { "enum": ["private-address", "service-address", "state-directory", "config-file", "credential-file", "native-unit", "managed-user"] },
         "name": { "type": "string", "minLength": 1 },
         "path": { "$ref": "#/$defs/relativePath" }
       },
@@ -107,6 +107,7 @@
             "name": { "$ref": "#/$defs/name" },
             "start": { "enum": ["automatic", "manual"] },
             "managedUser": { "$ref": "#/$defs/name" },
+            "writableState": { "$ref": "#/$defs/names" },
             "process": { "$ref": "#/$defs/systemd" }
           }
         } }
