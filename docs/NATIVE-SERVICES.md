@@ -45,6 +45,19 @@ without an explicit runtime version represent version 1 only.
   allowlist. Conflicting executable modes, unsafe paths and oversized combined
   allowlists are rejected before extraction.
 
+`native-installation` (no name or suffix) resolves to this application's local,
+read-only installation inventory. It is executor-owned, not application
+configuration: it is regenerated with installed units on each upgrade and must
+not be restored from an older application-data backup. JSON version 1 contains
+`version: 1` and `services`, a map keyed by declared logical service name. Each
+entry contains `unit` (concrete unit name), `user` (concrete account name) and
+`sha256` (digest of the installed unit bytes). No credentials, configuration
+contents, other instances, business fields or command channel are included.
+Applications can verify their own worker units without duplicating the unit
+generator or requiring manually entered hashes. The executor tracks this file
+as an immutable owned resource and removes it on uninstall, including retained
+uninstall; retained application configuration references its stable path.
+
 ## Executor obligations
 
 The implementation must inspect application ownership before mutation, reject

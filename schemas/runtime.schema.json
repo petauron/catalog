@@ -44,12 +44,12 @@
     "runtimeValue": {
       "type": "object", "additionalProperties": false, "required": ["kind"],
       "properties": {
-        "kind": { "enum": ["private-address", "service-address", "state-directory", "config-file", "credential-file", "native-unit", "managed-user"] },
+        "kind": { "enum": ["private-address", "service-address", "state-directory", "config-file", "credential-file", "native-unit", "managed-user", "native-installation"] },
         "name": { "type": "string", "minLength": 1 },
         "path": { "$ref": "#/$defs/relativePath" }
       },
       "allOf": [
-        { "if": { "properties": { "kind": { "const": "private-address" } } }, "then": { "not": { "required": ["name"] } }, "else": { "required": ["name"] } },
+        { "if": { "properties": { "kind": { "enum": ["private-address", "native-installation"] } } }, "then": { "not": { "required": ["name"] } }, "else": { "required": ["name"] } },
         { "if": { "required": ["path"] }, "then": { "properties": { "kind": { "const": "state-directory" } } } }
       ]
     },

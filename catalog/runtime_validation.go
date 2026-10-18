@@ -400,9 +400,9 @@ func validateNestedValue(value Value, fields []ConfigField, allowSecret bool, de
 			return errors.New("catalog: runtime suffix must be a safe relative state path")
 		}
 		switch r.Kind {
-		case "private-address":
+		case "private-address", "native-installation":
 			if r.Name != "" {
-				return errors.New("catalog: private-address cannot specify a name")
+				return errors.New("catalog: unnamed runtime reference cannot specify a name")
 			}
 		case "service-address", "state-directory", "credential-file", "native-unit", "managed-user":
 			if !runtimeName.MatchString(r.Name) {

@@ -120,9 +120,10 @@ func TestNativeServiceScopedReferencesAndWritableState(t *testing.T) {
 	service := &a.Runtime.NativeServices.Services[0]
 	service.WritableState = []string{"data"}
 	service.Process.Environment = map[string]Value{
-		"UNIT":  {Runtime: &RuntimeValue{Kind: "native-unit", Name: "worker"}},
-		"USER":  {Runtime: &RuntimeValue{Kind: "managed-user", Name: "worker"}},
-		"STATE": {Runtime: &RuntimeValue{Kind: "state-directory", Name: "data"}},
+		"INSTALLATION": {Runtime: &RuntimeValue{Kind: "native-installation"}},
+		"UNIT":         {Runtime: &RuntimeValue{Kind: "native-unit", Name: "worker"}},
+		"USER":         {Runtime: &RuntimeValue{Kind: "managed-user", Name: "worker"}},
+		"STATE":        {Runtime: &RuntimeValue{Kind: "state-directory", Name: "data"}},
 	}
 	if err := ValidateRuntime(a); err != nil {
 		t.Fatal(err)
@@ -140,6 +141,24 @@ func TestNativeServiceScopedReferencesAndWritableState(t *testing.T) {
 	a.Runtime.NativeServices.Services[1].Process.StateDirectories = nil
 	if err := ValidateRuntime(a); err == nil {
 		t.Fatal("ownerless writable state accepted")
+	}
+}
+
+func TestNativeInstallationReferenceIsOnlyForLocalV2Bundle(t *testing.T) {
+	a := nativeServicesFixture()
+	a.Runtime.NativeServices.Services[0].Process.Environment = map[string]Value{"INSTALLATION": {Runtime: &RuntimeValue{Kind: "native-installation"}}}
+	if err := ValidateRuntime(a); err != nil {
+		t.Fatal(err)
+	}
+	a.Runtime.NativeServices.Services[0].Process.Environment["INSTALLATION"] = Value{Runtime: &RuntimeValue{Kind: "native-installation", Name: "other"}}
+	if err := ValidateRuntime(a); err == nil {
+		t.Fatal("foreign installation selector accepted")
+	}
+	process := a.Runtime.NativeServices.Services[0].Process
+	process.Environment["INSTALLATION"] = Value{Runtime: &RuntimeValue{Kind: "native-installation"}}
+	a.Runtime = &RuntimeSpec{Kind: "systemd", Version: 1, RequiredCapabilities: []string{"root"}, Systemd: &process}
+	if err := ValidateRuntime(a); err == nil {
+		t.Fatal("v1 installation reference accepted")
 	}
 }
 

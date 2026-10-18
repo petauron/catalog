@@ -36,6 +36,8 @@ func validateRuntimeReferences(app AppManifest, command, arguments []Value, envi
 			switch r.Kind {
 			case "private-address":
 				found = true
+			case "native-installation":
+				found = app.Runtime.Kind == "systemd" && app.Runtime.Version == 2 && app.Runtime.NativeServices != nil
 			case "service-address":
 				found = hasService(app, r.Name)
 			case "state-directory":
