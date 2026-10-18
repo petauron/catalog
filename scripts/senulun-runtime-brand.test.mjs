@@ -27,3 +27,23 @@ test("verified new release converts runtime names without changing installation 
   assert.deepEqual(agent.runtime.systemd.stateDirectories, collector.runtime.systemd.stateDirectories);
   assert.deepEqual(applyRelease(result, verified, rule), result, "replay changed runtime metadata");
 });
+
+test("reviewed UI-only publication retains the accepted Senulun runtime contract", async () => {
+  const { mergeReviewedRecipes } = await import("./catalog-plan.mjs");
+  const baseline = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
+  const rule = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url))).sources.pulse;
+  const collector = baseline.apps.find(app => app.id === rule.artifactApp);
+  const active = applyRelease(baseline, {
+    version: "1.0.0", image: "ghcr.io/example/monitor@sha256:" + "a".repeat(64),
+    artifacts: collector.artifacts.map(item => ({ ...item, url: "https://example.invalid/senulun.tar.gz", sha256: "b".repeat(64) })),
+  }, rule);
+  const merged = mergeReviewedRecipes(baseline, active);
+  for (const id of [rule.imageApp, rule.artifactApp]) {
+    const accepted = active.apps.find(app => app.id === id);
+    const next = merged.apps.find(app => app.id === id);
+    assert.equal(next.version, accepted.version);
+    assert.deepEqual(next.runtime, accepted.runtime);
+    assert.deepEqual(next.artifacts, accepted.artifacts);
+    assert.deepEqual(next.images, accepted.images);
+  }
+});
