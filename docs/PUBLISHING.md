@@ -62,14 +62,13 @@ retain `ui-meridian-<version>` names. Subsequent versions use
 the version. They do not retry another name on a failed verification. Historical
 ledger validation retains both signed formats without rewriting either.
 
-The protected workflow pins Glivela alpha.22 and the exact Vastora web dependency
-declared by its `ui/platform-source.mjs` (`c85888a7d98717fdd4143dd4c70f022f6563632c`),
-with the alpha.22 recipe and canonical `ui-glivela` output paths. This UI build
-dependency is distinct from the released Center consumer used by recipe CI;
-do not substitute the Center release tag commit for the reviewed UI source pin.
-For subsequent releases, advance the source pin, matching Center dependency,
-recipe version, and build output paths together after source CI and publication.
-Do not publish the canonical bundle as alpha.21 or alter existing signed bytes.
+The protected workflow pins the released Glivela source commit and builds its
+application-owned UI with its own lockfile. No Vastora web checkout, npm install,
+source symlink or `VASTORA_WEB_SOURCE` is needed. The Center consumer used for
+recipe validation is a separate integration gate and remains pinned.
+For subsequent releases, advance the Glivela source pin and recipe version
+together after source CI and publication. Keep canonical `ui-glivela` output
+paths and never alter existing signed bytes.
 
 Historical recipes, release ledgers, image digests, download coordinates and
 attestations stay unchanged. Previously accepted releases need no re-publication;
@@ -208,12 +207,11 @@ The schema 3 publisher retains version-only manifest identity: changing an
 already published application version's recipe is rejected. Schema 4
 `packageRevision` remains deferred with the runtime migration.
 
-Meridian's application-owned workspace remains a product integration, not an
+Glivela's application-owned workspace remains a product integration, not an
 installation allowlist. For each publication the workflow checks out the reviewed,
-full source commits pinned in `publish.yml` for Meridian UI and its Vastora web
-contract, builds the version-matched JS/CSS pair before loading signing credentials,
-and signs both exact assets as TUF targets. A new Meridian UI version requires a
-reviewed update to those pins. Retrying a pending publication must reproduce the
+full Glivela source commit pinned in `publish.yml`, builds the version-matched
+JS/CSS pair before loading signing credentials, and signs both exact assets as
+TUF targets. A new Glivela UI version requires a reviewed update to that pin. Retrying a pending publication must reproduce the
 saved bytes; changing UI bytes at the same application version or omitting an
 already-signed UI pair is rejected.
 

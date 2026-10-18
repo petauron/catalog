@@ -62,14 +62,6 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: petauron/vastora
-          # Immutable build dependency of the released Meridian UI.
-          # Schema 4 consumer admission is checked separately in CI.
-          ref: 513d7bb0235e5cfdf8c112c5952b2aef32fee640
-          path: ui-dependency
-          persist-credentials: false
       - name: Test and build from the protected catalog commit
         run: |
           npm ci --ignore-scripts
@@ -95,15 +87,12 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/glivela
-          ref: 328fa083e25828f57115beb7fa2a60def3818c6f
+          ref: 771671bbf5eef571114027973fff877833fc8359
           path: meridian-ui
           persist-credentials: false
-      - name: Build reviewed Meridian UI without publication credentials
+      - name: Build independent Glivela UI without publication credentials
         if: steps.prepare.outputs.publish == 'true'
-        env:
-          VASTORA_WEB_SOURCE: ${{ github.workspace }}/ui-dependency/web/src
         run: |
-          npm ci --prefix ui-dependency/web
           npm ci --prefix meridian-ui/ui
           npm run check --prefix meridian-ui/ui
           npm test --prefix meridian-ui/ui
