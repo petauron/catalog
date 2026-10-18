@@ -617,10 +617,10 @@
                 "setup-token": "setup_token"
               },
               "environment": {
-                "PULSE_PUBLIC_URL": {
+                "SENULUN_PUBLIC_URL": {
                   "config": "public_url"
                 },
-                "PULSE_SETUP_TOKEN_FILE": {
+                "SENULUN_SETUP_TOKEN_FILE": {
                   "runtime": {
                     "kind": "credential-file",
                     "name": "setup-token"
@@ -630,7 +630,7 @@
               "mounts": [
                 {
                   "storage": "data",
-                  "target": "/var/lib/pulse"
+                  "target": "/var/lib/senulun"
                 }
               ],
               "ports": [
@@ -642,7 +642,12 @@
                 "service": "dashboard",
                 "path": "/healthz",
                 "timeoutSeconds": 30
-              }
+              },
+              "arguments": [
+                {
+                  "literal": "migrate-and-serve"
+                }
+              ]
             }
           ]
         }
@@ -782,14 +787,14 @@
         ],
         "systemd": {
           "artifact": "pulse-agent",
-          "executable": "pulse-agent",
+          "executable": "senulun-agent",
           "files": [
             {
-              "path": "pulse-agent",
+              "path": "senulun-agent",
               "executable": true
             }
           ],
-          "user": "vastora-pulse",
+          "user": "vastora-senulun",
           "stateDirectories": [
             "state"
           ],
@@ -797,29 +802,29 @@
             "enrollment-token": "enrollment_token"
           },
           "environment": {
-            "PULSE_SERVICE_URL": {
+            "SENULUN_SERVICE_URL": {
               "config": "service_url"
             },
-            "PULSE_NODE_NAME": {
+            "SENULUN_NODE_NAME": {
               "config": "node_name"
             },
-            "PULSE_NODE_GROUP": {
+            "SENULUN_NODE_GROUP": {
               "config": "node_group"
             },
-            "PULSE_NODE_REGION": {
+            "SENULUN_NODE_REGION": {
               "config": "node_region"
             },
-            "PULSE_GEOIP_PROVIDER": {
+            "SENULUN_GEOIP_PROVIDER": {
               "config": "geoip_provider"
             },
-            "PULSE_CREDENTIALS_PATH": {
+            "SENULUN_CREDENTIALS_PATH": {
               "runtime": {
                 "kind": "state-directory",
                 "name": "state",
                 "path": "agent-credentials.json"
               }
             },
-            "PULSE_ENROLLMENT_TOKEN_FILE": {
+            "SENULUN_ENROLLMENT_TOKEN_FILE": {
               "runtime": {
                 "kind": "credential-file",
                 "name": "enrollment-token"

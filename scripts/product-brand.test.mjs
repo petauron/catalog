@@ -7,8 +7,8 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
   ["meridian", "Glivela", "Glivela", "a52fc3969820ee7950790646fc56fd6bebe15d3fc709f6f684c950ddecd5c341"],
-  ["pulse", "Senulun", "Senulun 监控主机", "4e3a01566d67cc1ab7a691dd55ea3e301dd5f016eef6ab4001f18b36e0d75c5a"],
-  ["pulse-agent", "Senulun Agent", "Senulun 探针", "d3267f6d22115fe9f9d7f879400372890e779cd9efda32a82371c08ddf014a35"],
+  ["pulse", "Senulun", "Senulun 监控主机", "7c50d0a5748bb555e465129950f49fc97aac9e80e53e414921d61b6ef6c77208"],
+  ["pulse-agent", "Senulun Agent", "Senulun 探针", "eb31a2f8ff57af6df3836b74b2bed6b4ce6056903d7eb5dce50500a0d9e073a5"],
 ];
 
 test("branding changes display metadata, not installation or artifact identities", () => {
