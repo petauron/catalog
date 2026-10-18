@@ -246,10 +246,10 @@ func ValidateRuntime(app AppManifest) error {
 	if r.Systemd == nil || r.Docker != nil {
 		return errors.New("catalog: systemd runtime requires only systemd specification")
 	}
-	return validateSystemdProcess(app, r.Systemd, caps, storage, nil)
+	return validateSystemdProcess(app, r.Systemd, caps, storage, nil, nil)
 }
 
-func validateSystemdProcess(app AppManifest, s *SystemdRuntime, caps, storage map[string]bool, writableState []string) error {
+func validateSystemdProcess(app AppManifest, s *SystemdRuntime, caps, storage map[string]bool, writableState []string, stateCredentials map[string]StateCredential) error {
 	artifactFound := false
 	for _, artifact := range app.Artifacts {
 		if artifact.Name == s.Artifact {
@@ -281,7 +281,14 @@ func validateSystemdProcess(app AppManifest, s *SystemdRuntime, caps, storage ma
 	for _, directory := range s.StateDirectories {
 		availableState[directory] = true
 	}
-	if err := validateRuntimeReferences(app, nil, s.Arguments, s.Environment, s.ConfigFiles, s.Credentials, availableState); err != nil {
+	availableCredentials := map[string]string{}
+	for name, key := range s.Credentials {
+		availableCredentials[name] = key
+	}
+	for name := range stateCredentials {
+		availableCredentials[name] = ""
+	}
+	if err := validateRuntimeReferences(app, nil, s.Arguments, s.Environment, s.ConfigFiles, availableCredentials, availableState); err != nil {
 		return err
 	}
 	seenState := map[string]bool{}

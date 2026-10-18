@@ -141,11 +141,19 @@ type NativeServicesRuntime struct {
 }
 
 type NativeService struct {
-	Name          string         `json:"name"`
-	Start         string         `json:"start"` // automatic or manual; manual units are not enabled
-	ManagedUser   string         `json:"managedUser,omitempty"`
-	WritableState []string       `json:"writableState,omitempty"`
-	Process       SystemdRuntime `json:"process"`
+	Name             string                     `json:"name"`
+	Start            string                     `json:"start"` // automatic or manual; manual units are not enabled
+	ManagedUser      string                     `json:"managedUser,omitempty"`
+	WritableState    []string                   `json:"writableState,omitempty"`
+	StateCredentials map[string]StateCredential `json:"stateCredentials,omitempty"`
+	Process          SystemdRuntime             `json:"process"`
+}
+
+// StateCredential is a read-only snapshot supplied by systemd from this
+// application's declared storage, never an arbitrary host path.
+type StateCredential struct {
+	Storage string `json:"storage"`
+	Path    string `json:"path"`
 }
 
 type ExecutorSupport struct {

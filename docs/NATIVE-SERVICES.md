@@ -1,5 +1,17 @@
 # Native service bundles (systemd version 2)
 
+`stateCredentials` maps credential names to `{storage, path}` within this
+application's declared, owned state directories. The installer binds these to
+systemd `LoadCredential`; `credential-file` resolves the private service copy.
+This lets an application controller keep generated configuration private while
+giving a non-root service a read-only snapshot at activation. It grants neither
+write access to the source directory nor arbitrary host-path access. Sources
+must be owned by a declared root service, with no non-root writable-state grants;
+otherwise a service could redirect the privileged credential loader. Missing
+source files fail service activation; manual services may be installed before
+their controller creates the source. Credential names cannot collide with
+bootstrap credentials or generated `config-` names. No script is executed.
+
 This contract describes installation resources, not application features. It
 does not define proxy routing, application RPC, firewall rules, or executable
 installation hooks. It does not publish or deploy an application by itself.

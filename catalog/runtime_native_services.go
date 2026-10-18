@@ -3,6 +3,7 @@ package catalog
 import (
 	"errors"
 	"sort"
+	"strings"
 )
 
 // validateNativeServices reuses the single-process security validation rather
@@ -71,11 +72,32 @@ func validateNativeServices(app AppManifest, caps map[string]bool) error {
 				}
 			}
 		}
-		if err := validateSystemdProcess(app, &process, caps, storage, service.WritableState); err != nil {
+		if len(service.StateCredentials) > 16 {
+			return errors.New("catalog: too many state credentials")
+		}
+		for name, source := range service.StateCredentials {
+			_, collision := process.Credentials[name]
+			if !runtimeName.MatchString(name) || strings.HasPrefix(name, "config-") || collision || !storage[source.Storage] || !safeRelative(source.Path) || strings.ContainsAny(source.Path, ":%") {
+				return errors.New("catalog: invalid state credential reference")
+			}
+		}
+		if err := validateSystemdProcess(app, &process, caps, storage, service.WritableState, service.StateCredentials); err != nil {
 			return err
 		}
 	}
 	for _, service := range b.Services {
+		for _, source := range service.StateCredentials {
+			if stateOwners[source.Storage] != "root" {
+				return errors.New("catalog: state credential source requires root ownership")
+			}
+			for _, writer := range b.Services {
+				for _, state := range writer.WritableState {
+					if state == source.Storage && (writer.ManagedUser != "" || writer.Process.User != "root") {
+						return errors.New("catalog: state credential source cannot be writable by non-root services")
+					}
+				}
+			}
+		}
 		for _, state := range service.WritableState {
 			if _, exists := stateOwners[state]; !exists {
 				return errors.New("catalog: writable state must have a declared owner")

@@ -108,6 +108,7 @@
             "start": { "enum": ["automatic", "manual"] },
             "managedUser": { "$ref": "#/$defs/name" },
             "writableState": { "$ref": "#/$defs/names" },
+            "stateCredentials": { "type": "object", "maxProperties": 16, "propertyNames": { "$ref": "#/$defs/name" }, "additionalProperties": { "type": "object", "additionalProperties": false, "required": ["storage", "path"], "properties": { "storage": { "$ref": "#/$defs/name" }, "path": { "type": "string", "minLength": 1 } } } },
             "process": { "$ref": "#/$defs/systemd" }
           }
         } }
