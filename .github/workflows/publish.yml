@@ -67,7 +67,7 @@ jobs:
           repository: petauron/vastora
           # Immutable build dependency of the released Meridian UI.
           # Schema 4 consumer admission is checked separately in CI.
-          ref: c85888a7d98717fdd4143dd4c70f022f6563632c
+          ref: 513d7bb0235e5cfdf8c112c5952b2aef32fee640
           path: ui-dependency
           persist-credentials: false
       - name: Test and build from the protected catalog commit
@@ -95,7 +95,7 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/glivela
-          ref: 495013a9bc11dfadf871c1418e56a7962f7fbf29
+          ref: 328fa083e25828f57115beb7fa2a60def3818c6f
           path: meridian-ui
           persist-credentials: false
       - name: Build reviewed Meridian UI without publication credentials
