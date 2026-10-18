@@ -5,12 +5,13 @@ import "encoding/json"
 // RuntimeSpec is a versioned, declarative execution contract. Unknown kinds and
 // versions remain readable catalog entries, but never become executable.
 type RuntimeSpec struct {
-	Kind                 string          `json:"kind"`
-	Version              int             `json:"version"`
-	RequiredCapabilities []string        `json:"requiredCapabilities,omitempty"`
-	Storage              []Storage       `json:"storage,omitempty"`
-	Docker               *DockerRuntime  `json:"docker,omitempty"`
-	Systemd              *SystemdRuntime `json:"systemd,omitempty"`
+	Kind                 string                 `json:"kind"`
+	Version              int                    `json:"version"`
+	RequiredCapabilities []string               `json:"requiredCapabilities,omitempty"`
+	Storage              []Storage              `json:"storage,omitempty"`
+	Docker               *DockerRuntime         `json:"docker,omitempty"`
+	Systemd              *SystemdRuntime        `json:"systemd,omitempty"`
+	NativeServices       *NativeServicesRuntime `json:"nativeServices,omitempty"`
 	// Unsupported preserves future runtime specifications in signed identities.
 	Unsupported json.RawMessage `json:"-"`
 }
@@ -130,6 +131,20 @@ type SystemdRuntime struct {
 type ArtifactFile struct {
 	Path       string `json:"path"`
 	Executable bool   `json:"executable,omitempty"`
+}
+
+// NativeServicesRuntime is systemd contract version 2. Names are logical,
+// application-scoped identifiers, never host account names or unit paths.
+type NativeServicesRuntime struct {
+	Users    []string        `json:"users"`
+	Services []NativeService `json:"services"`
+}
+
+type NativeService struct {
+	Name        string         `json:"name"`
+	Start       string         `json:"start"` // automatic or manual; manual units are not enabled
+	ManagedUser string         `json:"managedUser,omitempty"`
+	Process     SystemdRuntime `json:"process"`
 }
 
 type ExecutorSupport struct {
