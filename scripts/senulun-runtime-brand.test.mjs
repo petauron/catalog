@@ -18,6 +18,12 @@ test("verified new release converts runtime names without changing installation 
   const container = service.runtime.docker.containers[0];
   assert.ok(container.environment.SENULUN_PUBLIC_URL);
   assert.ok(!container.environment.PULSE_PUBLIC_URL);
+  assert.ok(!container.environment.SENULUN_SETUP_TOKEN_FILE);
+  assert.ok(!service.config.some(field => field.key === "setup_token"));
+  assert.deepEqual(container.credentials ?? [], []);
+  for (const key of ["service_url", "node_name", "node_group", "enrollment_token"]) {
+    assert.ok(agent.config.some(field => field.key === key), `missing explicit Agent input: ${key}`);
+  }
   assert.equal(container.mounts[0].storage, "data");
   assert.equal(container.mounts[0].target, "/var/lib/senulun");
   assert.deepEqual(container.arguments, [{ literal: "migrate-and-serve" }]);

@@ -1,5 +1,17 @@
 # Changelog
 
+## [0.3.2](https://github.com/petauron/catalog/compare/v0.3.1...v0.3.2) (2026-10-18)
+
+
+### Bug Fixes
+
+* **catalog:** honor Glivela reviewed platform source pin ([#47](https://github.com/petauron/catalog/issues/47)) ([aa96f0f](https://github.com/petauron/catalog/commit/aa96f0f0251dcc450b2f2adc725d4db0b0589aec))
+* **catalog:** make Senulun enrollment administrator configured ([5041c64](https://github.com/petauron/catalog/commit/5041c642661aabe04d98ab93b5b79c8e079d27b0))
+* **catalog:** preserve accepted Senulun runtime in reviewed publications ([#49](https://github.com/petauron/catalog/issues/49)) ([371f800](https://github.com/petauron/catalog/commit/371f800d4ee334c7e868be3edc64685c6f9b105e))
+* **catalog:** publish canonical Glivela alpha.22 bundle ([#45](https://github.com/petauron/catalog/issues/45)) ([740eee7](https://github.com/petauron/catalog/commit/740eee7321b21766826b1d0ed26c85d72f44ed79))
+* **catalog:** publish Glivela SSE latency recovery UI ([#48](https://github.com/petauron/catalog/issues/48)) ([54e5fad](https://github.com/petauron/catalog/commit/54e5fad69851725586fd0ac18429247f318a90bc))
+* **catalog:** publish independent Glivela alpha.24 UI ([#50](https://github.com/petauron/catalog/issues/50)) ([c5b9b02](https://github.com/petauron/catalog/commit/c5b9b02ca7ea97afd9c07b27ef983ddcbf8a2318))
+
 ## [0.3.1](https://github.com/petauron/catalog/compare/v0.3.0...v0.3.1) (2026-10-17)
 
 

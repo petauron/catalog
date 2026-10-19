@@ -543,8 +543,8 @@
         "zh-CN": "Senulun 监控主机"
       },
       "description": {
-        "en": "One monitoring dashboard for nodes in every region. Add a private HTTPS access point before installing collectors.",
-        "zh-CN": "统一查看所有地区的节点监控。安装后先添加私网 HTTPS 入口，再安装探针。"
+        "en": "Independent server monitoring with its own dashboard, authentication and data. Manage nodes and create Agent enrollment tokens in Senulun.",
+        "zh-CN": "独立服务器监控应用，自带面板、登录和数据存储。在 Senulun 中管理节点并创建探针配对令牌。"
       },
       "license": "Apache-2.0",
       "images": [
@@ -576,28 +576,29 @@
             "zh-CN": "面板 HTTPS 地址"
           },
           "description": {
-            "en": "The exact HTTPS origin used in your browser, such as https://pulse.example.com. No subpath. It must match the access entry before signing in; it is separate from the collector's private URL.",
-            "zh-CN": "浏览器实际访问的 HTTPS 地址，例如 https://pulse.example.com，不含子路径。登录前需配置匹配的访问入口；它与探针私网地址分别管理。"
+            "en": "The exact HTTPS origin used in your browser, such as https://senulun.example.com. No subpath. Configure the matching access entry before signing in. Agents use their separately configured reachable HTTPS URL.",
+            "zh-CN": "浏览器实际访问的 HTTPS 地址，例如 https://senulun.example.com，不含子路径。登录前需配置匹配的访问入口。探针使用单独配置的、可访问的 HTTPS 地址。"
           },
           "required": true,
           "secret": false
         },
         {
-          "key": "setup_token",
+          "key": "trusted_proxy_ip",
           "type": "string",
           "label": {
-            "en": "Administrator setup token",
-            "zh-CN": "管理员初始化令牌"
+            "en": "Trusted reverse proxy IP",
+            "zh-CN": "可信反向代理 IP"
           },
           "description": {
-            "en": "Supply a private random token of 32–4096 bytes and retain it for the first /login setup. Stored encrypted and written only to a private container file, never an environment variable. Omit on later upgrades to retain it.",
-            "zh-CN": "提供 32–4096 字节的私密随机令牌并妥善保存，首次访问 /login 时使用。加密保存，仅写入容器私密文件，不进入环境变量。后续升级留空保留原令牌。"
+            "en": "Optional exact transport peer IP. Enable only when that proxy discards client-supplied X-Real-IP and overwrites it with the verified visitor IP. Empty disables forwarded visitor IPs.",
+            "zh-CN": "可选，填写反代连接 Senulun 时的准确来源 IP。仅在反代会丢弃客户端提供的 X-Real-IP 并用已核实的访客 IP 覆写时启用。留空不信任转发的访客 IP。"
           },
-          "required": true,
-          "secret": true
+          "required": false,
+          "secret": false,
+          "default": ""
         }
       ],
-      "packageRevision": 2,
+      "packageRevision": 3,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -613,18 +614,12 @@
               "name": "pulse",
               "image": "pulse",
               "user": "65532:65532",
-              "credentials": {
-                "setup-token": "setup_token"
-              },
               "environment": {
                 "SENULUN_PUBLIC_URL": {
                   "config": "public_url"
                 },
-                "SENULUN_SETUP_TOKEN_FILE": {
-                  "runtime": {
-                    "kind": "credential-file",
-                    "name": "setup-token"
-                  }
+                "SENULUN_TRUSTED_PROXY_IP": {
+                  "config": "trusted_proxy_ip"
                 }
               },
               "mounts": [
@@ -661,8 +656,8 @@
         "zh-CN": "Senulun 探针"
       },
       "description": {
-        "en": "Native host monitoring, automatically enrolled with the global Senulun service. Requires Debian 12/13 or Ubuntu 24.04/26.04; no Docker required.",
-        "zh-CN": "自动接入全局 Senulun 监控主机，采集主机指标。支持 Debian 12/13、Ubuntu 24.04/26.04，无需 Docker。"
+        "en": "Outbound host monitoring. Supply a reachable Senulun HTTPS URL and an enrollment token created in Senulun, including for a service installed outside Vastora. No Docker required.",
+        "zh-CN": "主动连接监控主机的原生探针。填写可访问的 Senulun HTTPS 地址和在 Senulun 中创建的配对令牌，支持 Vastora 之外独立安装的监控主机，无需 Docker。"
       },
       "license": "Apache-2.0",
       "hostAccess": true,
@@ -721,12 +716,12 @@
           "key": "service_url",
           "type": "string",
           "label": {
-            "en": "Private Senulun service URL",
-            "zh-CN": "Private Senulun service URL"
+            "en": "Senulun HTTPS URL",
+            "zh-CN": "Senulun HTTPS 地址"
           },
           "description": {
-            "en": "Provided by the product integration or administrator.",
-            "zh-CN": "由产品集成层或管理员提供。"
+            "en": "An HTTPS URL ending in / that this host can reach without an interactive browser login, for example https://monitor.example.com/. The service can be installed independently of Vastora.",
+            "zh-CN": "本机无需浏览器交互登录即可访问、以 / 结尾的 HTTPS 地址，例如 https://monitor.example.com/。监控主机可以独立于 Vastora 安装。"
           },
           "required": true,
           "secret": false
@@ -736,11 +731,11 @@
           "type": "string",
           "label": {
             "en": "Node name",
-            "zh-CN": "Node name"
+            "zh-CN": "节点名称"
           },
           "description": {
-            "en": "Provided by the product integration or administrator.",
-            "zh-CN": "由产品集成层或管理员提供。"
+            "en": "The name shown for this host in Senulun.",
+            "zh-CN": "此主机在 Senulun 中显示的名称。"
           },
           "required": true,
           "secret": false
@@ -750,13 +745,13 @@
           "type": "string",
           "label": {
             "en": "Node group",
-            "zh-CN": "Node group"
+            "zh-CN": "节点分组"
           },
           "description": {
-            "en": "Provided by the product integration or administrator.",
-            "zh-CN": "由产品集成层或管理员提供。"
+            "en": "Optional group shown in Senulun. Leave empty for no group.",
+            "zh-CN": "Senulun 中的节点分组，可留空。"
           },
-          "required": true,
+          "required": false,
           "secret": false,
           "default": ""
         },
@@ -765,17 +760,17 @@
           "type": "string",
           "label": {
             "en": "Senulun enrollment token",
-            "zh-CN": "Senulun enrollment token"
+            "zh-CN": "Senulun 配对令牌"
           },
           "description": {
-            "en": "Provided by the product integration or administrator.",
-            "zh-CN": "由产品集成层或管理员提供。"
+            "en": "Create a short-lived, single-use token in Senulun before installing this Agent. Only initial enrollment uses it; later upgrades keep the Agent's saved identity.",
+            "zh-CN": "安装前在 Senulun 中创建短期、一次性的配对令牌。仅首次配对使用；后续升级保留探针已保存的身份。"
           },
           "required": true,
           "secret": true
         }
       ],
-      "packageRevision": 2,
+      "packageRevision": 3,
       "runtime": {
         "kind": "systemd",
         "version": 1,

@@ -127,6 +127,13 @@ neither. Use each application's managed upgrade flow and verify its completed
 task and installed version. Check collector connectivity and reported version in
 Senulun as well; a saved target version alone is not runtime evidence.
 
+The standalone Senulun recipes require a compatible Center/Agent before catalog
+publication. Service administrator setup happens inside Senulun, without a package
+bootstrap token. For a new Agent, create an enrollment token in Senulun and supply
+the Service HTTPS URL, node name, optional group and token in the install form.
+The Service can run outside Vastora. Existing identities and resource names are
+preserved; this recipe update does not reenroll or restart installed Agents.
+
 Collectors alpha.3 and later support country discovery. With no manual country,
 the default GeoJS request shares the node's public egress IP and Agent version
 with GeoJS, never Senulun credentials or metrics. In the collector configuration,
