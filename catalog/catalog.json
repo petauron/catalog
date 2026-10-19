@@ -147,19 +147,29 @@
                     },
                     "server": {
                       "object": {
-                        "host": { "literal": "0.0.0.0" },
-                        "port": { "literal": 8317 }
+                        "host": {
+                          "literal": "0.0.0.0"
+                        },
+                        "port": {
+                          "literal": 8317
+                        }
                       }
                     },
                     "oauth": {
                       "object": {
-                        "auth-dir": { "literal": "/root/.cli-proxy-api" }
+                        "auth-dir": {
+                          "literal": "/root/.cli-proxy-api"
+                        }
                       }
                     },
                     "access": {
                       "object": {
                         "api-keys": {
-                          "array": [{ "secret": "api_key" }]
+                          "array": [
+                            {
+                              "secret": "api_key"
+                            }
+                          ]
                         }
                       }
                     },
@@ -167,8 +177,12 @@
                       "object": {
                         "logs": {
                           "object": {
-                            "debug": { "config": "debug" },
-                            "logging-to-file": { "literal": true }
+                            "debug": {
+                              "config": "debug"
+                            },
+                            "logging-to-file": {
+                              "literal": true
+                            }
                           }
                         }
                       }
@@ -488,51 +502,255 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.24",
+      "version": "0.1.0-alpha.25",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
       },
       "description": {
-        "en": "Petauron's native managed access, subscription, shared-quota, and Xray data plane.",
-        "zh-CN": "Petauron 原生的访问凭据、订阅、共享流量与 Xray 数据面。"
+        "en": "Glivela controller with private mTLS management and retained subscription identities. Import existing business data before activation.",
+        "zh-CN": "Glivela 控制端，提供私网 mTLS 管理并保留订阅身份；激活前导入现有业务数据。"
       },
       "license": "Apache-2.0",
       "hostAccess": false,
-      "config": [],
-      "images": [
+      "config": [
         {
-          "name": "xray-core",
-          "reference": "ghcr.io/xtls/xray-core:26.7.28@sha256:b697cda1588faca696ab7f7755dd1161f60862af3ff6026300e44cff6aedd558"
+          "key": "certificate_pem",
+          "type": "string",
+          "label": {
+            "en": "Client/server certificate PEM",
+            "zh-CN": "客户端或服务端证书 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "private_key_pem",
+          "type": "string",
+          "label": {
+            "en": "Private key PEM",
+            "zh-CN": "私钥 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "ca_pem",
+          "type": "string",
+          "label": {
+            "en": "Trusted CA PEM",
+            "zh-CN": "受信 CA PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "administrator_certificate_id",
+          "type": "string",
+          "label": {
+            "en": "Administrator certificate identity",
+            "zh-CN": "管理员证书身份"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "business_key_path",
+          "type": "string",
+          "label": {
+            "en": "Imported storage key path",
+            "zh-CN": "已导入存储密钥路径"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": false,
+          "secret": false,
+          "default": ""
+        },
+        {
+          "key": "subscriptions_listen",
+          "type": "string",
+          "label": {
+            "en": "Subscription listener (activate after import)",
+            "zh-CN": "订阅监听地址（导入后激活）"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": false,
+          "secret": false,
+          "default": ""
         }
       ],
-      "packageRevision": 2,
+      "images": [
+        {
+          "name": "controller",
+          "reference": "ghcr.io/petauron/glivela@sha256:693e83e0cc682ee6111bbdfc67fabba830d1707d87953b402024216cf775d259"
+        }
+      ],
+      "packageRevision": 3,
       "runtime": {
         "kind": "docker",
         "version": 1,
-        "requiredCapabilities": [
-          "meridian-runtime"
+        "storage": [
+          {
+            "name": "controller-state",
+            "persistent": true
+          },
+          {
+            "name": "controller-bootstrap",
+            "persistent": true
+          },
+          {
+            "name": "controller-credentials",
+            "persistent": true
+          }
         ],
         "docker": {
           "containers": [
             {
-              "name": "xray",
-              "image": "xray-core",
-              "user": "1000",
+              "name": "controller",
+              "image": "controller",
+              "user": "65532:65532",
+              "mounts": [
+                {
+                  "storage": "controller-state",
+                  "target": "/var/lib/glivela"
+                },
+                {
+                  "storage": "controller-bootstrap",
+                  "target": "/etc/glivela"
+                },
+                {
+                  "storage": "controller-credentials",
+                  "target": "/run/vastora-credentials"
+                }
+              ],
+              "ports": [
+                {
+                  "service": "controller"
+                },
+                {
+                  "service": "subscription"
+                }
+              ],
+              "health": {
+                "service": "controller"
+              },
+              "credentials": {
+                "certificate": "certificate_pem",
+                "key": "private_key_pem",
+                "ca": "ca_pem"
+              },
               "arguments": [
                 {
-                  "literal": "run"
+                  "literal": "-config"
                 },
                 {
-                  "literal": "-c"
-                },
+                  "runtime": {
+                    "kind": "config-file",
+                    "name": "/etc/glivela/controller.json"
+                  }
+                }
+              ],
+              "configFiles": [
                 {
-                  "literal": "/etc/xray/config.json"
+                  "path": "/etc/glivela/controller.json",
+                  "format": "json",
+                  "values": {
+                    "mode": {
+                      "literal": "controller"
+                    },
+                    "managementUI": {
+                      "literal": true
+                    },
+                    "directory": {
+                      "runtime": {
+                        "kind": "state-directory",
+                        "name": "controller-state"
+                      }
+                    },
+                    "certificate": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "certificate"
+                      }
+                    },
+                    "key": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "key"
+                      }
+                    },
+                    "ca": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "ca"
+                      }
+                    },
+                    "listen": {
+                      "runtime": {
+                        "kind": "service-address",
+                        "name": "controller"
+                      }
+                    },
+                    "administrators": {
+                      "array": [
+                        {
+                          "config": "administrator_certificate_id"
+                        }
+                      ]
+                    },
+                    "businessKey": {
+                      "config": "business_key_path"
+                    },
+                    "subscriptionsListen": {
+                      "config": "subscriptions_listen"
+                    }
+                  }
                 }
               ]
             }
           ]
         }
+      },
+      "services": [
+        {
+          "name": "controller",
+          "protocol": "https",
+          "containerPort": 9443,
+          "defaultHostPort": 9443,
+          "management": true
+        },
+        {
+          "name": "subscription",
+          "protocol": "http",
+          "containerPort": 9080,
+          "defaultHostPort": 9080
+        }
+      ],
+      "homepage": {
+        "service": "controller",
+        "path": "/"
       }
     },
     {
@@ -1098,6 +1316,592 @@
                 "service": "dashboard",
                 "path": "/healthz",
                 "timeoutSeconds": 30
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "glivela-entry",
+      "version": "0.1.0-alpha.25",
+      "packageRevision": 1,
+      "name": {
+        "en": "Glivela Entry",
+        "zh-CN": "Glivela 线路端"
+      },
+      "description": {
+        "en": "Application-owned native Glivela and Xray services. Preserve node identity and import configuration before traffic cutover.",
+        "zh-CN": "应用自主管理的原生 Glivela 和 Xray 服务；切换流量前保留节点身份并导入配置。"
+      },
+      "license": "Apache-2.0",
+      "hostAccess": true,
+      "config": [
+        {
+          "key": "controller_url",
+          "type": "string",
+          "label": {
+            "en": "Private controller HTTPS URL",
+            "zh-CN": "私网控制端 HTTPS 地址"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "network_interface",
+          "type": "string",
+          "label": {
+            "en": "Private network interface",
+            "zh-CN": "私网网卡名称"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "certificate_pem",
+          "type": "string",
+          "label": {
+            "en": "Client/server certificate PEM",
+            "zh-CN": "客户端或服务端证书 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "private_key_pem",
+          "type": "string",
+          "label": {
+            "en": "Private key PEM",
+            "zh-CN": "私钥 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "ca_pem",
+          "type": "string",
+          "label": {
+            "en": "Trusted CA PEM",
+            "zh-CN": "受信 CA PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "backend_port",
+          "type": "integer",
+          "label": {
+            "en": "Existing private Xray backend port",
+            "zh-CN": "现有 Xray 私网后端端口"
+          },
+          "description": {
+            "en": "Must match the imported Xray listener. Retain the public gateway port and published endpoint.",
+            "zh-CN": "必须与导入的 Xray 监听端口一致；保留公网网关端口和发布入口。"
+          },
+          "required": true,
+          "secret": false
+        }
+      ],
+      "artifacts": [
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "amd64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.25/glivela-0.1.0-alpha.25-linux-amd64.tar.gz",
+          "sha256": "f1f33a133cfa0f6af946a7f7568a6b110fe4d5b6592fc782815ffd3dcec2d655",
+          "format": "tar.gz"
+        },
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "arm64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.25/glivela-0.1.0-alpha.25-linux-arm64.tar.gz",
+          "sha256": "15926ba319645dbaa7dabd398b6c6d7f2d7bf486eff951fceee61449d21d887d",
+          "format": "tar.gz"
+        }
+      ],
+      "runtime": {
+        "kind": "systemd",
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services",
+          "root"
+        ],
+        "storage": [
+          {
+            "name": "node-state",
+            "persistent": true
+          }
+        ],
+        "nativeServices": {
+          "namespace": "glivela",
+          "users": [
+            "xray"
+          ],
+          "services": [
+            {
+              "name": "node",
+              "start": "automatic",
+              "process": {
+                "artifact": "bundle",
+                "executable": "glivela",
+                "files": [
+                  {
+                    "path": "glivela",
+                    "executable": true
+                  },
+                  {
+                    "path": "runtime.json"
+                  },
+                  {
+                    "path": "LICENSE.glivela"
+                  },
+                  {
+                    "path": "LICENSE.xray"
+                  },
+                  {
+                    "path": "glivela-ui.js"
+                  },
+                  {
+                    "path": "glivela-ui.css"
+                  }
+                ],
+                "user": "root",
+                "stateDirectories": [
+                  "node-state"
+                ],
+                "credentials": {
+                  "certificate": "certificate_pem",
+                  "key": "private_key_pem",
+                  "ca": "ca_pem"
+                },
+                "arguments": [
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "config-file",
+                      "name": "node.json"
+                    }
+                  }
+                ],
+                "configFiles": [
+                  {
+                    "path": "node.json",
+                    "format": "json",
+                    "values": {
+                      "mode": {
+                        "literal": "node"
+                      },
+                      "installation": {
+                        "runtime": {
+                          "kind": "native-installation"
+                        }
+                      },
+                      "service": {
+                        "literal": "node"
+                      },
+                      "directory": {
+                        "runtime": {
+                          "kind": "state-directory",
+                          "name": "node-state"
+                        }
+                      },
+                      "certificate": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "certificate"
+                        }
+                      },
+                      "key": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "key"
+                        }
+                      },
+                      "ca": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "ca"
+                        }
+                      },
+                      "controller": {
+                        "config": "controller_url"
+                      },
+                      "xray": {
+                        "object": {
+                          "role": {
+                            "literal": "entry"
+                          },
+                          "installation": {
+                            "runtime": {
+                              "kind": "native-installation"
+                            }
+                          },
+                          "service": {
+                            "literal": "xray"
+                          },
+                          "interface": {
+                            "config": "network_interface"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "xray",
+              "start": "manual",
+              "managedUser": "xray",
+              "stateCredentials": {
+                "configuration": {
+                  "storage": "node-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "bindService": true,
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "services": [
+        {
+          "name": "proxy",
+          "protocol": "tcp",
+          "proxyProtocol": "v2",
+          "containerPort": 10443,
+          "hostPortField": "backend_port"
+        }
+      ]
+    },
+    {
+      "id": "glivela-node",
+      "version": "0.1.0-alpha.25",
+      "packageRevision": 1,
+      "name": {
+        "en": "Glivela Landing",
+        "zh-CN": "Glivela 落地端"
+      },
+      "description": {
+        "en": "Application-owned native Glivela and Xray services. Preserve node identity and import configuration before traffic cutover.",
+        "zh-CN": "应用自主管理的原生 Glivela 和 Xray 服务；切换流量前保留节点身份并导入配置。"
+      },
+      "license": "Apache-2.0",
+      "hostAccess": true,
+      "config": [
+        {
+          "key": "controller_url",
+          "type": "string",
+          "label": {
+            "en": "Private controller HTTPS URL",
+            "zh-CN": "私网控制端 HTTPS 地址"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "network_interface",
+          "type": "string",
+          "label": {
+            "en": "Private network interface",
+            "zh-CN": "私网网卡名称"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "certificate_pem",
+          "type": "string",
+          "label": {
+            "en": "Client/server certificate PEM",
+            "zh-CN": "客户端或服务端证书 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "private_key_pem",
+          "type": "string",
+          "label": {
+            "en": "Private key PEM",
+            "zh-CN": "私钥 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "ca_pem",
+          "type": "string",
+          "label": {
+            "en": "Trusted CA PEM",
+            "zh-CN": "受信 CA PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        }
+      ],
+      "artifacts": [
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "amd64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.25/glivela-0.1.0-alpha.25-linux-amd64.tar.gz",
+          "sha256": "f1f33a133cfa0f6af946a7f7568a6b110fe4d5b6592fc782815ffd3dcec2d655",
+          "format": "tar.gz"
+        },
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "arm64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.25/glivela-0.1.0-alpha.25-linux-arm64.tar.gz",
+          "sha256": "15926ba319645dbaa7dabd398b6c6d7f2d7bf486eff951fceee61449d21d887d",
+          "format": "tar.gz"
+        }
+      ],
+      "runtime": {
+        "kind": "systemd",
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services",
+          "root"
+        ],
+        "storage": [
+          {
+            "name": "node-state",
+            "persistent": true
+          }
+        ],
+        "nativeServices": {
+          "namespace": "glivela",
+          "users": [
+            "xray"
+          ],
+          "services": [
+            {
+              "name": "node",
+              "start": "automatic",
+              "process": {
+                "artifact": "bundle",
+                "executable": "glivela",
+                "files": [
+                  {
+                    "path": "glivela",
+                    "executable": true
+                  },
+                  {
+                    "path": "runtime.json"
+                  },
+                  {
+                    "path": "LICENSE.glivela"
+                  },
+                  {
+                    "path": "LICENSE.xray"
+                  },
+                  {
+                    "path": "glivela-ui.js"
+                  },
+                  {
+                    "path": "glivela-ui.css"
+                  }
+                ],
+                "user": "root",
+                "stateDirectories": [
+                  "node-state"
+                ],
+                "credentials": {
+                  "certificate": "certificate_pem",
+                  "key": "private_key_pem",
+                  "ca": "ca_pem"
+                },
+                "arguments": [
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "config-file",
+                      "name": "node.json"
+                    }
+                  }
+                ],
+                "configFiles": [
+                  {
+                    "path": "node.json",
+                    "format": "json",
+                    "values": {
+                      "mode": {
+                        "literal": "node"
+                      },
+                      "installation": {
+                        "runtime": {
+                          "kind": "native-installation"
+                        }
+                      },
+                      "service": {
+                        "literal": "node"
+                      },
+                      "directory": {
+                        "runtime": {
+                          "kind": "state-directory",
+                          "name": "node-state"
+                        }
+                      },
+                      "certificate": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "certificate"
+                        }
+                      },
+                      "key": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "key"
+                        }
+                      },
+                      "ca": {
+                        "runtime": {
+                          "kind": "credential-file",
+                          "name": "ca"
+                        }
+                      },
+                      "controller": {
+                        "config": "controller_url"
+                      },
+                      "xray": {
+                        "object": {
+                          "role": {
+                            "literal": "landing"
+                          },
+                          "installation": {
+                            "runtime": {
+                              "kind": "native-installation"
+                            }
+                          },
+                          "service": {
+                            "literal": "xray"
+                          },
+                          "interface": {
+                            "config": "network_interface"
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "xray",
+              "start": "manual",
+              "managedUser": "xray",
+              "stateCredentials": {
+                "configuration": {
+                  "storage": "node-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration"
+                    }
+                  }
+                ]
               }
             }
           ]
