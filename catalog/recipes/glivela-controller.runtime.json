@@ -29,6 +29,8 @@
           "format": "json",
           "values": {
             "mode": {"literal": "controller"},
+			"installation": {"runtime":{"kind":"native-installation"}},
+			"service": {"literal":"controller"},
 			"managementUI": {"literal": true},
             "directory": {"runtime": {"kind": "state-directory", "name": "controller-state"}},
             "certificate": {"runtime": {"kind": "credential-file", "name": "certificate"}},

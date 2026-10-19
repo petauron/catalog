@@ -29,6 +29,8 @@
             "format": "json",
             "values": {
               "mode": {"literal": "node"},
+				"installation": {"runtime":{"kind":"native-installation"}},
+				"service": {"literal":"node"},
               "directory": {"runtime": {"kind": "state-directory", "name": "node-state"}},
               "certificate": {"runtime": {"kind": "credential-file", "name": "certificate"}},
               "key": {"runtime": {"kind": "credential-file", "name": "key"}},

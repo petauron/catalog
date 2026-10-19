@@ -44,6 +44,13 @@ no Vastora proxy commands, cookies, credentials in JavaScript or new login
 system are involved. Subscription publication remains a separate listener.
 The recipe is not yet wired into a signed manifest.
 
+Each bootstrap includes its generic installation inventory and logical service
+name. Offline Glivela commands use the persistent configuration source listed
+in that inventory, not a `/run` copy. They verify the root service's compiled
+unit digest and declared credential paths before resolving private TLS/scope
+inputs while the service is stopped. The host metadata contains resource paths
+only, not proxy configuration, component capabilities or a lifecycle RPC.
+
 `glivela-entry.runtime.json` installs only the Glivela node process. Glivela, not
 the installer, provisions and inspects the fixed Docker Xray worker. Inputs are
 `controller_url`, the three existing TLS secret inputs, secret `entry_scope`,
