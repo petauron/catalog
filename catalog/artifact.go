@@ -205,8 +205,9 @@ func VerifyNativeArtifact(ctx context.Context, app AppManifest, artifact Artifac
 	if err := ValidateApp(app); err != nil {
 		return err
 	}
-	if app.Runtime == nil || app.Runtime.Kind != "systemd" || app.Runtime.Version != 1 || app.Runtime.Systemd == nil {
-		return errors.New("catalog: native verification requires supported systemd recipe")
+	files, err := NativeArtifactFiles(app, artifact.Name)
+	if err != nil {
+		return err
 	}
 	declared := false
 	for _, candidate := range app.Artifacts {
@@ -214,7 +215,7 @@ func VerifyNativeArtifact(ctx context.Context, app AppManifest, artifact Artifac
 			declared = true
 		}
 	}
-	if !declared || artifact.Name != app.Runtime.Systemd.Artifact {
+	if !declared {
 		return errors.New("catalog: undeclared artifact")
 	}
 	raw, err := DownloadArtifact(ctx, nil, artifact)
@@ -226,11 +227,11 @@ func VerifyNativeArtifact(ctx context.Context, app AppManifest, artifact Artifac
 		return err
 	}
 	defer os.RemoveAll(directory)
-	_, err = ExtractArtifact(bytes.NewReader(raw), filepath.Join(directory, "files"), artifact, app.Runtime.Systemd.Files)
+	_, err = ExtractArtifact(bytes.NewReader(raw), filepath.Join(directory, "files"), artifact, files)
 	if err != nil {
 		return err
 	}
-	for _, file := range app.Runtime.Systemd.Files {
+	for _, file := range files {
 		if file.Executable {
 			if err := VerifyELF(filepath.Join(directory, "files", file.Path), artifact.Architecture); err != nil {
 				return err

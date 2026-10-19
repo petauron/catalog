@@ -36,6 +36,8 @@ func validateRuntimeReferences(app AppManifest, command, arguments []Value, envi
 			switch r.Kind {
 			case "private-address":
 				found = true
+			case "native-installation":
+				found = app.Runtime.Kind == "systemd" && app.Runtime.Version == 2 && app.Runtime.NativeServices != nil
 			case "service-address":
 				found = hasService(app, r.Name)
 			case "state-directory":
@@ -44,6 +46,22 @@ func validateRuntimeReferences(app AppManifest, command, arguments []Value, envi
 				found = configPaths[r.Name]
 			case "credential-file":
 				_, found = credentials[r.Name]
+			case "native-unit":
+				if app.Runtime.Kind == "systemd" && app.Runtime.Version == 2 && app.Runtime.NativeServices != nil {
+					for _, service := range app.Runtime.NativeServices.Services {
+						if service.Name == r.Name {
+							found = true
+						}
+					}
+				}
+			case "managed-user":
+				if app.Runtime.Kind == "systemd" && app.Runtime.Version == 2 && app.Runtime.NativeServices != nil {
+					for _, user := range app.Runtime.NativeServices.Users {
+						if user == r.Name {
+							found = true
+						}
+					}
+				}
 			}
 			if !found {
 				return fmt.Errorf("catalog: unresolved runtime reference %s:%s", r.Kind, r.Name)

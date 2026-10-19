@@ -2,6 +2,7 @@ package catalog
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"testing"
@@ -44,6 +45,21 @@ func TestPublishedSchemasCompileAndValidateV4Fixtures(t *testing.T) {
 	schema, err := compiler.Compile("https://petauron.com/contracts/catalog/v4/catalog.schema.json")
 	if err != nil {
 		t.Fatal(err)
+	}
+	runtimeSchema, err := compiler.Compile("https://petauron.com/contracts/catalog/v4/runtime.schema.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	nativeRaw, err := json.Marshal(nativeServicesFixture().Runtime)
+	if err != nil {
+		t.Fatal(err)
+	}
+	nativeValue, err := jsonschema.UnmarshalJSON(bytes.NewReader(nativeRaw))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := runtimeSchema.Validate(nativeValue); err != nil {
+		t.Fatal("native services schema rejected valid contract", err)
 	}
 	for _, name := range []string{"catalog.json", "testdata/v4/valid-catalog.json", "testdata/v4/valid/integer-decimal.json", "testdata/v4/valid/integer-exponent.json"} {
 		raw, err := os.ReadFile(name)

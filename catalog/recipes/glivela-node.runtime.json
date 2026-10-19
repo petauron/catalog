@@ -1,0 +1,62 @@
+{
+  "kind": "systemd",
+  "version": 2,
+  "requiredCapabilities": ["native-services", "root"],
+  "storage": [{"name": "node-state", "persistent": true}],
+  "nativeServices": {
+    "users": ["xray"],
+    "services": [
+      {
+        "name": "node",
+        "start": "automatic",
+        "process": {
+          "artifact": "bundle",
+          "executable": "glivela",
+          "files": [
+            {"path": "glivela", "executable": true},
+            {"path": "runtime.json"},
+            {"path": "LICENSE.glivela"},
+            {"path": "LICENSE.xray"},
+            {"path": "glivela-ui.js"},
+            {"path": "glivela-ui.css"}
+          ],
+          "user": "root",
+          "stateDirectories": ["node-state"],
+          "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
+          "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "node.json"}}],
+          "configFiles": [{
+            "path": "node.json",
+            "format": "json",
+            "values": {
+              "mode": {"literal": "node"},
+				"installation": {"runtime":{"kind":"native-installation"}},
+				"service": {"literal":"node"},
+              "directory": {"runtime": {"kind": "state-directory", "name": "node-state"}},
+              "certificate": {"runtime": {"kind": "credential-file", "name": "certificate"}},
+              "key": {"runtime": {"kind": "credential-file", "name": "key"}},
+              "ca": {"runtime": {"kind": "credential-file", "name": "ca"}},
+              "controller": {"config": "controller_url"},
+              "xray": {"object": {
+                "installation": {"runtime": {"kind": "native-installation"}},
+                "service": {"literal": "xray"},
+                "interface": {"config": "network_interface"}
+              }}
+            }
+          }]
+        }
+      },
+      {
+        "name": "xray",
+        "start": "manual",
+        "managedUser": "xray",
+        "stateCredentials": {"configuration": {"storage": "node-state", "path": "config.json"}},
+        "process": {
+          "artifact": "bundle",
+          "executable": "xray",
+          "files": [{"path": "xray", "executable": true}],
+          "arguments": [{"literal": "run"}, {"literal": "-format"}, {"literal": "json"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration"}}]
+        }
+      }
+    ]
+  }
+}

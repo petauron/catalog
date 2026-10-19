@@ -15,6 +15,10 @@ var environmentName = regexp.MustCompile(`^[A-Za-z_][A-Za-z0-9_]*$`)
 var runtimeName = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,62}$`)
 var userName = regexp.MustCompile(`^(?:[a-z_][a-z0-9_-]{0,31}|[0-9]{1,10})(?::(?:[a-z_][a-z0-9_-]{0,31}|[0-9]{1,10}))?$`)
 
+func knownRuntimeVersion(kind string, version int) bool {
+	return (kind == "docker" && version == 1) || (kind == "systemd" && (version == 1 || version == 2))
+}
+
 // UnmarshalJSON keeps a future runtime opaque without relaxing known versions.
 // Every nested object still receives the duplicate-property/depth checks.
 func (r *RuntimeSpec) UnmarshalJSON(raw []byte) error {
@@ -30,7 +34,7 @@ func (r *RuntimeSpec) UnmarshalJSON(raw []byte) error {
 	if err := json.Unmarshal(object["version"], &version); err != nil {
 		return errors.New("runtime version is required")
 	}
-	if (kind != "docker" && kind != "systemd") || version != 1 {
+	if !knownRuntimeVersion(kind, version) {
 		*r = RuntimeSpec{Kind: kind, Version: version, Unsupported: append(json.RawMessage(nil), raw...)}
 		if value := object["requiredCapabilities"]; value != nil {
 			if err := json.Unmarshal(value, &r.RequiredCapabilities); err != nil {
@@ -80,6 +84,19 @@ func validateRequiredRuntimeJSON(object map[string]json.RawMessage) error {
 		}
 		processes = append(processes, native)
 	}
+	if raw, exists := object["nativeServices"]; exists {
+		var bundle struct {
+			Services []struct {
+				Process map[string]json.RawMessage `json:"process"`
+			} `json:"services"`
+		}
+		if err := json.Unmarshal(raw, &bundle); err != nil {
+			return err
+		}
+		for _, service := range bundle.Services {
+			processes = append(processes, service.Process)
+		}
+	}
 	for _, process := range processes {
 		if raw, exists := process["configFiles"]; exists {
 			var files []map[string]json.RawMessage
@@ -127,7 +144,7 @@ func ValidateRuntime(app AppManifest) error {
 		}
 		caps[capability] = true
 	}
-	if r.Version != 1 || (r.Kind != "docker" && r.Kind != "systemd") {
+	if !knownRuntimeVersion(r.Kind, r.Version) {
 		return nil
 	}
 	if r.Unsupported != nil {
@@ -139,6 +156,12 @@ func ValidateRuntime(app AppManifest) error {
 			return errors.New("catalog: invalid or duplicate storage name")
 		}
 		storage[item.Name] = true
+	}
+	if r.Version == 2 {
+		return validateNativeServices(app, caps)
+	}
+	if r.NativeServices != nil {
+		return errors.New("catalog: nativeServices requires systemd version 2")
 	}
 	if r.Kind == "docker" {
 		if r.Docker == nil || r.Systemd != nil || len(r.Docker.Containers) < 1 || len(r.Docker.Containers) > 32 {
@@ -223,7 +246,10 @@ func ValidateRuntime(app AppManifest) error {
 	if r.Systemd == nil || r.Docker != nil {
 		return errors.New("catalog: systemd runtime requires only systemd specification")
 	}
-	s := r.Systemd
+	return validateSystemdProcess(app, r.Systemd, caps, storage, nil, nil)
+}
+
+func validateSystemdProcess(app AppManifest, s *SystemdRuntime, caps, storage map[string]bool, writableState []string, stateCredentials map[string]StateCredential) error {
 	artifactFound := false
 	for _, artifact := range app.Artifacts {
 		if artifact.Name == s.Artifact {
@@ -249,10 +275,20 @@ func ValidateRuntime(app AppManifest) error {
 		return err
 	}
 	availableState := map[string]bool{}
+	for _, directory := range writableState {
+		availableState[directory] = true
+	}
 	for _, directory := range s.StateDirectories {
 		availableState[directory] = true
 	}
-	if err := validateRuntimeReferences(app, nil, s.Arguments, s.Environment, s.ConfigFiles, s.Credentials, availableState); err != nil {
+	availableCredentials := map[string]string{}
+	for name, key := range s.Credentials {
+		availableCredentials[name] = key
+	}
+	for name := range stateCredentials {
+		availableCredentials[name] = ""
+	}
+	if err := validateRuntimeReferences(app, nil, s.Arguments, s.Environment, s.ConfigFiles, availableCredentials, availableState); err != nil {
 		return err
 	}
 	seenState := map[string]bool{}
@@ -371,11 +407,11 @@ func validateNestedValue(value Value, fields []ConfigField, allowSecret bool, de
 			return errors.New("catalog: runtime suffix must be a safe relative state path")
 		}
 		switch r.Kind {
-		case "private-address":
+		case "private-address", "native-installation":
 			if r.Name != "" {
-				return errors.New("catalog: private-address cannot specify a name")
+				return errors.New("catalog: unnamed runtime reference cannot specify a name")
 			}
-		case "service-address", "state-directory", "credential-file":
+		case "service-address", "state-directory", "credential-file", "native-unit", "managed-user":
 			if !runtimeName.MatchString(r.Name) {
 				return errors.New("catalog: invalid named runtime value")
 			}
@@ -451,7 +487,13 @@ func CheckRuntimeSupport(app AppManifest, available ExecutorSupport) SupportResu
 		return SupportResult{Reasons: []string{"runtime specification is missing"}}
 	}
 	r := app.Runtime
-	if r.Version != 1 || (r.Kind != "docker" && r.Kind != "systemd") || available.Versions[r.Kind] != r.Version {
+	versionSupported := available.Versions[r.Kind] == r.Version
+	// The systemd v2 executor implements both released native contracts. This
+	// is an explicit promise, not a general assumption about future versions.
+	if r.Kind == "systemd" && r.Version == 1 && available.Versions[r.Kind] == 2 {
+		versionSupported = true
+	}
+	if !knownRuntimeVersion(r.Kind, r.Version) || !versionSupported {
 		result.Reasons = append(result.Reasons, fmt.Sprintf("runtime %s version %d is unsupported", r.Kind, r.Version))
 	}
 	for _, required := range r.RequiredCapabilities {
