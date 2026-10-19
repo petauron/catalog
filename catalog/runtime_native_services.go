@@ -17,6 +17,9 @@ func validateNativeServices(app AppManifest, caps map[string]bool) error {
 	if !caps["native-services"] {
 		return errors.New("catalog: native services require native-services capability")
 	}
+	if b.Namespace != "" && !runtimeName.MatchString(b.Namespace) {
+		return errors.New("catalog: invalid native service namespace")
+	}
 	if len(b.Services) < 1 || len(b.Services) > 16 || b.Users == nil || len(b.Users) > 16 {
 		return errors.New("catalog: native services exceed resource bounds")
 	}

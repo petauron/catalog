@@ -100,6 +100,7 @@
     "nativeServices": {
       "type": "object", "additionalProperties": false, "required": ["users", "services"],
       "properties": {
+		"namespace": { "$ref": "#/$defs/name" },
         "users": { "type": "array", "maxItems": 16, "uniqueItems": true, "items": { "$ref": "#/$defs/name" } },
         "services": { "type": "array", "minItems": 1, "maxItems": 16, "items": {
           "type": "object", "additionalProperties": false, "required": ["name", "start", "process"],
@@ -119,7 +120,7 @@
       "properties": {
         "artifact": { "$ref": "#/$defs/name" }, "executable": { "$ref": "#/$defs/relativePath" }, "files": { "type": "array", "minItems": 1, "maxItems": 128, "items": { "$ref": "#/$defs/artifactFile" } },
         "arguments": { "$ref": "#/$defs/values" }, "environment": { "$ref": "#/$defs/environment" }, "configFiles": { "$ref": "#/$defs/configFiles" }, "credentials": { "$ref": "#/$defs/credentials" },
-        "stateDirectories": { "$ref": "#/$defs/names" }, "user": { "type": "string" }, "health": { "$ref": "#/$defs/health" }, "limits": { "$ref": "#/$defs/limits" }
+        "stateDirectories": { "$ref": "#/$defs/names" }, "user": { "type": "string" }, "bindService": { "type": "boolean" }, "health": { "$ref": "#/$defs/health" }, "limits": { "$ref": "#/$defs/limits" }
       }
     }
   }

@@ -124,6 +124,7 @@ type SystemdRuntime struct {
 	Credentials      map[string]string `json:"credentials,omitempty"`
 	StateDirectories []string          `json:"stateDirectories,omitempty"`
 	User             string            `json:"user,omitempty"`
+	BindService      bool              `json:"bindService,omitempty"`
 	Health           *HealthCheck      `json:"health,omitempty"`
 	Limits           *ResourceLimits   `json:"limits,omitempty"`
 }
@@ -136,8 +137,9 @@ type ArtifactFile struct {
 // NativeServicesRuntime is systemd contract version 2. Names are logical,
 // application-scoped identifiers, never host account names or unit paths.
 type NativeServicesRuntime struct {
-	Users    []string        `json:"users"`
-	Services []NativeService `json:"services"`
+	Namespace string          `json:"namespace,omitempty"`
+	Users     []string        `json:"users"`
+	Services  []NativeService `json:"services"`
 }
 
 type NativeService struct {

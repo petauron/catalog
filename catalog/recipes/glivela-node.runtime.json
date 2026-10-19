@@ -4,6 +4,7 @@
   "requiredCapabilities": ["native-services", "root"],
   "storage": [{"name": "node-state", "persistent": true}],
   "nativeServices": {
+	"namespace": "glivela",
     "users": ["xray"],
     "services": [
       {
@@ -37,6 +38,7 @@
               "ca": {"runtime": {"kind": "credential-file", "name": "ca"}},
               "controller": {"config": "controller_url"},
               "xray": {"object": {
+				"role": {"literal": "landing"},
                 "installation": {"runtime": {"kind": "native-installation"}},
                 "service": {"literal": "xray"},
                 "interface": {"config": "network_interface"}
