@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.4.0](https://github.com/petauron/catalog/compare/v0.3.2...v0.4.0) (2026-10-19)
+
+
+### Features
+
+* **catalog:** declare Docker controller and generic TCP forwarding ([10d7ff4](https://github.com/petauron/catalog/commit/10d7ff40bc13a645103fa3b36ac0e292edeb8d6a))
+* **runtime:** declare owned native services and Glivela runtime roles ([a307407](https://github.com/petauron/catalog/commit/a3074074177910d5a1b4a86b454017ca62c2f154))
+
 ## [0.3.2](https://github.com/petauron/catalog/compare/v0.3.1...v0.3.2) (2026-10-18)
 
 
