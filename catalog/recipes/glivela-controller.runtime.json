@@ -16,7 +16,8 @@
         {"storage": "controller-bootstrap", "target": "/etc/glivela"},
         {"storage": "controller-credentials", "target": "/run/vastora-credentials"}
       ],
-      "ports": [{"service": "controller"}, {"service": "subscriptions"}],
+      "ports": [{"service": "controller"}, {"service": "subscription"}],
+      "health": {"service": "controller"},
         "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
         "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "/etc/glivela/controller.json"}}],
         "configFiles": [{
