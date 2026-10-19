@@ -67,7 +67,16 @@ test("disabled production never contacts GitHub or creates a signing plan", asyn
 test("production recipes use schema 4 and reviewed runtime declarations", () => {
   const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
   assert.equal(recipe.schemaVersion, 4);
-  assert.ok(recipe.apps.every(app => app.packageRevision > 0 && app.runtime?.version === 1));
+  for (const app of recipe.apps) {
+    assert.ok(app.packageRevision > 0);
+    const native = ["glivela-entry", "glivela-node"].includes(app.id);
+    assert.equal(app.runtime?.version, native ? 2 : 1);
+    if (native) {
+      assert.equal(app.runtime.kind, "systemd");
+      assert.equal(app.runtime.nativeServices.namespace, "glivela");
+      assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), ["node", "xray"]);
+    }
+  }
   const plan = readFileSync(new URL("./catalog-plan.mjs", import.meta.url), "utf8");
   assert.match(plan, /readFileSync\("catalog\/catalog.json"\)/);
   assert.doesNotMatch(plan, /legacyV3: true|vastora-v3-catalog-check/);
