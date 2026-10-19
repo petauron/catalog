@@ -83,13 +83,18 @@
       "required": ["name", "protocol", "containerPort"],
       "properties": {
         "name": { "type": "string", "pattern": "^[a-z0-9][a-z0-9-]{1,62}$" },
-        "protocol": { "enum": ["http", "https"] },
+        "protocol": { "enum": ["http", "https", "tcp"] },
+        "proxyProtocol": { "enum": ["", "v2"] },
         "containerPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "defaultHostPort": { "type": "integer", "minimum": 1, "maximum": 65535 },
         "hostPortField": { "type": "string", "pattern": "^[a-z][a-z0-9_]{0,62}$" },
         "healthPath": { "type": "string", "pattern": "^/(?!/)[^?#]*$" },
         "management": { "type": "boolean" }
       },
+      "allOf": [
+        { "if": { "required": ["proxyProtocol"], "properties": { "proxyProtocol": { "const": "v2" } } }, "then": { "properties": { "protocol": { "const": "tcp" } } } },
+        { "if": { "properties": { "protocol": { "const": "tcp" } } }, "then": { "not": { "required": ["healthPath"] }, "properties": { "management": { "const": false } } } }
+      ],
       "oneOf": [
         { "required": ["defaultHostPort"], "not": { "required": ["hostPortField"] } },
         { "required": ["hostPortField"], "not": { "required": ["defaultHostPort"] } }

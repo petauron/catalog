@@ -77,6 +77,7 @@ type Artifact struct {
 type Service struct {
 	Name            string `json:"name"`
 	Protocol        string `json:"protocol"`
+	ProxyProtocol   string `json:"proxyProtocol,omitempty"`
 	ContainerPort   int    `json:"containerPort"`
 	DefaultHostPort int    `json:"defaultHostPort,omitempty"`
 	HostPortField   string `json:"hostPortField,omitempty"`
@@ -254,8 +255,14 @@ func validateAppMetadata(app AppManifest) error {
 			return fmt.Errorf("catalog: duplicate service %q in %q", service.Name, app.ID)
 		}
 		services[service.Name] = struct{}{}
-		if service.Protocol != "http" && service.Protocol != "https" {
+		if service.Protocol != "http" && service.Protocol != "https" && service.Protocol != "tcp" {
 			return fmt.Errorf("catalog: unsupported service protocol %q in %q", service.Protocol, app.ID)
+		}
+		if service.ProxyProtocol != "" && (service.ProxyProtocol != "v2" || service.Protocol != "tcp") {
+			return fmt.Errorf("catalog: service %q in %q requires a supported TCP forwarding header", service.Name, app.ID)
+		}
+		if service.Protocol == "tcp" && (service.HealthPath != "" || service.Management || app.Homepage != nil && app.Homepage.Service == service.Name) {
+			return fmt.Errorf("catalog: raw TCP service %q in %q cannot declare an HTTP management surface", service.Name, app.ID)
 		}
 		if service.ContainerPort < 1 || service.ContainerPort > 65535 || service.DefaultHostPort < 0 || service.DefaultHostPort > 65535 {
 			return fmt.Errorf("catalog: invalid service port in %q", app.ID)
