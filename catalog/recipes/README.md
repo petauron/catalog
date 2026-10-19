@@ -1,72 +1,61 @@
-# Glivela native node recipe
+# Glivela deployment recipes
 
-`glivela-node.runtime.json` is the node-role runtime declaration for the native
-Glivela distribution. It is not included in a published catalog yet. Publication
-must supply the exact Glivela release version and both platform artifact URLs,
-sizes/limits where applicable, and SHA256 identities from verified release assets;
-no placeholder digest or floating URL is permitted.
+The controller is Docker; both entry and landing nodes use native Glivela and
+official Xray systemd services. These development recipes are not a published
+signed catalog and contain no placeholder release identities.
 
-The surrounding app manifest declares the `bundle` artifact and five required
-string inputs: `controller_url`, `network_interface`, and secret inputs
-`certificate_pem`, `private_key_pem`, `ca_pem`. Enrollment certificates must already
-belong to the preserved Glivela node identity. The installer only initializes
-these inputs on first installation; upgrades preserve the application-owned
-configuration and state.
+## Controller
 
-The root node process owns `node-state`. The manual non-root Xray service only
-receives a read-only systemd credential snapshot of `config.json`; it cannot read
-the node's journal or private credentials. The node discovers the distribution
-beside its own executable and obtains concrete service/account identity from the
-generic installation inventory. No hardcoded host path or unit digest is needed.
+`glivela-controller.runtime.json` remains a nonroot bridge-network container,
+without a Docker socket, host mounts or host-network privilege. Retained volumes
+hold private state, bootstrap and TLS credentials. The private control endpoint
+uses administrator/node mutual TLS; subscription downloads use a separate origin.
+A transport-only first installation does not initialize or replace owned data.
 
-This declaration requires the approved systemd v2 executor and existing systemd,
-iproute2 and nftables host tools. It does not install OS packages or run scripts.
-It creates neither a public service endpoint nor proxy business commands in the
-host. Application startup is not end-to-end route acceptance.
+## Native nodes
 
-This node recipe alone does not replace the controller/UI installation or migrate
-an existing instance. Live publication remains blocked on complete controller
-packaging, legacy-writer fencing, data transfer and tested first Dante recovery.
+`glivela-entry.runtime.json` and `glivela-node.runtime.json` use the same native
+node/core bundle and installation contract. The role in the application-owned
+bootstrap is `entry` or `landing`; Vastora does not interpret it. Both declare:
 
-## Controller and retained Docker entry
+- `vastora-pkg-glivela-node.service`: root Glivela management process, automatic.
+- `vastora-pkg-glivela-xray.service`: dedicated nonroot worker, manual.
 
-`glivela-controller.runtime.json` declares the controller process, separate private
-state and existing mTLS credentials. Additional string inputs are
-`controller_listen`, `administrator_certificate_id`, `business_key_path` and
-`subscriptions_listen`. A new transport-only controller leaves the last two
-empty. An imported controller must use its actual preserved 32-byte storage key
-file and owned business checkpoint; missing owned data/key is never silently
-initialized. Subscription publication is enabled only after authority transfer.
-The controller enables its bundled management UI on the same private mTLS
-listener. Only the enrolled administrator certificate can open that page or
-its API. The browser must trust the controller CA and present that certificate;
-no Vastora proxy commands, cookies, credentials in JavaScript or new login
-system are involved. Subscription publication remains a separate listener.
-The recipe is not yet wired into a signed manifest.
+The signed namespace makes unit names readable; application IDs still isolate
+program/configuration/state paths, managed user identities and ownership
+receipts. A conflicting unit must fail inspection before any service is stopped
+or file overwritten. No runtime aliases or automatic collision suffixes.
 
-Each bootstrap includes its generic installation inventory and logical service
-name. Offline Glivela commands use the persistent configuration source listed
-in that inventory, not a `/run` copy. They verify the root service's compiled
-unit digest and declared credential paths before resolving private TLS/scope
-inputs while the service is stopped. The host metadata contains resource paths
-only, not proxy configuration, component capabilities or a lifecycle RPC.
+Inputs are `controller_url`, `network_interface`, and private TLS inputs
+`certificate_pem`, `private_key_pem`, `ca_pem`. The entry worker alone declares
+`bindService` for CAP_NET_BIND_SERVICE so preserved low-port HY2 listeners do not
+require root. It does not receive NET_ADMIN. The Glivela node manages firewall
+policy and the worker through its immutable local installation inventory; no
+Vastora proxy commands, lifecycle RPC, component matrix or Docker socket.
 
-`glivela-entry.runtime.json` installs only the Glivela node process. Glivela, not
-the installer, provisions and inspects the fixed Docker Xray worker. Inputs are
-`controller_url`, the three existing TLS secret inputs, secret `entry_scope`,
-boolean `entry_provision`, and string `legacy_entry_checkpoint` (empty only for
-explicitly fresh resources). The scope is opaque private JSON to the host; only
-Glivela interprets application identity, retained UID/GID, bridge identity/address,
-aliases and environment. It cannot select container IDs, image IDs, host mounts,
-scripts or a custom image. The worker configuration is a separate private child
-of the installed application state; the journal is never mounted into Docker.
+The root node owns the private persistent state. The manual worker receives
+only a read-only systemd credential snapshot of its JSON configuration and
+cannot read controller credentials or the node journal. Upgrades retain
+application-owned configuration and data rather than rerun initialization.
+Generic uninstall backs up and stops both declared native services, retaining
+persistent data unless a separate purge is explicitly authorized.
 
-For a legacy entry, freeze the old writer, create the Glivela private source
-checkpoint, and configure that exact checkpoint before authorizing provisioning.
-Original application/protocol identities and ingress geometry must match.
-The source container/config remains available for failed-switch recovery; a
-successful provision still awaits independent route verification. Retiring the
-old writer and restoring the generic Agent remain required migration steps.
+Required existing host tools are systemd, iproute2 and nftables. No OS-package
+installation, arbitrary scripts or additional project dependency is introduced.
+Platform process readiness is not actual proxy-route acceptance.
 
-All three runtime files are development recipes, not publication artifacts.
-They introduce no placeholder release hashes or automatic signing/deployment.
+## Migration and publication gates
+
+Existing Docker entries require a backup-first, explicit native ownership and
+backend-binding handover. Preserve application/node/subscription identities,
+keys, public ports, quotas and historical data. Do not boot a native candidate
+alongside an old writer or assume a source-level recipe is installed acceptance.
+Retain stopped old Docker resources only as private failure-recovery evidence;
+there is no normal Docker node runtime or provisioning fallback in the new CLI.
+
+Publication must bind exact checked Glivela release versions, immutable
+controller image digest, both platform bundle URLs/sizes/SHA256 values and the
+separately published UI asset identities. Complete installed data handover,
+failure recovery and real route/reporting verification before claiming #54
+complete. Source releases, signed catalog publication and deployment are
+separate operations.
