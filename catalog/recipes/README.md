@@ -27,3 +27,39 @@ host. Application startup is not end-to-end route acceptance.
 This node recipe alone does not replace the controller/UI installation or migrate
 an existing instance. Live publication remains blocked on complete controller
 packaging, legacy-writer fencing, data transfer and tested first Dante recovery.
+
+## Controller and retained Docker entry
+
+`glivela-controller.runtime.json` declares the controller process, separate private
+state and existing mTLS credentials. Additional string inputs are
+`controller_listen`, `administrator_certificate_id`, `business_key_path` and
+`subscriptions_listen`. A new transport-only controller leaves the last two
+empty. An imported controller must use its actual preserved 32-byte storage key
+file and owned business checkpoint; missing owned data/key is never silently
+initialized. Subscription publication is enabled only after authority transfer.
+The controller enables its bundled management UI on the same private mTLS
+listener. Only the enrolled administrator certificate can open that page or
+its API. The browser must trust the controller CA and present that certificate;
+no Vastora proxy commands, cookies, credentials in JavaScript or new login
+system are involved. Subscription publication remains a separate listener.
+The recipe is not yet wired into a signed manifest.
+
+`glivela-entry.runtime.json` installs only the Glivela node process. Glivela, not
+the installer, provisions and inspects the fixed Docker Xray worker. Inputs are
+`controller_url`, the three existing TLS secret inputs, secret `entry_scope`,
+boolean `entry_provision`, and string `legacy_entry_checkpoint` (empty only for
+explicitly fresh resources). The scope is opaque private JSON to the host; only
+Glivela interprets application identity, retained UID/GID, bridge identity/address,
+aliases and environment. It cannot select container IDs, image IDs, host mounts,
+scripts or a custom image. The worker configuration is a separate private child
+of the installed application state; the journal is never mounted into Docker.
+
+For a legacy entry, freeze the old writer, create the Glivela private source
+checkpoint, and configure that exact checkpoint before authorizing provisioning.
+Original application/protocol identities and ingress geometry must match.
+The source container/config remains available for failed-switch recovery; a
+successful provision still awaits independent route verification. Retiring the
+old writer and restoring the generic Agent remain required migration steps.
+
+All three runtime files are development recipes, not publication artifacts.
+They introduce no placeholder release hashes or automatic signing/deployment.

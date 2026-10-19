@@ -27,10 +27,10 @@ func TestGlivelaNodeNativeRecipe(t *testing.T) {
 		t.Fatal(err)
 	}
 	files, err := NativeArtifactFiles(a, "bundle")
-	if err != nil || len(files) != 5 {
+	if err != nil || len(files) != 7 {
 		t.Fatal("incomplete native distribution allowlist", err)
 	}
-	wantFiles := map[string]bool{"glivela": true, "xray": true, "runtime.json": false, "LICENSE.glivela": false, "LICENSE.xray": false}
+	wantFiles := map[string]bool{"glivela": true, "xray": true, "runtime.json": false, "LICENSE.glivela": false, "LICENSE.xray": false, "glivela-ui.js": false, "glivela-ui.css": false}
 	for _, file := range files {
 		mode, exists := wantFiles[file.Path]
 		if !exists || file.Executable != mode {

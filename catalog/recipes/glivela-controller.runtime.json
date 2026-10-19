@@ -1,0 +1,46 @@
+{
+  "kind": "systemd",
+  "version": 2,
+  "requiredCapabilities": ["native-services", "root"],
+  "storage": [{"name": "controller-state", "persistent": true}],
+  "nativeServices": {
+    "users": [],
+    "services": [{
+      "name": "controller",
+      "start": "automatic",
+      "process": {
+        "artifact": "bundle",
+        "executable": "glivela",
+        "files": [
+          {"path": "glivela", "executable": true},
+          {"path": "xray", "executable": true},
+          {"path": "runtime.json"},
+          {"path": "LICENSE.glivela"},
+          {"path": "LICENSE.xray"},
+          {"path": "glivela-ui.js"},
+          {"path": "glivela-ui.css"}
+        ],
+        "user": "root",
+        "stateDirectories": ["controller-state"],
+        "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
+        "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "controller.json"}}],
+        "configFiles": [{
+          "path": "controller.json",
+          "format": "json",
+          "values": {
+            "mode": {"literal": "controller"},
+			"managementUI": {"literal": true},
+            "directory": {"runtime": {"kind": "state-directory", "name": "controller-state"}},
+            "certificate": {"runtime": {"kind": "credential-file", "name": "certificate"}},
+            "key": {"runtime": {"kind": "credential-file", "name": "key"}},
+            "ca": {"runtime": {"kind": "credential-file", "name": "ca"}},
+            "listen": {"config": "controller_listen"},
+            "administrators": {"array": [{"config": "administrator_certificate_id"}]},
+            "businessKey": {"config": "business_key_path"},
+            "subscriptionsListen": {"config": "subscriptions_listen"}
+          }
+        }]
+      }
+    }]
+  }
+}

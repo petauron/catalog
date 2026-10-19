@@ -16,7 +16,9 @@
             {"path": "glivela", "executable": true},
             {"path": "runtime.json"},
             {"path": "LICENSE.glivela"},
-            {"path": "LICENSE.xray"}
+            {"path": "LICENSE.xray"},
+            {"path": "glivela-ui.js"},
+            {"path": "glivela-ui.css"}
           ],
           "user": "root",
           "stateDirectories": ["node-state"],
