@@ -1,48 +1,41 @@
 {
-  "kind": "systemd",
-  "version": 2,
-  "requiredCapabilities": ["native-services", "root"],
-  "storage": [{"name": "controller-state", "persistent": true}],
-  "nativeServices": {
-    "users": [],
-    "services": [{
+  "kind": "docker",
+  "version": 1,
+  "storage": [
+    {"name": "controller-state", "persistent": true},
+    {"name": "controller-bootstrap", "persistent": true},
+    {"name": "controller-credentials", "persistent": true}
+  ],
+  "docker": {
+    "containers": [{
       "name": "controller",
-      "start": "automatic",
-      "process": {
-        "artifact": "bundle",
-        "executable": "glivela",
-        "files": [
-          {"path": "glivela", "executable": true},
-          {"path": "xray", "executable": true},
-          {"path": "runtime.json"},
-          {"path": "LICENSE.glivela"},
-          {"path": "LICENSE.xray"},
-          {"path": "glivela-ui.js"},
-          {"path": "glivela-ui.css"}
-        ],
-        "user": "root",
-        "stateDirectories": ["controller-state"],
+      "image": "controller",
+      "user": "65532:65532",
+      "mounts": [
+        {"storage": "controller-state", "target": "/var/lib/glivela"},
+        {"storage": "controller-bootstrap", "target": "/etc/glivela"},
+        {"storage": "controller-credentials", "target": "/run/vastora-credentials"}
+      ],
+      "ports": [{"service": "controller"}, {"service": "subscription"}],
+      "health": {"service": "controller"},
         "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
-        "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "controller.json"}}],
+        "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "/etc/glivela/controller.json"}}],
         "configFiles": [{
-          "path": "controller.json",
+          "path": "/etc/glivela/controller.json",
           "format": "json",
           "values": {
             "mode": {"literal": "controller"},
-			"installation": {"runtime":{"kind":"native-installation"}},
-			"service": {"literal":"controller"},
 			"managementUI": {"literal": true},
             "directory": {"runtime": {"kind": "state-directory", "name": "controller-state"}},
             "certificate": {"runtime": {"kind": "credential-file", "name": "certificate"}},
             "key": {"runtime": {"kind": "credential-file", "name": "key"}},
             "ca": {"runtime": {"kind": "credential-file", "name": "ca"}},
-            "listen": {"config": "controller_listen"},
+            "listen": {"runtime": {"kind": "service-address", "name": "controller"}},
             "administrators": {"array": [{"config": "administrator_certificate_id"}]},
             "businessKey": {"config": "business_key_path"},
             "subscriptionsListen": {"config": "subscriptions_listen"}
           }
         }]
-      }
     }]
   }
 }
