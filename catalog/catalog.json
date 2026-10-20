@@ -1049,7 +1049,7 @@
     },
     {
       "id": "telegram-bot",
-      "version": "0.1.0-alpha.4",
+      "version": "0.1.0-alpha.5",
       "packageRevision": 1,
       "name": {
         "en": "Telegram Bot",
@@ -1063,7 +1063,7 @@
       "images": [
         {
           "name": "telegram-bot",
-          "reference": "ghcr.io/petauron/telegram-bot@sha256:959af6b199ffa5f4b656f763d154b35f44878ce8c37227efc863d1c81731d03b"
+          "reference": "ghcr.io/petauron/telegram-bot@sha256:42269bdcf3c4e6c0a58cd47803996f4c16c7143ce04d3cfc6b8df0c78ccd285b"
         }
       ],
       "services": [
