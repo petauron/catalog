@@ -85,6 +85,12 @@ source/tag identity, authenticated release inventory, `SHA256SUMS`, both downloa
 native archives and the immutable two-platform controller image index. It never
 executes downloaded files. It then updates only the three Glivela recipe versions
 and release coordinates, reviewed UI checkout SHA and its existing pin contract.
+It also advances only Glivela's machine-identity digest and version comment in
+the existing brand contract. The current recipe must first match its old digest;
+only then may verified version/image coordinates produce the new Glivela digest.
+The brand assertions, installation identities, runtime/config fields and both
+Senulun baseline hashes remain unchanged. A mismatched old baseline stops the
+handoff instead of silently accepting an unrelated identity change.
 It requires a clean non-main branch and refuses same-version or older hints.
 
 Review the generated diff and submit it through the normal catalog PR flow.
