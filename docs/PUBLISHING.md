@@ -70,6 +70,32 @@ For subsequent releases, advance the Glivela source pin and recipe version
 together after source CI and publication. Keep canonical `ui-glivela` output
 paths and never alter existing signed bytes.
 
+### Glivela review-only release handoff
+
+From a clean catalog feature worktree based on current protected `main`, use the
+existing authenticated GitHub CLI and installed lockfile dependencies:
+
+```sh
+node scripts/prepare-glivela-release.mjs "$RELEASE_TAG" "$RELEASE_SHA" "$RELEASE_RUN_ID"
+```
+
+This operator-run helper waits for nothing and fails if the exact Glivela release
+or its newest exact-source push CI has not succeeded. It checks the protected
+source/tag identity, authenticated release inventory, `SHA256SUMS`, both downloaded
+native archives and the immutable two-platform controller image index. It never
+executes downloaded files. It then updates only the three Glivela recipe versions
+and release coordinates, reviewed UI checkout SHA and its existing pin contract.
+It requires a clean non-main branch and refuses same-version or older hints.
+
+Review the generated diff and submit it through the normal catalog PR flow.
+The helper does not commit, push, open or merge a PR, dispatch a workflow, sign,
+publish a catalog or upgrade an application. It needs no new dependency, PAT,
+cross-repository secret or Actions permission. Source release checks are not a
+replacement for the catalog PR's exact-head CI or the protected publisher's
+artifact validation, UI checks/build, signatures and conditional activation.
+After that PR is approved and merged, catalog publication remains a separately
+authorized `kind=reviewed` request. Do not dispatch it just because a PR passed.
+
 Historical recipes, release ledgers, image digests, download coordinates and
 attestations stay unchanged. Previously accepted releases need no re-publication;
 their original signer is not rewritten as Senulun. The example alpha.5 publication
@@ -195,6 +221,16 @@ Every live ledger read, including the post-upload confirmation and signing-stage
 retry, must match GitHub's authenticated attachment size and SHA256 inventory.
 Historical imports additionally pin their original bytes in the reviewed
 migration index; a changed or missing live digest blocks publication.
+
+The immediate draft write/read-back is confirmed at most three times, with one
+and two seconds between reads. A lost write acknowledgement is not permission to
+repeat the write: confirmation may recover only the original commit, draft and
+exact signed ledger bytes. Only missing/not-yet-ready inventory and failed read
+commands are retried. Identity, digest, signature or content mismatch fails
+closed immediately. No R2 write occurs without durable confirmation; exhaustion
+keeps the draft and requires the original-request recovery below. Fixed diagnostic
+substage names distinguish draft creation, inventory and byte confirmation without
+printing child-process stderr or credentials.
 
 Retries use the original catalog commit, input request and exact signed bytes.
 A different request cannot jump over a pending publication. Missing draft assets

@@ -21,6 +21,7 @@ installable without scheduled or manual renewal. Previously accepted clients
 reject older revisions; a new client cannot detect a mirror hiding newer releases.
 
 - [Publication, credentials, and recovery](docs/PUBLISHING.md)
+- [Review-only Glivela release handoff](docs/PUBLISHING.md#glivela-review-only-release-handoff)
 - [Glivela native installation handover](docs/GLIVELA-HANDOVER.md)
 - [Maintenance-window migration and acceptance](docs/MIGRATION.md)
 - [Production schema 3 recipes](catalog/catalog-v3.json)
