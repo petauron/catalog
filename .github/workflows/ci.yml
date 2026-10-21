@@ -27,6 +27,7 @@ jobs:
       - name: Test protocol, artifact safety, and publication boundaries
         run: |
           npm ci --ignore-scripts
+          node --check scripts/prepare-glivela-release.mjs
           go test ./... -count=1
           node --test scripts/*.test.mjs
       - name: Validate reviewed recipes and independent root chain

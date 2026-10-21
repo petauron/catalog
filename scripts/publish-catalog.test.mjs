@@ -120,13 +120,14 @@ test("lost activation response resumes exact saved signatures without re-signing
 
 test("failed durable write confirmation never uploads; retry reads the saved asset", t => {
   const f = fixture(t);
-  let failed = false;
+  let unavailable = true;
   const interrupted = (command, args) => {
-    if (command === "gh" && args[1] === "download" && !failed) { failed = true; throw new Error("readback failed"); }
+    if (command === "gh" && args[1] === "download" && unavailable) { const error = new Error("readback failed"); error.status = 1; throw error; }
     return f.run(command, args);
   };
   assert.throws(() => publishCatalog(f.options, interrupted, f.upload), /readback/);
   assert.ok(!f.calls.some(call => call.command === "upload"));
+  unavailable = false;
   publishCatalog({ ...f.options, work: path.join(f.directory, "retry") }, f.run, f.upload);
   assert.equal(f.calls.filter(call => call.command.endsWith("/catalog-publish")).length, 1);
   assert.equal(f.releases[0].draft, false);

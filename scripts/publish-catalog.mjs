@@ -135,9 +135,9 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
   const tag = `catalog-r${revision}`;
   const catalogSHA256 = hash(readFileSync(catalog));
   const ledgers = new Map();
-  const readLedger = release => {
+  const readLedger = (release, suffix = "") => {
     if (ledgers.has(release.revision)) return ledgers.get(release.revision);
-    const dir = path.join(work, `ledger-${release.revision}`);
+    const dir = path.join(work, `ledger-${release.revision}${suffix}`);
     mkdirSync(dir, { mode: 0o700 });
     const historical = imported.find(item => item.release.tag_name === release.tag_name);
     if (!historical) gh("release", "download", release.tag_name, "--pattern", assetName, "--dir", dir);
@@ -219,16 +219,45 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
     stage("persist-release-ledger");
     const asset = path.join(work, assetName);
     writeFileSync(asset, JSON.stringify(bundle), { mode: 0o600, flag: "wx" });
-    gh("release", "create", tag, asset, "--draft", "--prerelease", "--latest=false", "--target", commit, "--title", `Official catalog r${revision}`, "--notes", `Application catalog only; no Center/Agent release.\nReviewed commit: ${commit}\nApproval/run: ${runURL}\nTarget SHA256: ${state.sha256}${plan.superseded ? `\nSupersedes pending revision: ${plan.previous.revision}; prior ledger retained.` : ""}`);
+    let createError;
+    stage("create-draft-ledger");
+    try {
+      gh("release", "create", tag, asset, "--draft", "--prerelease", "--latest=false", "--target", commit, "--title", `Official catalog r${revision}`, "--notes", `Application catalog only; no Center/Agent release.\nReviewed commit: ${commit}\nApproval/run: ${runURL}\nTarget SHA256: ${state.sha256}${plan.superseded ? `\nSupersedes pending revision: ${plan.previous.revision}; prior ledger retained.` : ""}`);
+    } catch (error) {
+      // An upload may succeed before its acknowledgement is lost. Never repeat
+      // this write or sign again: only a read-back of the exact bytes can recover.
+      createError = error;
+      stage("draft-ledger-write-unconfirmed");
+    }
     // Do not publish R2 bytes unless durable storage of these exact signatures
     // has been confirmed. Failed verification leaves a draft for investigation.
     // GitHub's release-by-tag endpoint returns 404 for drafts. Re-read the
     // paginated release inventory, which includes drafts, before any R2 write.
-    const saved = JSON.parse(execute("gh", ["api", "--paginate", "--slurp", `repos/${repository}/releases?per_page=100`])).flat().filter(release => release.tag_name === tag);
-    if (saved.length !== 1 || saved[0].target_commitish !== commit || saved[0].draft !== true) throw new Error("Durable publication release identity changed");
-    const savedRelease = saved[0];
-    const persisted = readLedger({ ...savedRelease, revision });
-    if (JSON.stringify(persisted) !== JSON.stringify(bundle)) throw new Error("Durable publication ledger did not verify");
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      let persisted;
+      try {
+        stage("confirm-draft-ledger-inventory");
+        const saved = JSON.parse(execute("gh", ["api", "--paginate", "--slurp", `repos/${repository}/releases?per_page=100`])).flat().filter(release => release.tag_name === tag);
+        if (saved.length > 1 || (saved[0] && (saved[0].target_commitish !== commit || saved[0].draft !== true))) throw new Error("Durable publication release identity changed");
+        const savedRelease = saved[0];
+        if (!savedRelease || !hasDurableLedger(savedRelease) || !savedRelease.assets.find(item => item.name === assetName).digest) {
+          if (attempt === 3) throw createError ?? new Error("Durable publication ledger inventory is incomplete");
+        } else {
+          stage("confirm-draft-ledger-bytes");
+          persisted = readLedger({ ...savedRelease, revision }, `-confirmation-${attempt}`);
+        }
+      } catch (error) {
+        // Retry only read-command failures, never invalid identity, signatures,
+        // hashes, JSON or ledger contents. Nothing reaches R2 before confirmation.
+        if (attempt === 3 || !Number.isInteger(error.status)) throw error;
+      }
+      if (persisted) {
+        if (JSON.stringify(persisted) !== JSON.stringify(bundle)) throw new Error("Durable publication ledger did not verify");
+        break;
+      }
+      stage("retry-draft-ledger-readback");
+      Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, attempt * 1000);
+    }
   }
   // Observe and compare the previous timestamp via authenticated storage, not
   // the CDN. An interrupted activation can only resume the exact saved bytes.
