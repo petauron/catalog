@@ -38,12 +38,31 @@ Center database in place.
 
 ## Legacy landing switch constraint
 
-The released `switch-legacy-landing` helper requires the old Vastora Agent to be
-stopped and persistently masked; its recovery journal also checks that condition.
-Do not use it as a routine migration step and then assume the management Agent
-can immediately resume. The deployment owner must select and verify a cutover
-sequence compatible with the new native installation before switching traffic.
-No production cutover is established by source CI or catalog publication alone.
+Glivela alpha.39 and Vastora alpha.349 provide the retained landing completion
+sequence. Back up first and preserve the complete original source inventory,
+DNS, exit, identities and entry-side accounting authority. The
+`switch-legacy-landing` helper still requires the old Agent persistently masked
+and stopped. Do not resume it immediately after switching.
+
+Collect fresh successful route evidence from every required entry in one
+snapshot. With only the Glivela node daemon stopped (Xray remains running), use
+`complete-legacy-landing` with its private bootstrap and verified snapshot ID.
+The node authenticates to its controller and rejects partial, stale or failed
+evidence. An offline required entry blocks completion; do not remove it from
+the inventory to make acceptance pass.
+
+Restart the Glivela node daemon, then, while the old Agent remains masked, use
+Vastora's `agent retire-landing-execution --native-state <owned-state>`. This
+checks the accepted proof, retained checkpoint, owned running native services
+and stopped old runtime before fencing the old execution journal. Only after
+success may the Agent be unmasked and started. Retain all old data and recovery
+material. Verify subscription identities, every double hop and accounting
+continuity before proceeding to another landing.
+
+Older journals without an explicit exit may adopt only the single fixed IPv4
+from their hash-verified retained Dante configuration, not a discovered or
+fallback exit. Follow Glivela's released `docs/landing-handover.md` for the
+operation details. Source CI and catalog publication prove no production cutover.
 
 Uninstall is two-step: retire the proxy instance inside Glivela and confirm its
 owned runtime is stopped, then uninstall its package through Vastora.
