@@ -1,5 +1,40 @@
 # Changelog
 
+## [0.5.0](https://github.com/petauron/catalog/compare/v0.4.0...v0.5.0) (2026-10-24)
+
+
+### Features
+
+* **glivela:** publish controller and native node handover recipes ([#57](https://github.com/petauron/catalog/issues/57)) ([9a61154](https://github.com/petauron/catalog/commit/9a611542b9afa793612ed2310c50155e127bc626))
+* **runtime:** declare readable native services and unified Glivela nodes ([736a826](https://github.com/petauron/catalog/commit/736a826713876e6a43b51290c029f8649bb3fdba))
+
+
+### Bug Fixes
+
+* bound catalog ledger confirmation and prepare reviewed release handoff ([4343228](https://github.com/petauron/catalog/commit/434322859b64dcae1fdf298afc04192fa8fa8ed5))
+* **catalog:** publish bounded Glivela health recovery release ([#62](https://github.com/petauron/catalog/issues/62)) ([f7fcba5](https://github.com/petauron/catalog/commit/f7fcba5d4c9d5e6950d98bc47279b27d0b835de2))
+* **catalog:** publish Glivela alpha.27 receipt freshness fix ([b9cdc23](https://github.com/petauron/catalog/commit/b9cdc2349abd085ff757e8aedde997dfd2f02008))
+* **catalog:** publish Glivela alpha.33 mount-order repair ([#69](https://github.com/petauron/catalog/issues/69)) ([fdd1db8](https://github.com/petauron/catalog/commit/fdd1db864624c35280f7241afda844103194a239))
+* **catalog:** publish Glivela alpha.35 domain target validation ([#70](https://github.com/petauron/catalog/issues/70)) ([082bad3](https://github.com/petauron/catalog/commit/082bad311594544d361343b13d74066623a9d0c2))
+* **catalog:** publish Glivela alpha.36 resolver compatibility ([#71](https://github.com/petauron/catalog/issues/71)) ([8518ff0](https://github.com/petauron/catalog/commit/8518ff0178b1c89400ba0fc482058799c0fe91b2))
+* **catalog:** publish Glivela alpha.40 temporary availability ([59fd8ca](https://github.com/petauron/catalog/commit/59fd8cab1a171606393042fd7e1b43b721455dbf))
+* **catalog:** publish Glivela alpha.41 private SS2022 transport ([#76](https://github.com/petauron/catalog/issues/76)) ([d56a4c5](https://github.com/petauron/catalog/commit/d56a4c550c58f74f529f9060cd34fd358b3032d8))
+* **catalog:** update Telegram Bot to alpha.5 ([#59](https://github.com/petauron/catalog/issues/59)) ([6e3ef0c](https://github.com/petauron/catalog/commit/6e3ef0cf06cbdadc889e3494c402b08e6227fda7))
+* **catalog:** update Telegram Bot to alpha.6 ([#60](https://github.com/petauron/catalog/issues/60)) ([2a78227](https://github.com/petauron/catalog/commit/2a78227cee8798365db2eb34da6e0dcf12035f48))
+* **glivela:** publish alpha.26 migration-capable packages ([ed4adfa](https://github.com/petauron/catalog/commit/ed4adfa9ce4a2e05cd71a0d358447215ea8f24d7))
+* **glivela:** publish alpha.42 retained policy digest fix ([#77](https://github.com/petauron/catalog/issues/77)) ([231086f](https://github.com/petauron/catalog/commit/231086ffd468d91be78643e0019a7e0632504d65))
+* **glivela:** publish alpha.43 recovery compatibility ([#78](https://github.com/petauron/catalog/issues/78)) ([128c5b6](https://github.com/petauron/catalog/commit/128c5b68ad9a92398ab9310e7041d0a27b67d909))
+* keep reviewed Glivela brand baseline in release handoff ([3d0e4f9](https://github.com/petauron/catalog/commit/3d0e4f93d21a2dc8501d9177c48a27040561d53c))
+* publish Glivela alpha.29 historical health loading ([#63](https://github.com/petauron/catalog/issues/63)) ([880442a](https://github.com/petauron/catalog/commit/880442abda86b916c299bf0f460cd9a3d352a12c))
+* publish Glivela alpha.30 retained quota enforcement ([#64](https://github.com/petauron/catalog/issues/64)) ([870e1a1](https://github.com/petauron/catalog/commit/870e1a15e65425ecde06438f62cb67127cc9ebec))
+* publish Glivela alpha.37 existing DNS compatibility ([bc474f8](https://github.com/petauron/catalog/commit/bc474f8b4276210ddcae7a238229a7181852b2ad))
+* publish Glivela alpha.38 native handover recovery ([#73](https://github.com/petauron/catalog/issues/73)) ([08005f7](https://github.com/petauron/catalog/commit/08005f74577dd06ffb9abe9a5933c51b63ec100b))
+* publish Glivela alpha.39 retained landing handover ([#74](https://github.com/petauron/catalog/issues/74)) ([11e41fd](https://github.com/petauron/catalog/commit/11e41fdba6a85e9dceb675c4f7e4c6d4a958f9a9))
+* publish Glivela alpha.44 live maintenance release ([#79](https://github.com/petauron/catalog/issues/79)) ([6bd7a69](https://github.com/petauron/catalog/commit/6bd7a69cfe6cc7d00ffecf43b53a0824c05c22ae))
+* publish Glivela alpha.45 public transport release ([#80](https://github.com/petauron/catalog/issues/80)) ([389ffd7](https://github.com/petauron/catalog/commit/389ffd71079b7571427fac4c4b988cde09700035))
+* publish verified Glivela alpha.31 handover repair ([#66](https://github.com/petauron/catalog/issues/66)) ([ce557d2](https://github.com/petauron/catalog/commit/ce557d209d053dcf8d2849f58397253876242bcd))
+* publish verified Glivela alpha.32 handover compatibility ([#68](https://github.com/petauron/catalog/issues/68)) ([6e67aa8](https://github.com/petauron/catalog/commit/6e67aa8a3f75281505fca30274a16cbf5524bd22))
+
 ## [0.4.0](https://github.com/petauron/catalog/compare/v0.3.2...v0.4.0) (2026-10-19)
 
 
