@@ -115,7 +115,7 @@ export async function preparePublication(env = process.env, run = execute, verif
     }
     const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps);
     if (!changed) return { noop: true };
-    plan.candidate.generatedAt = new Date().toISOString();
+    plan.candidate.generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
     plan.catalogBytes = Buffer.from(JSON.stringify(plan.candidate));
   }
   const catalog = path.join(work, "candidate.json");
