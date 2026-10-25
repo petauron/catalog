@@ -6,7 +6,7 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
-  ["meridian", "Glivela", "Glivela", "5034dd8d258e405267dc96151d3768ec192e03202195912ecfc4a10116062f14"],
+  ["meridian", "Glivela", "Glivela", "fa682761fd29115aeffd4922fa3411635465bb7f5b22a4a5149e6b69ba36bdd4"],
   ["pulse", "Senulun", "Senulun 监控主机", "f6fa93043b3f87659559d03e438879a2df90a359f0e5e046be8de45252cd86b3"],
   ["pulse-agent", "Senulun Agent", "Senulun 探针", "94e31046266627401232c4fea0352da453477ce7724cdf3b042eeca1ebd9d05e"],
 ];
@@ -15,13 +15,13 @@ test("branding changes display metadata, not installation or artifact identities
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, 3);
+    assert.equal(app.packageRevision, id === "meridian" ? 4 : 3);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela alpha.51 release coordinates, standalone Senulun inputs and all executable,
+    // Reviewed baseline includes Glivela alpha.52 release coordinates and the retained controller port 19443, standalone Senulun inputs and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
@@ -45,7 +45,7 @@ test("brand metadata does not roll back a later published upstream version", () 
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
     assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, 3);
+    assert.equal(app.packageRevision, id === "meridian" ? 4 : 3);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");

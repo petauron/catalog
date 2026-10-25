@@ -285,3 +285,14 @@ alert channel is silently added.
 - [GitHub concurrency queues](https://docs.github.com/en/actions/how-tos/write-workflows/choose-when-workflows-run/control-workflow-concurrency)
 - [GitHub attestation verification and source policy](https://cli.github.com/manual/gh_attestation_verify)
 - [R2 S3 conditional PutObject support](https://developers.cloudflare.com/r2/api/s3/api/)
+
+### Existing Glivela controller handover
+
+Glivela alpha.52 controller recipe revision 4 retains host port 19443 so enrolled
+workers keep their existing private mTLS controller address. The rootless Docker
+controller still listens on container port 9443. The subscription service keeps
+its existing service/publication identity during a managed upgrade. This recipe
+does not itself import data or upgrade installations: complete the final
+stopped-writer handover, preserve the existing certificates and node state, then
+activate the persistent installed bootstrap. Never re-enroll nodes or fabricate
+installation receipts to expose the UI.
