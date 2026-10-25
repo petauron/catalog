@@ -87,7 +87,7 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/glivela
-          ref: 6b7e1d21937e55a7c04edcf92e7a2015ea579adc
+          ref: 412d957ee40123c0003e6f099cd0e9d29a7ef248
           path: meridian-ui
           persist-credentials: false
       - name: Build independent Glivela UI without publication credentials
