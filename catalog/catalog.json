@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.62",
+      "version": "0.1.0-alpha.63",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -604,7 +604,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:d7134d671080071afa35a35aeca98d4dcd76a90f7655bdddb2b5b86942a9ad67"
+          "reference": "ghcr.io/petauron/glivela@sha256:9e37f6e812a694bfb95a7620ce2fdd6a2183d2d6524c2a6590e92ebc8c7acfca"
         }
       ],
       "packageRevision": 4,
@@ -1324,8 +1324,8 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.62",
-      "packageRevision": 1,
+      "version": "0.1.0-alpha.63",
+      "packageRevision": 2,
       "name": {
         "en": "Glivela Entry",
         "zh-CN": "Glivela 线路端"
@@ -1427,16 +1427,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.62/glivela-0.1.0-alpha.62-linux-amd64.tar.gz",
-          "sha256": "a0b476c9642a81cb96e0b522a895d4c29c9f1c40165a2ecc02da5f215de23756",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.63/glivela-0.1.0-alpha.63-linux-amd64.tar.gz",
+          "sha256": "2f54022f8027f7692b868b62d4a5db788a1a27c70803ddac513c2102ad723ed6",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.62/glivela-0.1.0-alpha.62-linux-arm64.tar.gz",
-          "sha256": "dfd4930da5bb388254445ffed3c33ab141e5613676ed8b715972cdbbb274f11c",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.63/glivela-0.1.0-alpha.63-linux-arm64.tar.gz",
+          "sha256": "a1abb96d78bc232057c70aeaf8f789a2286aed7e2885f0ec9a0c16e65ba62f97",
           "format": "tar.gz"
         }
       ],
@@ -1577,7 +1577,7 @@
               "start": "manual",
               "managedUser": "xray",
               "stateCredentials": {
-                "configuration": {
+                "configuration.json": {
                   "storage": "node-state",
                   "path": "config.json"
                 }
@@ -1608,7 +1608,7 @@
                   {
                     "runtime": {
                       "kind": "credential-file",
-                      "name": "configuration"
+                      "name": "configuration.json"
                     }
                   }
                 ]
@@ -1629,8 +1629,8 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.62",
-      "packageRevision": 1,
+      "version": "0.1.0-alpha.63",
+      "packageRevision": 2,
       "name": {
         "en": "Glivela Landing",
         "zh-CN": "Glivela 落地端"
@@ -1718,16 +1718,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.62/glivela-0.1.0-alpha.62-linux-amd64.tar.gz",
-          "sha256": "a0b476c9642a81cb96e0b522a895d4c29c9f1c40165a2ecc02da5f215de23756",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.63/glivela-0.1.0-alpha.63-linux-amd64.tar.gz",
+          "sha256": "2f54022f8027f7692b868b62d4a5db788a1a27c70803ddac513c2102ad723ed6",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.62/glivela-0.1.0-alpha.62-linux-arm64.tar.gz",
-          "sha256": "dfd4930da5bb388254445ffed3c33ab141e5613676ed8b715972cdbbb274f11c",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.63/glivela-0.1.0-alpha.63-linux-arm64.tar.gz",
+          "sha256": "a1abb96d78bc232057c70aeaf8f789a2286aed7e2885f0ec9a0c16e65ba62f97",
           "format": "tar.gz"
         }
       ],
@@ -1868,7 +1868,7 @@
               "start": "manual",
               "managedUser": "xray",
               "stateCredentials": {
-                "configuration": {
+                "configuration.json": {
                   "storage": "node-state",
                   "path": "config.json"
                 }
@@ -1898,7 +1898,7 @@
                   {
                     "runtime": {
                       "kind": "credential-file",
-                      "name": "configuration"
+                      "name": "configuration.json"
                     }
                   }
                 ]

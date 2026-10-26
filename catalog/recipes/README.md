@@ -34,7 +34,7 @@ policy and the worker through its immutable local installation inventory; no
 Vastora proxy commands, lifecycle RPC, component matrix or Docker socket.
 
 The root node owns the private persistent state. The manual worker receives
-only a read-only systemd credential snapshot of its JSON configuration and
+only a read-only systemd credential snapshot named `configuration.json` and
 cannot read controller credentials or the node journal. Upgrades retain
 application-owned configuration and data rather than rerun initialization.
 Generic uninstall backs up and stops both declared native services, retaining
@@ -59,3 +59,8 @@ separately published UI asset identities. Complete installed data handover,
 failure recovery and real route/reporting verification before claiming #54
 complete. Source releases, signed catalog publication and deployment are
 separate operations.
+
+The JSON credential filename requires the matching Glivela alpha.63 or later
+entry process verifier. Persistent state stays `config.json`; runtime identities,
+source permissions and accounting are retained. This fixes the actual installed
+Xray 26.10.21 startup path, not just temporary config-test filenames.
