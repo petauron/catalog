@@ -6,7 +6,7 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
-  ["meridian", "Glivela", "Glivela", "d52d43f4a0e8d0c1f79e9c3fa99b24d1f5337c840fa969eb4714e4543e30fe0e"],
+  ["meridian", "Glivela", "Glivela", "a50de600cdbeccb0296598334cfa4d4df5d82308f8680d883d2081592df23168"],
   ["pulse", "Senulun", "Senulun 监控主机", "f6fa93043b3f87659559d03e438879a2df90a359f0e5e046be8de45252cd86b3"],
   ["pulse-agent", "Senulun Agent", "Senulun 探针", "94e31046266627401232c4fea0352da453477ce7724cdf3b042eeca1ebd9d05e"],
 ];
@@ -21,7 +21,7 @@ test("branding changes display metadata, not installation or artifact identities
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela alpha.60 release coordinates and the retained controller port 19443, standalone Senulun inputs and all executable,
+    // Reviewed baseline includes Glivela alpha.61 release coordinates and the retained controller port 19443, standalone Senulun inputs and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
