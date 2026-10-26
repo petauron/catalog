@@ -51,13 +51,13 @@
         "name": "xray",
         "start": "manual",
         "managedUser": "xray",
-        "stateCredentials": {"configuration": {"storage": "node-state", "path": "config.json"}},
+        "stateCredentials": {"configuration.json": {"storage": "node-state", "path": "config.json"}},
         "process": {
           "artifact": "bundle",
           "executable": "xray",
           "bindService": true,
           "files": [{"path": "xray", "executable": true}],
-          "arguments": [{"literal": "run"}, {"literal": "-format"}, {"literal": "json"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration"}}]
+          "arguments": [{"literal": "run"}, {"literal": "-format"}, {"literal": "json"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration.json"}}]
         }
       }
     ]
