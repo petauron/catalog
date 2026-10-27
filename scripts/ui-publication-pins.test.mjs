@@ -7,7 +7,7 @@ test('Glivela alpha.65 publication builds solely from its reviewed application s
   const catalog=JSON.parse(readFileSync(new URL('../catalog/catalog.json',import.meta.url),'utf8'));
   assert.equal(catalog.apps.find(app=>app.id==='meridian').version,'0.1.0-alpha.65');
   const controller=catalog.apps.find(app=>app.id==='meridian');
-  assert.equal(controller.packageRevision,4);
+  assert.equal(controller.packageRevision,5);
   assert.deepEqual(controller.services.find(service=>service.name==='controller'),{name:'controller',protocol:'https',containerPort:9443,defaultHostPort:19443,management:true});
   assert.doesNotMatch(workflow,/VASTORA_WEB_SOURCE|ui-dependency|repository: petauron\/vastora/);
   assert.match(workflow,/ref: d8c718fa36c78a40f72f19dd1352d09d4b72f5d4/);

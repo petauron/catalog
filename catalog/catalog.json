@@ -599,6 +599,20 @@
           "required": false,
           "secret": false,
           "default": ""
+        },
+        {
+          "key": "panel_access_json",
+          "type": "string",
+          "secret": true,
+          "required": true,
+          "label": {
+            "en": "Managed panel access",
+            "zh-CN": "受管面板访问"
+          },
+          "description": {
+            "en": "Provisioned by Vastora; not administrator input.",
+            "zh-CN": "由 Vastora 自动供应，不需要手工填写。"
+          }
         }
       ],
       "images": [
@@ -607,7 +621,7 @@
           "reference": "ghcr.io/petauron/glivela@sha256:51881c7a4f24af7922949247d98b6ebcd386e499b4cf3cb605c7495d631b4114"
         }
       ],
-      "packageRevision": 4,
+      "packageRevision": 5,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -659,7 +673,8 @@
               "credentials": {
                 "certificate": "certificate_pem",
                 "key": "private_key_pem",
-                "ca": "ca_pem"
+                "ca": "ca_pem",
+                "panel-access": "panel_access_json"
               },
               "arguments": [
                 {
@@ -725,6 +740,12 @@
                     },
                     "subscriptionsListen": {
                       "config": "subscriptions_listen"
+                    },
+                    "panelAccess": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "panel-access"
+                      }
                     }
                   }
                 }
