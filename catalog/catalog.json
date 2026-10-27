@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.69",
+      "version": "0.1.0-alpha.70",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -618,7 +618,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:4e2a5b1f87db30f945f7abee2416d0833acc0811a3b682b25dc2fc245642ee48"
+          "reference": "ghcr.io/petauron/glivela@sha256:31bb6040d7634780f6d1deec8cd3aed6c647108d276306b426f241c047ca0e8f"
         }
       ],
       "packageRevision": 5,
@@ -1345,7 +1345,7 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.69",
+      "version": "0.1.0-alpha.70",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Entry",
@@ -1448,16 +1448,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.69/glivela-0.1.0-alpha.69-linux-amd64.tar.gz",
-          "sha256": "55efd039b1f97f0856228da8f71109a0f0d6c36c2116ec9f794e39c4bb7981f1",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.70/glivela-0.1.0-alpha.70-linux-amd64.tar.gz",
+          "sha256": "8f5ff640d3a68e9108fba67760364794510918c741379a9f93ba7e74f6c45d77",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.69/glivela-0.1.0-alpha.69-linux-arm64.tar.gz",
-          "sha256": "63b4a8114c54bedfc3a1acb203036426190bc94f8e70947299fbee0fd017410b",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.70/glivela-0.1.0-alpha.70-linux-arm64.tar.gz",
+          "sha256": "170583c49b76125345d843c9c884de2fdc3b34e2608c7fb682b8c527cc5f4e78",
           "format": "tar.gz"
         }
       ],
@@ -1650,7 +1650,7 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.69",
+      "version": "0.1.0-alpha.70",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Landing",
@@ -1739,16 +1739,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.69/glivela-0.1.0-alpha.69-linux-amd64.tar.gz",
-          "sha256": "55efd039b1f97f0856228da8f71109a0f0d6c36c2116ec9f794e39c4bb7981f1",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.70/glivela-0.1.0-alpha.70-linux-amd64.tar.gz",
+          "sha256": "8f5ff640d3a68e9108fba67760364794510918c741379a9f93ba7e74f6c45d77",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.69/glivela-0.1.0-alpha.69-linux-arm64.tar.gz",
-          "sha256": "63b4a8114c54bedfc3a1acb203036426190bc94f8e70947299fbee0fd017410b",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.70/glivela-0.1.0-alpha.70-linux-arm64.tar.gz",
+          "sha256": "170583c49b76125345d843c9c884de2fdc3b34e2608c7fb682b8c527cc5f4e78",
           "format": "tar.gz"
         }
       ],
