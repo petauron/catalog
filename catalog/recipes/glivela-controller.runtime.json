@@ -18,7 +18,7 @@
       ],
       "ports": [{"service": "controller"}, {"service": "subscription"}],
       "health": {"service": "controller"},
-        "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
+        "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem", "panel-access": "panel_access_json"},
         "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "/etc/glivela/controller.json"}}],
         "configFiles": [{
           "path": "/etc/glivela/controller.json",
@@ -33,7 +33,8 @@
             "listen": {"runtime": {"kind": "service-address", "name": "controller"}},
             "administrators": {"array": [{"config": "administrator_certificate_id"}]},
             "businessKey": {"config": "business_key_path"},
-            "subscriptionsListen": {"config": "subscriptions_listen"}
+            "subscriptionsListen": {"config": "subscriptions_listen"},
+            "panelAccess": {"runtime": {"kind": "credential-file", "name": "panel-access"}}
           }
         }]
     }]
