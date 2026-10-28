@@ -47,14 +47,14 @@ URLs or checksums. It independently checks:
 
 ### Canonical product repositories
 
-The `pulse` source key now resolves only to `petauron/senlun`, with future images
-at `ghcr.io/petauron/senlun`. New release requests and attestations must match
-that repository exactly; there is no fallback to the former signer. Immutable
-app IDs `pulse` / `pulse-agent` remain installation identities. New verified
-releases use `senlun-<tag>-linux-<arch>.tar.gz`, canonical binary names and
-`SENLUN_*` configuration. `applyRelease` materializes that runtime recipe only
-with the verified new source assets; the historical base recipe is not rewritten.
-The matching Vastora migration must be present before upgrading installations.
+The `senlun` source key resolves only to `petauron/senlun`, with images at
+`ghcr.io/petauron/senlun`. New release requests and attestations must match
+that repository exactly. Active recipes use `senlun` and `senlun-agent` IDs;
+the old `pulse` identities remain in immutable signed history only. Existing
+instances require the reviewed Vastora identity migration before publication.
+Verified releases use `senlun-<tag>-linux-<arch>.tar.gz`, canonical binaries and
+`SENLUN_*` configuration. Do not publish this catalog change until the
+consumer migration is ready and checked against the same signed release.
 
 Glivela UI checkout uses `petauron/glivela`. Published versions through alpha.21
 retain `ui-meridian-<version>` names. Subsequent versions use
@@ -142,8 +142,8 @@ extra workflow credential or relaxed signing environment is needed.
 
 ## Senlun upgrade handoff
 
-One verified Senlun release updates both catalog entries together: `pulse` pins
-the multiarchitecture Service image digest, and `pulse-agent` pins the amd64 and
+One verified Senlun release updates both catalog entries together: `senlun` pins
+the multiarchitecture Service image digest, and `senlun-agent` pins the amd64 and
 arm64 archive URLs and checksums. The completed release ledger contains the
 exact candidate and source request, so operators can review what was published.
 Normal version changes use this manual release-input workflow; PRs review changes

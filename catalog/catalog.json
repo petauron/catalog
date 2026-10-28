@@ -775,21 +775,21 @@
       }
     },
     {
-      "id": "pulse",
-      "version": "0.1.0-alpha.5",
+      "id": "senlun",
+      "version": "0.1.0-alpha.31",
       "name": {
-        "en": "Senulun",
-        "zh-CN": "Senulun 监控主机"
+        "en": "Senlun",
+        "zh-CN": "Senlun 监控主机"
       },
       "description": {
-        "en": "Independent server monitoring with its own dashboard, authentication and data. Manage nodes and create Agent enrollment tokens in Senulun.",
-        "zh-CN": "独立服务器监控应用，自带面板、登录和数据存储。在 Senulun 中管理节点并创建探针配对令牌。"
+        "en": "Independent server monitoring with its own dashboard, authentication and data. Manage nodes and create Agent enrollment tokens in Senlun.",
+        "zh-CN": "独立服务器监控应用，自带面板、登录和数据存储。在 Senlun 中管理节点并创建探针配对令牌。"
       },
       "license": "Apache-2.0",
       "images": [
         {
-          "name": "pulse",
-          "reference": "ghcr.io/petauron/pulse@sha256:164e0c7c5ff851fe665e38426866d4677b9fda4f47a344a4915e5c912cc0e635"
+          "name": "senlun",
+          "reference": "ghcr.io/petauron/senlun@sha256:785c01d5fe879d9d27b43367630b55753109dcb8ccd4af742214e34b9bc4e6ae"
         }
       ],
       "services": [
@@ -815,8 +815,8 @@
             "zh-CN": "面板 HTTPS 地址"
           },
           "description": {
-            "en": "The exact HTTPS origin used in your browser, such as https://senulun.example.com. No subpath. Configure the matching access entry before signing in. Agents use their separately configured reachable HTTPS URL.",
-            "zh-CN": "浏览器实际访问的 HTTPS 地址，例如 https://senulun.example.com，不含子路径。登录前需配置匹配的访问入口。探针使用单独配置的、可访问的 HTTPS 地址。"
+            "en": "The exact HTTPS origin used in your browser, such as https://senlun.example.com. No subpath. Configure the matching access entry before signing in. Agents use their separately configured reachable HTTPS URL.",
+            "zh-CN": "浏览器实际访问的 HTTPS 地址，例如 https://senlun.example.com，不含子路径。登录前需配置匹配的访问入口。探针使用单独配置的、可访问的 HTTPS 地址。"
           },
           "required": true,
           "secret": false
@@ -830,14 +830,14 @@
           },
           "description": {
             "en": "Optional exact transport peer IP. Enable only when that proxy discards client-supplied X-Real-IP and overwrites it with the verified visitor IP. Empty disables forwarded visitor IPs.",
-            "zh-CN": "可选，填写反代连接 Senulun 时的准确来源 IP。仅在反代会丢弃客户端提供的 X-Real-IP 并用已核实的访客 IP 覆写时启用。留空不信任转发的访客 IP。"
+            "zh-CN": "可选，填写反代连接 Senlun 时的准确来源 IP。仅在反代会丢弃客户端提供的 X-Real-IP 并用已核实的访客 IP 覆写时启用。留空不信任转发的访客 IP。"
           },
           "required": false,
           "secret": false,
           "default": ""
         }
       ],
-      "packageRevision": 3,
+      "packageRevision": 1,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -850,21 +850,21 @@
         "docker": {
           "containers": [
             {
-              "name": "pulse",
-              "image": "pulse",
+              "name": "senlun",
+              "image": "senlun",
               "user": "65532:65532",
               "environment": {
-                "SENULUN_PUBLIC_URL": {
+                "SENLUN_PUBLIC_URL": {
                   "config": "public_url"
                 },
-                "SENULUN_TRUSTED_PROXY_IP": {
+                "SENLUN_TRUSTED_PROXY_IP": {
                   "config": "trusted_proxy_ip"
                 }
               },
               "mounts": [
                 {
                   "storage": "data",
-                  "target": "/var/lib/senulun"
+                  "target": "/var/lib/senlun"
                 }
               ],
               "ports": [
@@ -888,34 +888,34 @@
       }
     },
     {
-      "id": "pulse-agent",
-      "version": "0.1.0-alpha.5",
+      "id": "senlun-agent",
+      "version": "0.1.0-alpha.31",
       "name": {
-        "en": "Senulun Agent",
-        "zh-CN": "Senulun 探针"
+        "en": "Senlun Agent",
+        "zh-CN": "Senlun 探针"
       },
       "description": {
-        "en": "Outbound host monitoring. Supply a reachable Senulun HTTPS URL and an enrollment token created in Senulun, including for a service installed outside Vastora. No Docker required.",
-        "zh-CN": "主动连接监控主机的原生探针。填写可访问的 Senulun HTTPS 地址和在 Senulun 中创建的配对令牌，支持 Vastora 之外独立安装的监控主机，无需 Docker。"
+        "en": "Outbound host monitoring. Supply a reachable Senlun HTTPS URL and an enrollment token created in Senlun, including for a service installed outside Vastora. No Docker required.",
+        "zh-CN": "主动连接监控主机的原生探针。填写可访问的 Senlun HTTPS 地址和在 Senlun 中创建的配对令牌，支持 Vastora 之外独立安装的监控主机，无需 Docker。"
       },
       "license": "Apache-2.0",
       "hostAccess": true,
       "artifacts": [
         {
-          "name": "pulse-agent",
+          "name": "senlun-agent",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.5/pulse-v0.1.0-alpha.5-linux-x86_64.tar.gz",
-          "sha256": "7928ec768d464a724520e82b1bfb166ff502c8f703f12418c7e6a9200335c31e",
+          "url": "https://github.com/petauron/senlun/releases/download/v0.1.0-alpha.31/senlun-v0.1.0-alpha.31-linux-x86_64.tar.gz",
+          "sha256": "83d5720cea0307472639d6f0010a9b73b433ab8bd21715d5dcb5d900c5af9cfe",
           "format": "tar.gz",
           "stripComponents": 1
         },
         {
-          "name": "pulse-agent",
+          "name": "senlun-agent",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/pulse/releases/download/v0.1.0-alpha.5/pulse-v0.1.0-alpha.5-linux-aarch64.tar.gz",
-          "sha256": "30fe045b9e2acb5634bb09f000d877f90b510acc3c1df380ec66cfd8df2bdeeb",
+          "url": "https://github.com/petauron/senlun/releases/download/v0.1.0-alpha.31/senlun-v0.1.0-alpha.31-linux-aarch64.tar.gz",
+          "sha256": "a8281f405c4d8a71f583c56c8f4ba2db2958a9f366110e86c887d448161a329f",
           "format": "tar.gz",
           "stripComponents": 1
         }
@@ -944,8 +944,8 @@
             "zh-CN": "自动国家或地区查询"
           },
           "description": {
-            "en": "geojs (default), ipinfo, or disabled. The provider sees the public egress IP and Agent version, never Senulun credentials or metrics. Omit on upgrade to retain the current choice.",
-            "zh-CN": "填写 geojs（默认）、ipinfo 或 disabled。查询服务会看到出口公网 IP 和探针版本，不会收到 Senulun 凭据或监控指标。升级时留空保留当前选择。"
+            "en": "geojs (default), ipinfo, or disabled. The provider sees the public egress IP and Agent version, never Senlun credentials or metrics. Omit on upgrade to retain the current choice.",
+            "zh-CN": "填写 geojs（默认）、ipinfo 或 disabled。查询服务会看到出口公网 IP 和探针版本，不会收到 Senlun 凭据或监控指标。升级时留空保留当前选择。"
           },
           "required": false,
           "secret": false,
@@ -955,8 +955,8 @@
           "key": "service_url",
           "type": "string",
           "label": {
-            "en": "Senulun HTTPS URL",
-            "zh-CN": "Senulun HTTPS 地址"
+            "en": "Senlun HTTPS URL",
+            "zh-CN": "Senlun HTTPS 地址"
           },
           "description": {
             "en": "An HTTPS URL ending in / that this host can reach without an interactive browser login, for example https://monitor.example.com/. The service can be installed independently of Vastora.",
@@ -973,8 +973,8 @@
             "zh-CN": "节点名称"
           },
           "description": {
-            "en": "The name shown for this host in Senulun.",
-            "zh-CN": "此主机在 Senulun 中显示的名称。"
+            "en": "The name shown for this host in Senlun.",
+            "zh-CN": "此主机在 Senlun 中显示的名称。"
           },
           "required": true,
           "secret": false
@@ -987,8 +987,8 @@
             "zh-CN": "节点分组"
           },
           "description": {
-            "en": "Optional group shown in Senulun. Leave empty for no group.",
-            "zh-CN": "Senulun 中的节点分组，可留空。"
+            "en": "Optional group shown in Senlun. Leave empty for no group.",
+            "zh-CN": "Senlun 中的节点分组，可留空。"
           },
           "required": false,
           "secret": false,
@@ -998,18 +998,18 @@
           "key": "enrollment_token",
           "type": "string",
           "label": {
-            "en": "Senulun enrollment token",
-            "zh-CN": "Senulun 配对令牌"
+            "en": "Senlun enrollment token",
+            "zh-CN": "Senlun 配对令牌"
           },
           "description": {
-            "en": "Create a short-lived, single-use token in Senulun before installing this Agent. Only initial enrollment uses it; later upgrades keep the Agent's saved identity.",
-            "zh-CN": "安装前在 Senulun 中创建短期、一次性的配对令牌。仅首次配对使用；后续升级保留探针已保存的身份。"
+            "en": "Create a short-lived, single-use token in Senlun before installing this Agent. Only initial enrollment uses it; later upgrades keep the Agent's saved identity.",
+            "zh-CN": "安装前在 Senlun 中创建短期、一次性的配对令牌。仅首次配对使用；后续升级保留探针已保存的身份。"
           },
           "required": true,
           "secret": true
         }
       ],
-      "packageRevision": 3,
+      "packageRevision": 1,
       "runtime": {
         "kind": "systemd",
         "version": 1,
@@ -1020,15 +1020,15 @@
           }
         ],
         "systemd": {
-          "artifact": "pulse-agent",
-          "executable": "senulun-agent",
+          "artifact": "senlun-agent",
+          "executable": "senlun-agent",
           "files": [
             {
-              "path": "senulun-agent",
+              "path": "senlun-agent",
               "executable": true
             }
           ],
-          "user": "vastora-senulun",
+          "user": "vastora-senlun",
           "stateDirectories": [
             "state"
           ],
@@ -1036,29 +1036,29 @@
             "enrollment-token": "enrollment_token"
           },
           "environment": {
-            "SENULUN_SERVICE_URL": {
+            "SENLUN_SERVICE_URL": {
               "config": "service_url"
             },
-            "SENULUN_NODE_NAME": {
+            "SENLUN_NODE_NAME": {
               "config": "node_name"
             },
-            "SENULUN_NODE_GROUP": {
+            "SENLUN_NODE_GROUP": {
               "config": "node_group"
             },
-            "SENULUN_NODE_REGION": {
+            "SENLUN_NODE_REGION": {
               "config": "node_region"
             },
-            "SENULUN_GEOIP_PROVIDER": {
+            "SENLUN_GEOIP_PROVIDER": {
               "config": "geoip_provider"
             },
-            "SENULUN_CREDENTIALS_PATH": {
+            "SENLUN_CREDENTIALS_PATH": {
               "runtime": {
                 "kind": "state-directory",
                 "name": "state",
                 "path": "agent-credentials.json"
               }
             },
-            "SENULUN_ENROLLMENT_TOKEN_FILE": {
+            "SENLUN_ENROLLMENT_TOKEN_FILE": {
               "runtime": {
                 "kind": "credential-file",
                 "name": "enrollment-token"
