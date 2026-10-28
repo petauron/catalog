@@ -15,7 +15,7 @@ the catalog publication workflow with its tag, source SHA, and release run ID.
 Applications need no notification App or cross-repository credentials. The publisher
 independently verifies source provenance and both platform artifacts, records
 immutable signed bytes, and activates the catalog with a conditional write.
-Normal version updates do not create source commits. Senulun is the first registered
+Normal version updates do not create source commits. Senlun is the first registered
 source. Signed metadata uses a long-lived expiry, so an unchanged catalog remains
 installable without scheduled or manual renewal. Previously accepted clients
 reject older revisions; a new client cannot detect a mirror hiding newer releases.
