@@ -217,6 +217,12 @@ export function migrateSenlunRecipe(app, service) {
   for (const field of ["name", "description"]) {
     for (const locale of Object.keys(app[field] ?? {})) app[field][locale] = app[field][locale].replaceAll("Senulun", "Senlun");
   }
+  for (const field of app.config ?? []) {
+    for (const key of ["label", "description", "help"]) {
+      if (typeof field[key] === "string") field[key] = field[key].replaceAll("Senulun", "Senlun");
+      else for (const locale of Object.keys(field[key] ?? {})) field[key][locale] = field[key][locale].replaceAll("Senulun", "Senlun");
+    }
+  }
   const renameEnvironment = environment => Object.fromEntries(Object.entries(environment ?? {}).map(([key, value]) => [key.replace(/^SENULUN_/, "SENLUN_"), value]));
   if (service) {
     for (const container of app.runtime.docker.containers) {

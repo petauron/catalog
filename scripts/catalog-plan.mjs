@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, lstatSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validatePublication, verifyLedgerAsset } from "./publish-catalog.mjs";
-import { applyRelease, compareVersions, execute, sha256, validateRequest, verifyRelease } from "./release-source.mjs";
+import { applyRelease, compareVersions, execute, migrateSenlunRecipe, sha256, validateRequest, verifyRelease } from "./release-source.mjs";
 
 export function loadImportedLedger(directory) {
   const index = JSON.parse(readFileSync(path.join(directory, "index.json")));
@@ -49,6 +49,9 @@ export function mergeReviewedRecipes(reviewed, active) {
     // Only overlay coordinates when source recipes lag an automatic release.
     if (app.version === previous.version) continue;
     app.version = previous.version;
+    // Keep the verified release runtime contract when reviewed recipes lag it.
+    if (app.id === "pulse" && previous.runtime?.docker?.containers.some(container => container.environment?.SENLUN_PUBLIC_URL)) migrateSenlunRecipe(app, true);
+    if (app.id === "pulse-agent" && previous.runtime?.systemd?.executable === "senlun-agent") migrateSenlunRecipe(app, false);
     app.images = app.images?.map(image => ({ ...image, reference: previous.images?.find(old => old.name === image.name)?.reference ?? image.reference }));
     app.artifacts = app.artifacts?.map(artifact => {
       const old = previous.artifacts?.find(item => item.name === artifact.name && item.operatingSystem === artifact.operatingSystem && item.architecture === artifact.architecture);
