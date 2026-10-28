@@ -15,7 +15,7 @@ test("reviewed product identities and release coordinates are pinned", () => {
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, id === "meridian" ? 5 : 1);
+    assert.equal(app.packageRevision, id === "meridian" ? 5 : 4);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
@@ -33,7 +33,7 @@ test("brand metadata does not roll back a later published upstream version", () 
   for (const [id] of products) {
     const app = active.apps.find(item => item.id === id);
     app.version = "0.2.0";
-    app.packageRevision = 1;
+    app.packageRevision = id === "meridian" ? 1 : 4;
     for (const image of app.images ?? []) image.reference = "accepted-image-digest";
     for (const artifact of app.artifacts ?? []) {
       artifact.url = "https://example.invalid/accepted-artifact";
@@ -45,7 +45,7 @@ test("brand metadata does not roll back a later published upstream version", () 
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
     assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, id === "meridian" ? 5 : 1);
+    assert.equal(app.packageRevision, id === "meridian" ? 5 : 4);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");
