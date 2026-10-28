@@ -11,7 +11,7 @@ The protected `publish.yml` workflow runs only through manual `workflow_dispatch
 After the application's release publishing job succeeds, an administrator selects
 `kind=release` and supplies `application`, `tag`, the tag's exact source `sha`, and
 the successful source release `run_id`. The GitHub Actions page exposes these
-fields; the equivalent CLI call for a completed, reviewed Senulun release is:
+fields; the equivalent CLI call for a completed, reviewed Senlun release is:
 
 ```sh
 gh workflow run publish.yml --repo petauron/catalog --ref main \
@@ -28,7 +28,7 @@ handles a reviewed recipe change.
 Neither an application release nor a catalog source change triggers publication
 automatically. No periodic workflow is configured.
 
-`catalog/sources.json` is the reviewed source registry. Senulun is the first
+`catalog/sources.json` is the reviewed source registry. Senlun is the first
 registered source, including its Alpha releases. The publisher derives its repository,
 workflow, image repository and attachment names from that registry, not request
 URLs or checksums. It independently checks:
@@ -47,12 +47,12 @@ URLs or checksums. It independently checks:
 
 ### Canonical product repositories
 
-The `pulse` source key now resolves only to `petauron/senulun`, with future images
-at `ghcr.io/petauron/senulun`. New release requests and attestations must match
+The `pulse` source key now resolves only to `petauron/senlun`, with future images
+at `ghcr.io/petauron/senlun`. New release requests and attestations must match
 that repository exactly; there is no fallback to the former signer. Immutable
 app IDs `pulse` / `pulse-agent` remain installation identities. New verified
-releases use `senulun-<tag>-linux-<arch>.tar.gz`, canonical binary names and
-`SENULUN_*` configuration. `applyRelease` materializes that runtime recipe only
+releases use `senlun-<tag>-linux-<arch>.tar.gz`, canonical binary names and
+`SENLUN_*` configuration. `applyRelease` materializes that runtime recipe only
 with the verified new source assets; the historical base recipe is not rewritten.
 The matching Vastora migration must be present before upgrading installations.
 
@@ -109,7 +109,7 @@ above is historical, not an input to rerun against the new source policy. Do not
 rename or delete the existing GHCR package. Merging this policy changes future
 verification only: it neither signs a catalog nor upgrades installed apps.
 
-Senulun does not notify the catalog and needs no cross-repository credentials.
+Senlun does not notify the catalog and needs no cross-repository credentials.
 The administrator chooses a specific completed release. The catalog verifies its
 tag commit, release job, and artifacts against the reviewed source rule. Drafts,
 unapproved prereleases and older versions are rejected. A pending publication
@@ -140,9 +140,9 @@ A generic manual workflow, stale attempt, fork, unchecked commit or mismatched
 provenance is rejected. No bypass, source re-release, moved tag, rewritten asset,
 extra workflow credential or relaxed signing environment is needed.
 
-## Senulun upgrade handoff
+## Senlun upgrade handoff
 
-One verified Senulun release updates both catalog entries together: `pulse` pins
+One verified Senlun release updates both catalog entries together: `pulse` pins
 the multiarchitecture Service image digest, and `pulse-agent` pins the amd64 and
 arm64 archive URLs and checksums. The completed release ledger contains the
 exact candidate and source request, so operators can review what was published.
@@ -153,28 +153,28 @@ coordinates and cannot silently revert the application version.
 
 After publication, refresh the official catalog in Vastora Settings and verify
 its revision and signature status. Open the installed applications to see available
-updates. Senulun Service and Senulun Agent are separate upgrade targets: upgrading
+updates. Senlun Service and Senlun Agent are separate upgrade targets: upgrading
 the Service does not upgrade any collector, and refreshing the catalog upgrades
 neither. Use each application's managed upgrade flow and verify its completed
 task and installed version. Check collector connectivity and reported version in
-Senulun as well; a saved target version alone is not runtime evidence.
+Senlun as well; a saved target version alone is not runtime evidence.
 
-The standalone Senulun recipes require a compatible Center/Agent before catalog
-publication. Service administrator setup happens inside Senulun, without a package
-bootstrap token. For a new Agent, create an enrollment token in Senulun and supply
+The standalone Senlun recipes require a compatible Center/Agent before catalog
+publication. Service administrator setup happens inside Senlun, without a package
+bootstrap token. For a new Agent, create an enrollment token in Senlun and supply
 the Service HTTPS URL, node name, optional group and token in the install form.
 The Service can run outside Vastora. Existing identities and resource names are
 preserved; this recipe update does not reenroll or restart installed Agents.
 
 Collectors alpha.3 and later support country discovery. With no manual country,
 the default GeoJS request shares the node's public egress IP and Agent version
-with GeoJS, never Senulun credentials or metrics. In the collector configuration,
+with GeoJS, never Senlun credentials or metrics. In the collector configuration,
 `node_region` sets the manual country (which takes precedence) and
 `geoip_provider=disabled` disables discovery. Upgrading an existing collector
 retains its identity, credentials, manual region and explicit disabled setting;
 do not reenroll it to obtain location support. See the
 [Vastora collector contract](https://github.com/petauron/vastora/blob/main/docs/senulun-collector-config.md)
-and [Senulun operations guide](https://github.com/petauron/senulun/blob/main/docs/OPERATIONS.md)
+and [Senlun operations guide](https://github.com/petauron/senlun/blob/main/docs/OPERATIONS.md)
 for the supported settings and privacy behavior.
 
 If publication or upgrade fails, inspect that operation before retrying. A failed
