@@ -161,7 +161,7 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   console.log("Release verification stage: native-archives-and-attestations");
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");
-    if (rule.archivePrefix !== "senulun") throw new Error("Unreviewed archive naming contract");
+    if (rule.archivePrefix !== "senlun") throw new Error("Unreviewed archive naming contract");
     const name = `${rule.archivePrefix}-${request.tag}-linux-${archiveArch}.tar.gz`;
     const raw = await asset(name, 128 * 1024 * 1024);
     const digest = sha256(raw);
@@ -205,7 +205,7 @@ export function applyRelease(catalog, verified, rule) {
         return { ...previous, url: artifact.url, sha256: artifact.sha256 };
       });
     }
-    if (rule.runtimeBrand === "senulun" && app.runtime) migrateSenulunRecipe(app, id === rule.imageApp);
+    if (rule.runtimeBrand === "senlun" && app.runtime) migrateSenlunRecipe(app, id === rule.imageApp);
     if (original.version === app.version && JSON.stringify(original) !== JSON.stringify(app)) throw new Error("Published application identity is immutable");
   }
   return next;
@@ -213,21 +213,24 @@ export function applyRelease(catalog, verified, rule) {
 
 // Only materialize new runtime contracts alongside a newly verified release.
 // Never rewrite the reviewed historical recipe or its immutable release bytes.
-export function migrateSenulunRecipe(app, service) {
-  const renameEnvironment = environment => Object.fromEntries(Object.entries(environment ?? {}).map(([key, value]) => [key.replace(/^PULSE_/, "SENULUN_"), value]));
+export function migrateSenlunRecipe(app, service) {
+  for (const field of ["name", "description"]) {
+    for (const locale of Object.keys(app[field] ?? {})) app[field][locale] = app[field][locale].replaceAll("Senulun", "Senlun");
+  }
+  const renameEnvironment = environment => Object.fromEntries(Object.entries(environment ?? {}).map(([key, value]) => [key.replace(/^SENULUN_/, "SENLUN_"), value]));
   if (service) {
     for (const container of app.runtime.docker.containers) {
       container.environment = renameEnvironment(container.environment);
       for (const mount of container.mounts ?? []) {
-        if (mount.storage === "data" && mount.target === "/var/lib/pulse") mount.target = "/var/lib/senulun";
+        if (mount.storage === "data" && mount.target === "/var/lib/senulun") mount.target = "/var/lib/senlun";
       }
       container.arguments = [{ literal: "migrate-and-serve" }];
     }
   } else {
     const native = app.runtime.systemd;
     native.environment = renameEnvironment(native.environment);
-    native.executable = "senulun-agent";
-    native.user = "vastora-senulun";
-    native.files = native.files.map(file => file.path === "pulse-agent" ? { ...file, path: "senulun-agent" } : file);
+    native.executable = "senlun-agent";
+    native.user = "vastora-senlun";
+    native.files = native.files.map(file => file.path === "senulun-agent" ? { ...file, path: "senlun-agent" } : file);
   }
 }
