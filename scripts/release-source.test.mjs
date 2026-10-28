@@ -51,8 +51,8 @@ test("source input contains no URL/digest authority and must map to a reviewed s
 });
 
 test("canonical source migration preserves app identities and rejects the former signer", () => {
-  assert.equal(rule.repository, "petauron/senulun");
-  assert.equal(rule.image, "ghcr.io/petauron/senulun");
+  assert.equal(rule.repository, "petauron/senlun");
+  assert.equal(rule.image, "ghcr.io/petauron/senlun");
   assert.equal(rule.imageApp, "pulse");
   assert.equal(rule.artifactApp, "pulse-agent");
   const info = identity();
@@ -61,7 +61,7 @@ test("canonical source migration preserves app identities and rejects the former
   assert.throws(() => verifyReleaseIdentity(request, rule, info), /identity mismatch/);
   const run = recoveryIdentity().run;
   const statements = recoveryStatements(run);
-  const former = JSON.parse(JSON.stringify(statements).replaceAll("petauron/senulun", "petauron/pulse"));
+  const former = JSON.parse(JSON.stringify(statements).replaceAll("petauron/senlun", "petauron/pulse"));
   assert.throws(() => verifyRecoveryProvenance(former, request, rule, run), /does not bind/);
 });
 
@@ -150,7 +150,7 @@ test("download origins, redirect credentials and streaming bounds fail closed", 
 function releaseFixture(t) {
   const directory = mkdtempSync(path.join(tmpdir(), "catalog-release-test-"));
   t.after(() => rmSync(directory, { recursive: true, force: true }));
-  const raw = new Map([...["x86_64", "aarch64"].map(arch => [`senulun-${request.tag}-linux-${arch}.tar.gz`, Buffer.from(`fixture-${arch}`)])]);
+  const raw = new Map([...["x86_64", "aarch64"].map(arch => [`senlun-${request.tag}-linux-${arch}.tar.gz`, Buffer.from(`fixture-${arch}`)])]);
   raw.set("SHA256SUMS", Buffer.from([...raw].map(([name, bytes]) => `${sha256(bytes)}  ${name}`).join("\n")));
   const info = identity();
   info.release.assets = [...raw].map(([name, bytes]) => ({ name, size: bytes.length, state: "uploaded", digest: `sha256:${sha256(bytes)}`, browser_download_url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}` }));
@@ -184,12 +184,12 @@ function releaseFixture(t) {
 test("release verification independently attests both archives and exact multiarch index", async t => {
   const fixture = releaseFixture(t);
   const verified = await fixture.verify();
-  assert.equal(verified.artifacts.length, 2); assert.equal(verified.image, `ghcr.io/petauron/senulun@sha256:${sha256(Buffer.from(JSON.stringify(fixture.index)))}`);
+  assert.equal(verified.artifacts.length, 2); assert.equal(verified.image, `ghcr.io/petauron/senlun@sha256:${sha256(Buffer.from(JSON.stringify(fixture.index)))}`);
   const attestations = fixture.calls.filter(args => args[0] === "attestation");
   assert.equal(attestations.length, 3);
   for (const args of attestations) {
-    assert.equal(args[args.indexOf("--repo") + 1], "petauron/senulun");
-    assert.equal(args[args.indexOf("--signer-workflow") + 1], "petauron/senulun/.github/workflows/release.yml");
+    assert.equal(args[args.indexOf("--repo") + 1], "petauron/senlun");
+    assert.equal(args[args.indexOf("--signer-workflow") + 1], "petauron/senlun/.github/workflows/release.yml");
   }
   for (const args of attestations) { assert.ok(args.includes("--source-digest")); assert.ok(args.includes(request.sha)); assert.ok(args.includes("--signer-digest")); assert.ok(args.includes(`refs/tags/${request.tag}`)); assert.ok(args.includes("--deny-self-hosted-runners")); }
 });
@@ -253,7 +253,7 @@ test("untrusted or absent release refs fail closed", () => {
 });
 
 test("incomplete or unverified Pulse releases never produce an update candidate", async t => {
-  const archive = `senulun-${request.tag}-linux-aarch64.tar.gz`;
+  const archive = `senlun-${request.tag}-linux-aarch64.tar.gz`;
   const scenarios = [
     ["missing arm64 archive", f => { f.info.release.assets = f.info.release.assets.filter(a => a.name !== archive); }, /absent or invalid/],
     ["archive upload unfinished", f => { f.info.release.assets.find(a => a.name === archive).state = "new"; }, /absent or invalid/],
