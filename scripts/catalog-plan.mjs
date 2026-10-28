@@ -50,8 +50,8 @@ export function mergeReviewedRecipes(reviewed, active) {
     if (app.version === previous.version) continue;
     app.version = previous.version;
     // Keep the verified release runtime contract when reviewed recipes lag it.
-    if (app.id === "pulse" && previous.runtime?.docker?.containers.some(container => container.environment?.SENLUN_PUBLIC_URL)) migrateSenlunRecipe(app, true);
-    if (app.id === "pulse-agent" && previous.runtime?.systemd?.executable === "senlun-agent") migrateSenlunRecipe(app, false);
+    if (app.id === "senlun" && previous.runtime?.docker?.containers.some(container => container.environment?.SENLUN_PUBLIC_URL)) migrateSenlunRecipe(app, true);
+    if (app.id === "senlun-agent" && previous.runtime?.systemd?.executable === "senlun-agent") migrateSenlunRecipe(app, false);
     app.images = app.images?.map(image => ({ ...image, reference: previous.images?.find(old => old.name === image.name)?.reference ?? image.reference }));
     app.artifacts = app.artifacts?.map(artifact => {
       const old = previous.artifacts?.find(item => item.name === artifact.name && item.operatingSystem === artifact.operatingSystem && item.architecture === artifact.architecture);

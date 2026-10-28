@@ -7,25 +7,25 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
   ["meridian", "Glivela", "Glivela", "874e4062f5d488d3674f5b3617e9c4fc5ba24772b2907caaad26b97a7a4d3ffa"],
-  ["pulse", "Senulun", "Senulun 监控主机", "f6fa93043b3f87659559d03e438879a2df90a359f0e5e046be8de45252cd86b3"],
-  ["pulse-agent", "Senulun Agent", "Senulun 探针", "94e31046266627401232c4fea0352da453477ce7724cdf3b042eeca1ebd9d05e"],
+  ["senlun", "Senlun", "Senlun 监控主机", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
+  ["senlun-agent", "Senlun Agent", "Senlun 探针", "022d22f3e89c785363640d0047d38abbbd3c71c0c7cf9bfedd4b3933ccf9303a"],
 ];
 
-test("branding changes display metadata, not installation or artifact identities", () => {
+test("reviewed product identities and release coordinates are pinned", () => {
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, id === "meridian" ? 5 : 3);
+    assert.equal(app.packageRevision, id === "meridian" ? 5 : 4);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela alpha.78 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senulun inputs and all executable,
+    // Reviewed baseline includes Glivela alpha.78 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
-  assert.ok(!recipe.apps.some(app => ["glivela", "senulun", "senulun-agent"].includes(app.id)));
+  assert.ok(!recipe.apps.some(app => ["glivela", "pulse", "pulse-agent", "senulun", "senulun-agent"].includes(app.id)));
 });
 
 test("brand metadata does not roll back a later published upstream version", () => {
@@ -33,7 +33,7 @@ test("brand metadata does not roll back a later published upstream version", () 
   for (const [id] of products) {
     const app = active.apps.find(item => item.id === id);
     app.version = "0.2.0";
-    app.packageRevision = 1;
+    app.packageRevision = id === "meridian" ? 1 : 4;
     for (const image of app.images ?? []) image.reference = "accepted-image-digest";
     for (const artifact of app.artifacts ?? []) {
       artifact.url = "https://example.invalid/accepted-artifact";
@@ -45,7 +45,7 @@ test("brand metadata does not roll back a later published upstream version", () 
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
     assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, id === "meridian" ? 5 : 3);
+    assert.equal(app.packageRevision, id === "meridian" ? 5 : 4);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");

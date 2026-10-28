@@ -6,8 +6,8 @@ import path from "node:path";
 import { applyRelease, compareVersions, fetchBounded, parseChecksums, sha256, validateRequest, verifyRelease, verifyReleaseIdentity, verifyRecoveryProvenance } from "./release-source.mjs";
 
 const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url)));
-const rule = registry.sources.pulse;
-const request = { application: "pulse", runId: "123", sha: "a".repeat(40), tag: "v0.1.0-alpha.5" };
+const rule = registry.sources.senlun;
+const request = { application: "senlun", runId: "123", sha: "a".repeat(40), tag: "v0.1.0-alpha.5" };
 function identity() {
   return { release: { tag_name: request.tag, draft: false, published_at: "2026-09-26T00:00:00Z", prerelease: true, assets: [] }, run: { id: 123, head_sha: request.sha, head_branch: request.tag, path: rule.workflow, event: "push", head_repository: { full_name: rule.repository }, repository: { full_name: rule.repository }, status: "in_progress", conclusion: null }, jobs: [{ name: rule.publishJob, status: "completed", conclusion: "success" }], tag: request.sha, comparison: { status: "ahead" }, branch: { protected: true } };
 }
@@ -47,14 +47,14 @@ test("source input contains no URL/digest authority and must map to a reviewed s
   assert.equal(validateRequest(request, registry), rule);
   assert.equal(rule.recovery.ciJob, "rust", "pin the actual upstream required-check name, not a UI step label");
   for (const override of [{ application: "other" }, { sha: "main" }, { runId: "1/../../x" }, { tag: "v01.0.0" }, { url: "https://evil.invalid" }]) assert.throws(() => validateRequest({ ...request, ...override }, registry));
-  assert.throws(() => validateRequest(request, { schemaVersion: 1, sources: { pulse: { ...rule, allowPrerelease: false } } }));
+  assert.throws(() => validateRequest(request, { schemaVersion: 1, sources: { senlun: { ...rule, allowPrerelease: false } } }));
 });
 
 test("canonical source migration preserves app identities and rejects the former signer", () => {
   assert.equal(rule.repository, "petauron/senlun");
   assert.equal(rule.image, "ghcr.io/petauron/senlun");
-  assert.equal(rule.imageApp, "pulse");
-  assert.equal(rule.artifactApp, "pulse-agent");
+  assert.equal(rule.imageApp, "senlun");
+  assert.equal(rule.artifactApp, "senlun-agent");
   const info = identity();
   info.run.repository.full_name = "petauron/pulse";
   info.run.head_repository.full_name = "petauron/pulse";
@@ -280,8 +280,8 @@ test("incomplete or unverified Pulse releases never produce an update candidate"
 });
 
 test("updates only declared artifact coordinates, preserves recipe revisions and rejects rollback/mutation", () => {
-  const input = { schemaVersion: 4, apps: [{ id: "pulse", version: "0.1.0-alpha.4", packageRevision: 3, images: [{ name: "pulse", reference: "old" }] }, { id: "pulse-agent", version: "0.1.0-alpha.4", packageRevision: 2, artifacts: [{ name: "pulse-agent", operatingSystem: "linux", architecture: "amd64", format: "tar.gz", stripComponents: 1, url: "old", sha256: "old" }] }] };
-  const verified = { version: "0.1.0-alpha.5", image: "new", artifacts: [{ name: "pulse-agent", operatingSystem: "linux", architecture: "amd64", url: "new", sha256: "new" }] };
+  const input = { schemaVersion: 4, apps: [{ id: "senlun", version: "0.1.0-alpha.4", packageRevision: 3, images: [{ name: "senlun", reference: "old" }] }, { id: "senlun-agent", version: "0.1.0-alpha.4", packageRevision: 2, artifacts: [{ name: "senlun-agent", operatingSystem: "linux", architecture: "amd64", format: "tar.gz", stripComponents: 1, url: "old", sha256: "old" }] }] };
+  const verified = { version: "0.1.0-alpha.5", image: "new", artifacts: [{ name: "senlun-agent", operatingSystem: "linux", architecture: "amd64", url: "new", sha256: "new" }] };
   const next = applyRelease(input, verified, rule);
   assert.equal(next.apps[0].packageRevision, 3); assert.equal(next.apps[1].artifacts[0].stripComponents, 1); assert.equal(input.apps[0].version, "0.1.0-alpha.4");
   assert.deepEqual(applyRelease(next, verified, rule), next);
@@ -289,10 +289,11 @@ test("updates only declared artifact coordinates, preserves recipe revisions and
   assert.throws(() => applyRelease(next, { ...verified, image: "changed" }, rule), /immutable/);
 });
 
-test("one verified release updates both production Pulse recipes without changing configuration", async t => {
+test("one verified release updates both production Senlun recipes without changing configuration", async t => {
   const fixture = releaseFixture(t);
   const verified = await fixture.verify();
-  const input = JSON.parse(readFileSync(new URL("../catalog/catalog-v3.json", import.meta.url)));
+  const input = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
+  for (const app of input.apps) if (app.id === rule.imageApp || app.id === rule.artifactApp) app.version = "0.1.0-alpha.4";
   const original = structuredClone(input);
   const next = applyRelease(input, verified, rule);
   for (const app of next.apps) {
