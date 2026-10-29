@@ -69,9 +69,11 @@ test("production recipes use schema 4 and reviewed runtime declarations", () => 
   assert.equal(recipe.schemaVersion, 4);
   for (const app of recipe.apps) {
     assert.ok(app.packageRevision > 0);
-    const native = ["glivela-entry", "glivela-node"].includes(app.id);
-    assert.equal(app.runtime?.version, native ? 2 : 1);
-    if (native) {
+    const glivela = ["glivela-entry", "glivela-node"].includes(app.id);
+    const staticSite = ["static-site", "static-site-https"].includes(app.id);
+    assert.equal(app.runtime?.version, glivela || staticSite ? 2 : 1);
+    if (glivela || staticSite) assert.equal(app.runtime.kind, "systemd");
+    if (glivela) {
       assert.equal(app.runtime.kind, "systemd");
       assert.equal(app.runtime.nativeServices.namespace, "glivela");
       assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), ["node", "xray"]);
