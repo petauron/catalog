@@ -779,7 +779,7 @@
       "version": "0.1.0-alpha.31",
       "name": {
         "en": "Senlun",
-        "zh-CN": "Senlun 监控主机"
+        "zh-CN": "Senlun"
       },
       "description": {
         "en": "Independent server monitoring with its own dashboard, authentication and data. Manage nodes and create Agent enrollment tokens in Senlun.",
@@ -837,7 +837,7 @@
           "default": ""
         }
       ],
-      "packageRevision": 4,
+      "packageRevision": 5,
       "runtime": {
         "kind": "docker",
         "version": 1,
