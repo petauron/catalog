@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.80",
+      "version": "0.1.0-alpha.81",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -618,7 +618,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:bca6ffaf78de1b14a629d7ab42b721ecdb194b0e6fad0137b61f2593d8a0c8cd"
+          "reference": "ghcr.io/petauron/glivela@sha256:54b25fa66fc29c4c053d509d95990337a8a15a82e8fdb891805c7acedc285953"
         }
       ],
       "packageRevision": 5,
@@ -1345,7 +1345,7 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.80",
+      "version": "0.1.0-alpha.81",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Entry",
@@ -1448,16 +1448,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.80/glivela-0.1.0-alpha.80-linux-amd64.tar.gz",
-          "sha256": "2cabb15b9800ce504d95b9917615eb203b7f709cbab797dad0ee2d5a074e9d57",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.81/glivela-0.1.0-alpha.81-linux-amd64.tar.gz",
+          "sha256": "8aee44dc070b2d21b01ba96d976d32c799c5a07922d5be23933c71faff388308",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.80/glivela-0.1.0-alpha.80-linux-arm64.tar.gz",
-          "sha256": "5b61ec3acb304c96744c276a395e9ceb69ddb6d2ae4bdbacd86f3b39d8da5859",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.81/glivela-0.1.0-alpha.81-linux-arm64.tar.gz",
+          "sha256": "98f1178c8261db6d5546653a055a08b1f2b5cf73e754917dc26e343b59404dd0",
           "format": "tar.gz"
         }
       ],
@@ -1499,6 +1499,13 @@
                   },
                   {
                     "path": "LICENSE.xray"
+                  },
+                  {
+                    "path": "LICENSE.iperf3"
+                  },
+                  {
+                    "path": "iperf3",
+                    "executable": true
                   },
                   {
                     "path": "glivela-ui.js"
@@ -1650,7 +1657,7 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.80",
+      "version": "0.1.0-alpha.81",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Landing",
@@ -1739,16 +1746,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.80/glivela-0.1.0-alpha.80-linux-amd64.tar.gz",
-          "sha256": "2cabb15b9800ce504d95b9917615eb203b7f709cbab797dad0ee2d5a074e9d57",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.81/glivela-0.1.0-alpha.81-linux-amd64.tar.gz",
+          "sha256": "8aee44dc070b2d21b01ba96d976d32c799c5a07922d5be23933c71faff388308",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.80/glivela-0.1.0-alpha.80-linux-arm64.tar.gz",
-          "sha256": "5b61ec3acb304c96744c276a395e9ceb69ddb6d2ae4bdbacd86f3b39d8da5859",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.81/glivela-0.1.0-alpha.81-linux-arm64.tar.gz",
+          "sha256": "98f1178c8261db6d5546653a055a08b1f2b5cf73e754917dc26e343b59404dd0",
           "format": "tar.gz"
         }
       ],
@@ -1790,6 +1797,13 @@
                   },
                   {
                     "path": "LICENSE.xray"
+                  },
+                  {
+                    "path": "LICENSE.iperf3"
+                  },
+                  {
+                    "path": "iperf3",
+                    "executable": true
                   },
                   {
                     "path": "glivela-ui.js"
