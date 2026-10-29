@@ -1,7 +1,10 @@
 #!/usr/bin/env node
 // Operator-run handoff only: prepare reviewed source changes, never publish,
 // sign, create tags, dispatch workflows or contact a Center/Agent.
-import { readFileSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { isDeepStrictEqual } from "node:util";
 import { compareVersions, execute, fetchBounded, parseChecksums, sha256 } from "./release-source.mjs";
 
 try {
@@ -44,7 +47,25 @@ try {
   const index = JSON.parse(manifest);
   if (image.reference !== `ghcr.io/petauron/glivela@sha256:${sha256(manifest)}` || JSON.stringify(index.manifests?.filter(item => item.platform?.os === "linux").map(item => item.platform.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Immutable image index must contain both supported platforms");
   const digests = {};
-  for (const arch of ["amd64", "arm64"]) digests[arch] = sha256(await checked(`glivela-${version}-linux-${arch}.tar.gz`, 128 * 1024 * 1024));
+  const iperfDigests = { amd64: "ef4c89f3fc01c56cf00d34b900024c74f68e540dab452eef4fd902544d9c1c64", arm64: "34364466812357fe021a8647cb433c8006b0360e3b690ecda470a979a2601031" };
+  const temporary = mkdtempSync(path.join(tmpdir(), "glivela-release-"));
+  try {
+    for (const arch of ["amd64", "arm64"]) {
+      const bundle = await checked(`glivela-${version}-linux-${arch}.tar.gz`, 128 * 1024 * 1024);
+      digests[arch] = sha256(bundle);
+      const file = path.join(temporary, `${arch}.tar.gz`);
+      writeFileSync(file, bundle, { mode: 0o600, flag: "wx" });
+      const members = execute("tar", ["-tzf", file]).toString("utf8").trim().split("\n");
+      for (const required of ["iperf3", "LICENSE.iperf3", "runtime.json"]) {
+        if (members.filter(member => member === required).length !== 1) throw new Error("Glivela release is missing a unique required diagnostic member");
+      }
+      const iperf = execute("tar", ["-xOzf", file, "iperf3"]);
+      const metadata = JSON.parse(execute("tar", ["-xOzf", file, "runtime.json"]));
+      if (sha256(iperf) !== iperfDigests[arch] || metadata.iperf3?.version !== "3.22" || metadata.iperf3.sha256 !== iperfDigests[arch]) throw new Error("Glivela diagnostic identity differs from the reviewed release");
+    }
+  } finally {
+    rmSync(temporary, { recursive: true, force: true });
+  }
   const catalogPath = "catalog/catalog.json";
   const catalog = JSON.parse(readFileSync(catalogPath));
   const apps = ["meridian", "glivela-entry", "glivela-node"].map(id => catalog.apps.find(app => app.id === id));
@@ -82,6 +103,15 @@ try {
   controller.reference = image.reference;
   for (const app of apps) app.version = version;
   for (const app of apps.slice(1)) {
+    // Only add the reviewed application-owned diagnostic files to the existing
+    // runtime. Never carry unrelated template changes into release coordinates.
+    const nextRuntime = JSON.parse(readFileSync(`catalog/recipes/${app.id}.runtime.json`));
+    const previousRuntime = structuredClone(nextRuntime);
+    const files = previousRuntime.nativeServices?.services?.find(service => service.name === "node")?.process?.files;
+    if (!Array.isArray(files) || files.filter(file => file.path === "iperf3" && file.executable === true).length !== 1 || files.filter(file => file.path === "LICENSE.iperf3" && !Object.hasOwn(file, "executable")).length !== 1) throw new Error("Reviewed diagnostic allowlist is invalid");
+    previousRuntime.nativeServices.services.find(service => service.name === "node").process.files = files.filter(file => !["iperf3", "LICENSE.iperf3"].includes(file.path));
+    if (files.length !== previousRuntime.nativeServices.services.find(service => service.name === "node").process.files.length + 2 || (!isDeepStrictEqual(previousRuntime, app.runtime) && !isDeepStrictEqual(nextRuntime, app.runtime))) throw new Error("Unrelated native runtime change requires separate review");
+    app.runtime = nextRuntime;
     if (JSON.stringify(app.artifacts?.map(entry => entry.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Expected two reviewed native artifact mappings");
     for (const entry of app.artifacts) {
       if (entry.name !== "bundle" || entry.operatingSystem !== "linux" || !digests[entry.architecture]) throw new Error("Unreviewed native artifact mapping");

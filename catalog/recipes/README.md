@@ -40,8 +40,11 @@ application-owned configuration and data rather than rerun initialization.
 Generic uninstall backs up and stops both declared native services, retaining
 persistent data unless a separate purge is explicitly authorized.
 
-Required existing host tools are systemd, iproute2 and nftables. No OS-package
-installation, arbitrary scripts or additional project dependency is introduced.
+Required existing host tools are systemd, iproute2 and nftables. The next
+Glivela release bundles its pinned iperf3 diagnostic and license with the
+node distribution; the current published catalog keeps its existing allowlist
+until that release is verified. No OS-package installation or arbitrary scripts
+are introduced.
 Platform process readiness is not actual proxy-route acceptance.
 
 ## Migration and publication gates

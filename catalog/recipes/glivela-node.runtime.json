@@ -18,6 +18,8 @@
             {"path": "runtime.json"},
             {"path": "LICENSE.glivela"},
             {"path": "LICENSE.xray"},
+            {"path": "LICENSE.iperf3"},
+            {"path": "iperf3", "executable": true},
             {"path": "glivela-ui.js"},
             {"path": "glivela-ui.css"}
           ],
