@@ -83,7 +83,7 @@ This operator-run helper waits for nothing and fails if the exact Glivela releas
 or its newest exact-source push CI has not succeeded. It checks the protected
 source/tag identity, authenticated release inventory, `SHA256SUMS`, both downloaded
 native archives and the immutable two-platform controller image index. It never
-executes downloaded files. It then updates only the three Glivela recipe versions
+executes downloaded files. It then updates only the four Glivela recipe versions
 and release coordinates, reviewed UI checkout SHA and its existing pin contract.
 It also advances only Glivela's machine-identity digest and version comment in
 the existing brand contract. The current recipe must first match its old digest;

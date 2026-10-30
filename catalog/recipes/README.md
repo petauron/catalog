@@ -47,6 +47,23 @@ until that release is verified. No OS-package installation or arbitrary scripts
 are introduced.
 Platform process readiness is not actual proxy-route acceptance.
 
+## Same-host entry and landing
+
+`glivela-dual.runtime.json` is a fresh-install profile for both roles on one host.
+It uses the same verified release bundle. One root `node` manager starts two
+independently authenticated runtimes, with distinct entry/landing certificates,
+state directories and nonroot `entry-xray`/`landing-xray` workers. Only the entry
+worker has `bindService`; neither worker receives NET_ADMIN. No Vastora proxy
+service or new platform public ingress is declared. Glivela owns the explicitly
+configured listeners, source authorization and exit-family policy.
+
+The profile uses `controller_url`, `network_interface`, `ca_pem`, plus separate
+`entry_certificate_pem`/`entry_private_key_pem` and
+`landing_certificate_pem`/`landing_private_key_pem`. It cannot be stacked with
+an existing single-role installation in the same namespace. Existing installs
+are unchanged; no identity migration, account reset or automatic upgrade is
+performed by publishing this profile. See [Glivela #227](https://github.com/petauron/glivela/issues/227).
+
 ## Migration and publication gates
 
 Existing Docker entries require a backup-first, explicit native ownership and

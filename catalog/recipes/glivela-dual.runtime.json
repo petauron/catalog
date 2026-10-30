@@ -1,0 +1,319 @@
+{
+  "kind": "systemd",
+  "version": 2,
+  "requiredCapabilities": [
+    "native-services",
+    "root"
+  ],
+  "storage": [
+    {
+      "name": "manager-state",
+      "persistent": true
+    },
+    {
+      "name": "entry-state",
+      "persistent": true
+    },
+    {
+      "name": "landing-state",
+      "persistent": true
+    }
+  ],
+  "nativeServices": {
+    "namespace": "glivela",
+    "users": [
+      "entry-xray",
+      "landing-xray"
+    ],
+    "services": [
+      {
+        "name": "node",
+        "start": "automatic",
+        "process": {
+          "artifact": "bundle",
+          "executable": "glivela",
+          "files": [
+            {
+              "path": "glivela",
+              "executable": true
+            },
+            {
+              "path": "runtime.json"
+            },
+            {
+              "path": "LICENSE.glivela"
+            },
+            {
+              "path": "LICENSE.xray"
+            },
+            {
+              "path": "LICENSE.iperf3"
+            },
+            {
+              "path": "iperf3",
+              "executable": true
+            },
+            {
+              "path": "glivela-ui.js"
+            },
+            {
+              "path": "glivela-ui.css"
+            }
+          ],
+          "user": "root",
+          "stateDirectories": [
+            "manager-state",
+            "entry-state",
+            "landing-state"
+          ],
+          "credentials": {
+            "entry-certificate": "entry_certificate_pem",
+            "entry-key": "entry_private_key_pem",
+            "landing-certificate": "landing_certificate_pem",
+            "landing-key": "landing_private_key_pem",
+            "ca": "ca_pem"
+          },
+          "arguments": [
+            {
+              "literal": "-config"
+            },
+            {
+              "runtime": {
+                "kind": "config-file",
+                "name": "node.json"
+              }
+            }
+          ],
+          "configFiles": [
+            {
+              "path": "node.json",
+              "format": "json",
+              "values": {
+                "mode": {
+                  "literal": "node-pair"
+                },
+                "installation": {
+                  "runtime": {
+                    "kind": "native-installation"
+                  }
+                },
+                "service": {
+                  "literal": "node"
+                },
+                "directory": {
+                  "runtime": {
+                    "kind": "state-directory",
+                    "name": "manager-state"
+                  }
+                },
+                "entryNode": {
+                  "object": {
+                    "mode": {
+                      "literal": "node"
+                    },
+                    "installation": {
+                      "runtime": {
+                        "kind": "native-installation"
+                      }
+                    },
+                    "service": {
+                      "literal": "node"
+                    },
+                    "directory": {
+                      "runtime": {
+                        "kind": "state-directory",
+                        "name": "entry-state"
+                      }
+                    },
+                    "certificate": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "entry-certificate"
+                      }
+                    },
+                    "key": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "entry-key"
+                      }
+                    },
+                    "ca": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "ca"
+                      }
+                    },
+                    "controller": {
+                      "config": "controller_url"
+                    },
+                    "xray": {
+                      "object": {
+                        "role": {
+                          "literal": "entry"
+                        },
+                        "installation": {
+                          "runtime": {
+                            "kind": "native-installation"
+                          }
+                        },
+                        "service": {
+                          "literal": "entry-xray"
+                        },
+                        "interface": {
+                          "config": "network_interface"
+                        }
+                      }
+                    }
+                  }
+                },
+                "landingNode": {
+                  "object": {
+                    "mode": {
+                      "literal": "node"
+                    },
+                    "installation": {
+                      "runtime": {
+                        "kind": "native-installation"
+                      }
+                    },
+                    "service": {
+                      "literal": "node"
+                    },
+                    "directory": {
+                      "runtime": {
+                        "kind": "state-directory",
+                        "name": "landing-state"
+                      }
+                    },
+                    "certificate": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "landing-certificate"
+                      }
+                    },
+                    "key": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "landing-key"
+                      }
+                    },
+                    "ca": {
+                      "runtime": {
+                        "kind": "credential-file",
+                        "name": "ca"
+                      }
+                    },
+                    "controller": {
+                      "config": "controller_url"
+                    },
+                    "xray": {
+                      "object": {
+                        "role": {
+                          "literal": "landing"
+                        },
+                        "installation": {
+                          "runtime": {
+                            "kind": "native-installation"
+                          }
+                        },
+                        "service": {
+                          "literal": "landing-xray"
+                        },
+                        "interface": {
+                          "config": "network_interface"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "entry-xray",
+        "start": "manual",
+        "managedUser": "entry-xray",
+        "stateCredentials": {
+          "configuration.json": {
+            "storage": "entry-state",
+            "path": "config.json"
+          }
+        },
+        "process": {
+          "artifact": "bundle",
+          "executable": "xray",
+          "bindService": true,
+          "files": [
+            {
+              "path": "xray",
+              "executable": true
+            }
+          ],
+          "arguments": [
+            {
+              "literal": "run"
+            },
+            {
+              "literal": "-format"
+            },
+            {
+              "literal": "json"
+            },
+            {
+              "literal": "-config"
+            },
+            {
+              "runtime": {
+                "kind": "credential-file",
+                "name": "configuration.json"
+              }
+            }
+          ]
+        }
+      },
+      {
+        "name": "landing-xray",
+        "start": "manual",
+        "managedUser": "landing-xray",
+        "stateCredentials": {
+          "configuration.json": {
+            "storage": "landing-state",
+            "path": "config.json"
+          }
+        },
+        "process": {
+          "artifact": "bundle",
+          "executable": "xray",
+          "files": [
+            {
+              "path": "xray",
+              "executable": true
+            }
+          ],
+          "arguments": [
+            {
+              "literal": "run"
+            },
+            {
+              "literal": "-format"
+            },
+            {
+              "literal": "json"
+            },
+            {
+              "literal": "-config"
+            },
+            {
+              "runtime": {
+                "kind": "credential-file",
+                "name": "configuration.json"
+              }
+            }
+          ]
+        }
+      }
+    ]
+  }
+}

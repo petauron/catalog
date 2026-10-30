@@ -69,14 +69,14 @@ test("production recipes use schema 4 and reviewed runtime declarations", () => 
   assert.equal(recipe.schemaVersion, 4);
   for (const app of recipe.apps) {
     assert.ok(app.packageRevision > 0);
-    const glivela = ["glivela-entry", "glivela-node"].includes(app.id);
+    const glivela = ["glivela-entry", "glivela-node", "glivela-dual"].includes(app.id);
     const staticSite = ["static-site", "static-site-https"].includes(app.id);
     assert.equal(app.runtime?.version, glivela || staticSite ? 2 : 1);
     if (glivela || staticSite) assert.equal(app.runtime.kind, "systemd");
     if (glivela) {
       assert.equal(app.runtime.kind, "systemd");
       assert.equal(app.runtime.nativeServices.namespace, "glivela");
-      assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), ["node", "xray"]);
+      assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), app.id === "glivela-dual" ? ["node", "entry-xray", "landing-xray"] : ["node", "xray"]);
     }
   }
   const plan = readFileSync(new URL("./catalog-plan.mjs", import.meta.url), "utf8");
