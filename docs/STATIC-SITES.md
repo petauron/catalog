@@ -1,6 +1,20 @@
-# Managed static websites
+# Daylight managed websites
 
 Related tracking: [#125](https://github.com/petauron/catalog/issues/125).
+
+`daylight` and `daylight-https` deliver the independent [Daylight 0.1.0 release](https://github.com/petauron/daylight/releases/tag/v0.1.0). Its version is separate from the bundled Caddy 2.11.4. Both immutable Linux archives are copied and verified by Daylight CI to the existing download service; the signed recipe pins their SHA256 values. No Docker, new dependency, shell hook or management API is added.
+
+The package owns the English page. The launcher replaces only exact-host root HTML response bodies in memory, retaining deployment listener/TLS/certificate/header/health configuration. There is no inline HTML input or historical-content fallback. Later page updates use ordinary Daylight releases, signed recipe updates and managed application upgrades.
+
+Choose `daylight` behind an existing gateway, or `daylight-https` for a host with a free application-owned public TLS listener. The private HTTP port defaults to 24481 so a new installation can be checked alongside the former Caddy-only origin at 24480. The direct recipe keeps the same nonroot user model and only CAP_NET_BIND_SERVICE. Both retain 128 MiB memory/50% CPU/64-task limits and persistent certificate state.
+
+## First handover
+
+The former `static-site` recipes used Caddy 2.11.4 as their application version. They are separate old applications, not earlier Daylight versions. Install Daylight alongside the old origin, check its page/health, then hand over only the website's normal gateway publication or direct listener. Do not bypass version checks or rewrite installed versions. Keep the old instance and certificate state available for rollback until acceptance; retire the old application through Vastora only after the new public site and existing proxy paths are confirmed. Do not rebuild DNS, credentials, accounts, subscriptions or traffic ledgers as part of a website handover.
+
+The older recipes below remain unchanged while their installed instances are handed over; they are not a second ongoing content-update implementation. Remove them once the authorized four-site handover is complete and rollback no longer depends on them.
+
+## Previous Caddy-only deployment reference
 
 These recipes use the same official Caddy 2.11.4 release as the managed gateway,
 with separate immutable amd64/arm64 archive digests and an exact extraction
