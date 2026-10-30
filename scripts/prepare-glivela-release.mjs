@@ -68,7 +68,7 @@ try {
   }
   const catalogPath = "catalog/catalog.json";
   const catalog = JSON.parse(readFileSync(catalogPath));
-  const apps = ["meridian", "glivela-entry", "glivela-node"].map(id => catalog.apps.find(app => app.id === id));
+  const apps = ["meridian", "glivela-entry", "glivela-node", "glivela-dual"].map(id => catalog.apps.find(app => app.id === id));
   if (apps.some(app => !app) || new Set(apps.map(app => app.version)).size !== 1) throw new Error("Reviewed Glivela recipes do not have one version");
   const oldVersion = apps[0].version;
   if (compareVersions(version, oldVersion) <= 0) throw new Error("Only a newer release can prepare a catalog update");

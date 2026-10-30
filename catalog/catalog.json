@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.85",
+      "version": "0.1.0-alpha.87",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -618,7 +618,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:8a8eecf543387c5457b06dc238ac4190043bf6579120cd1cece9f757213fe28d"
+          "reference": "ghcr.io/petauron/glivela@sha256:724d72afa845b87012635bc092cebeeee793580663696a350406b1bac07c8a4d"
         }
       ],
       "packageRevision": 5,
@@ -1345,7 +1345,7 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.85",
+      "version": "0.1.0-alpha.87",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Entry",
@@ -1448,16 +1448,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.85/glivela-0.1.0-alpha.85-linux-amd64.tar.gz",
-          "sha256": "ea2297c3f63e163dbbc1940d53c861f8e76aaa2c9c2911679955f3f886058f69",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-amd64.tar.gz",
+          "sha256": "eed3162a45ffb3dca8eaf38dea6df1e094dd7e00b35544fbeb8f08abccefd524",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.85/glivela-0.1.0-alpha.85-linux-arm64.tar.gz",
-          "sha256": "72cebcf3ec6b09f598b9926686fc9fbaf6b478269bd9ebadc98ee5b76587594f",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-arm64.tar.gz",
+          "sha256": "1e77b74f1104fb7e9d5cbe5115db94d0ccab06b4cd5cc9df7e20751f04e2c2c2",
           "format": "tar.gz"
         }
       ],
@@ -1657,7 +1657,7 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.85",
+      "version": "0.1.0-alpha.87",
       "packageRevision": 2,
       "name": {
         "en": "Glivela Landing",
@@ -1746,16 +1746,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.85/glivela-0.1.0-alpha.85-linux-amd64.tar.gz",
-          "sha256": "ea2297c3f63e163dbbc1940d53c861f8e76aaa2c9c2911679955f3f886058f69",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-amd64.tar.gz",
+          "sha256": "eed3162a45ffb3dca8eaf38dea6df1e094dd7e00b35544fbeb8f08abccefd524",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.85/glivela-0.1.0-alpha.85-linux-arm64.tar.gz",
-          "sha256": "72cebcf3ec6b09f598b9926686fc9fbaf6b478269bd9ebadc98ee5b76587594f",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-arm64.tar.gz",
+          "sha256": "1e77b74f1104fb7e9d5cbe5115db94d0ccab06b4cd5cc9df7e20751f04e2c2c2",
           "format": "tar.gz"
         }
       ],
@@ -2836,6 +2836,459 @@
         "service": "web",
         "path": "/"
       }
+    },
+    {
+      "id": "glivela-dual",
+      "version": "0.1.0-alpha.87",
+      "packageRevision": 1,
+      "name": {
+        "en": "Glivela Entry + Landing",
+        "zh-CN": "Glivela 入口与落地"
+      },
+      "description": {
+        "en": "One native Glivela manager with independently authenticated entry and landing workers.",
+        "zh-CN": "同机入口与落地，由一个原生 Glivela 节点端统一管理，分别验证身份与授权。"
+      },
+      "license": "Apache-2.0",
+      "hostAccess": true,
+      "config": [
+        {
+          "key": "controller_url",
+          "type": "string",
+          "label": {
+            "en": "Private controller HTTPS URL",
+            "zh-CN": "私网控制端 HTTPS 地址"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "network_interface",
+          "type": "string",
+          "label": {
+            "en": "Private network interface",
+            "zh-CN": "私网网卡名称"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "ca_pem",
+          "type": "string",
+          "label": {
+            "en": "Trusted CA PEM",
+            "zh-CN": "受信 CA PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "entry_certificate_pem",
+          "type": "string",
+          "label": {
+            "en": "Entry client certificate PEM",
+            "zh-CN": "入口证书 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "entry_private_key_pem",
+          "type": "string",
+          "label": {
+            "en": "Entry private key PEM",
+            "zh-CN": "入口私钥 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "landing_certificate_pem",
+          "type": "string",
+          "label": {
+            "en": "Landing client certificate PEM",
+            "zh-CN": "落地证书 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        },
+        {
+          "key": "landing_private_key_pem",
+          "type": "string",
+          "label": {
+            "en": "Landing private key PEM",
+            "zh-CN": "落地私钥 PEM"
+          },
+          "description": {
+            "en": "Initial installation input; preserve existing application configuration on update.",
+            "zh-CN": "仅用于首次安装；更新保留应用已有配置。"
+          },
+          "required": true,
+          "secret": true
+        }
+      ],
+      "artifacts": [
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "amd64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-amd64.tar.gz",
+          "sha256": "eed3162a45ffb3dca8eaf38dea6df1e094dd7e00b35544fbeb8f08abccefd524",
+          "format": "tar.gz"
+        },
+        {
+          "name": "bundle",
+          "operatingSystem": "linux",
+          "architecture": "arm64",
+          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.87/glivela-0.1.0-alpha.87-linux-arm64.tar.gz",
+          "sha256": "1e77b74f1104fb7e9d5cbe5115db94d0ccab06b4cd5cc9df7e20751f04e2c2c2",
+          "format": "tar.gz"
+        }
+      ],
+      "runtime": {
+        "kind": "systemd",
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services",
+          "root"
+        ],
+        "storage": [
+          {
+            "name": "manager-state",
+            "persistent": true
+          },
+          {
+            "name": "entry-state",
+            "persistent": true
+          },
+          {
+            "name": "landing-state",
+            "persistent": true
+          }
+        ],
+        "nativeServices": {
+          "namespace": "glivela",
+          "users": [
+            "entry-xray",
+            "landing-xray"
+          ],
+          "services": [
+            {
+              "name": "node",
+              "start": "automatic",
+              "process": {
+                "artifact": "bundle",
+                "executable": "glivela",
+                "files": [
+                  {
+                    "path": "glivela",
+                    "executable": true
+                  },
+                  {
+                    "path": "runtime.json"
+                  },
+                  {
+                    "path": "LICENSE.glivela"
+                  },
+                  {
+                    "path": "LICENSE.xray"
+                  },
+                  {
+                    "path": "LICENSE.iperf3"
+                  },
+                  {
+                    "path": "iperf3",
+                    "executable": true
+                  },
+                  {
+                    "path": "glivela-ui.js"
+                  },
+                  {
+                    "path": "glivela-ui.css"
+                  }
+                ],
+                "user": "root",
+                "stateDirectories": [
+                  "manager-state",
+                  "entry-state",
+                  "landing-state"
+                ],
+                "credentials": {
+                  "entry-certificate": "entry_certificate_pem",
+                  "entry-key": "entry_private_key_pem",
+                  "landing-certificate": "landing_certificate_pem",
+                  "landing-key": "landing_private_key_pem",
+                  "ca": "ca_pem"
+                },
+                "arguments": [
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "config-file",
+                      "name": "node.json"
+                    }
+                  }
+                ],
+                "configFiles": [
+                  {
+                    "path": "node.json",
+                    "format": "json",
+                    "values": {
+                      "mode": {
+                        "literal": "node-pair"
+                      },
+                      "installation": {
+                        "runtime": {
+                          "kind": "native-installation"
+                        }
+                      },
+                      "service": {
+                        "literal": "node"
+                      },
+                      "directory": {
+                        "runtime": {
+                          "kind": "state-directory",
+                          "name": "manager-state"
+                        }
+                      },
+                      "entryNode": {
+                        "object": {
+                          "mode": {
+                            "literal": "node"
+                          },
+                          "installation": {
+                            "runtime": {
+                              "kind": "native-installation"
+                            }
+                          },
+                          "service": {
+                            "literal": "node"
+                          },
+                          "directory": {
+                            "runtime": {
+                              "kind": "state-directory",
+                              "name": "entry-state"
+                            }
+                          },
+                          "certificate": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "entry-certificate"
+                            }
+                          },
+                          "key": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "entry-key"
+                            }
+                          },
+                          "ca": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "ca"
+                            }
+                          },
+                          "controller": {
+                            "config": "controller_url"
+                          },
+                          "xray": {
+                            "object": {
+                              "role": {
+                                "literal": "entry"
+                              },
+                              "installation": {
+                                "runtime": {
+                                  "kind": "native-installation"
+                                }
+                              },
+                              "service": {
+                                "literal": "entry-xray"
+                              },
+                              "interface": {
+                                "config": "network_interface"
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "landingNode": {
+                        "object": {
+                          "mode": {
+                            "literal": "node"
+                          },
+                          "installation": {
+                            "runtime": {
+                              "kind": "native-installation"
+                            }
+                          },
+                          "service": {
+                            "literal": "node"
+                          },
+                          "directory": {
+                            "runtime": {
+                              "kind": "state-directory",
+                              "name": "landing-state"
+                            }
+                          },
+                          "certificate": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "landing-certificate"
+                            }
+                          },
+                          "key": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "landing-key"
+                            }
+                          },
+                          "ca": {
+                            "runtime": {
+                              "kind": "credential-file",
+                              "name": "ca"
+                            }
+                          },
+                          "controller": {
+                            "config": "controller_url"
+                          },
+                          "xray": {
+                            "object": {
+                              "role": {
+                                "literal": "landing"
+                              },
+                              "installation": {
+                                "runtime": {
+                                  "kind": "native-installation"
+                                }
+                              },
+                              "service": {
+                                "literal": "landing-xray"
+                              },
+                              "interface": {
+                                "config": "network_interface"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "entry-xray",
+              "start": "manual",
+              "managedUser": "entry-xray",
+              "stateCredentials": {
+                "configuration.json": {
+                  "storage": "entry-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "bindService": true,
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration.json"
+                    }
+                  }
+                ]
+              }
+            },
+            {
+              "name": "landing-xray",
+              "start": "manual",
+              "managedUser": "landing-xray",
+              "stateCredentials": {
+                "configuration.json": {
+                  "storage": "landing-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration.json"
+                    }
+                  }
+                ]
+              }
+            }
+          ]
+        }
+      },
+      "services": []
     }
   ]
 }
