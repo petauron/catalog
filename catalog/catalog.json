@@ -3289,6 +3289,890 @@
         }
       },
       "services": []
+    },
+    {
+      "id": "daylight",
+      "version": "0.1.0",
+      "packageRevision": 1,
+      "name": {
+        "en": "Daylight",
+        "zh-CN": "Daylight"
+      },
+      "description": {
+        "en": "Independently released English website with a pinned native Caddy runtime. Publish the private origin through a managed gateway.",
+        "zh-CN": "独立发布的英文站点，内置固定版本 Caddy。通过受管网关发布私网源站。"
+      },
+      "license": "Apache-2.0",
+      "config": [
+        {
+          "key": "hostname",
+          "type": "string",
+          "label": {
+            "en": "Exact hostname",
+            "zh-CN": "精确域名"
+          },
+          "description": {
+            "en": "Use one owned DNS name, without a scheme, port, path or wildcard.",
+            "zh-CN": "填写一个自有域名，不含协议、端口、路径或通配符。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "http_port",
+          "type": "integer",
+          "label": {
+            "en": "Private HTTP port",
+            "zh-CN": "私网 HTTP 端口"
+          },
+          "description": {
+            "en": "Private origin and health endpoint; choose an unused high port.",
+            "zh-CN": "私网源站和健康检查端口；选择未占用的高位端口。"
+          },
+          "required": true,
+          "secret": false,
+          "default": 24481
+        }
+      ],
+      "artifacts": [
+        {
+          "name": "caddy",
+          "operatingSystem": "linux",
+          "architecture": "amd64",
+          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-amd64.tar.gz",
+          "sha256": "cdb8298beeada4aec0453053a07bd86b1a7a95664b59e6ecae3d1703611c7162",
+          "format": "tar.gz"
+        },
+        {
+          "name": "caddy",
+          "operatingSystem": "linux",
+          "architecture": "arm64",
+          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-arm64.tar.gz",
+          "sha256": "f50741a54e7ff6c9b918f2e29eef5892bd87fcbf5c7229cb038142d581ac3121",
+          "format": "tar.gz"
+        }
+      ],
+      "runtime": {
+        "kind": "systemd",
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services"
+        ],
+        "storage": [
+          {
+            "name": "caddy",
+            "persistent": true
+          }
+        ],
+        "nativeServices": {
+          "namespace": "daylight",
+          "users": [
+            "web"
+          ],
+          "services": [
+            {
+              "name": "web",
+              "start": "automatic",
+              "managedUser": "web",
+              "process": {
+                "artifact": "caddy",
+                "executable": "daylight",
+                "files": [
+                  {
+                    "path": "daylight",
+                    "executable": true
+                  },
+                  {
+                    "path": "caddy",
+                    "executable": true
+                  },
+                  {
+                    "path": "LICENSE"
+                  },
+                  {
+                    "path": "README.md"
+                  },
+                  {
+                    "path": "CADDY-README.md"
+                  },
+                  {
+                    "path": "examples/site.json"
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "--config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "config-file",
+                      "name": "caddy.json"
+                    }
+                  }
+                ],
+                "environment": {
+                  "GOMEMLIMIT": {
+                    "literal": "64MiB"
+                  },
+                  "GOMAXPROCS": {
+                    "literal": "1"
+                  },
+                  "XDG_CONFIG_HOME": {
+                    "runtime": {
+                      "kind": "state-directory",
+                      "name": "caddy"
+                    }
+                  },
+                  "XDG_DATA_HOME": {
+                    "runtime": {
+                      "kind": "state-directory",
+                      "name": "caddy"
+                    }
+                  }
+                },
+                "configFiles": [
+                  {
+                    "path": "caddy.json",
+                    "format": "json",
+                    "values": {
+                      "admin": {
+                        "literal": {
+                          "disabled": true
+                        }
+                      },
+                      "storage": {
+                        "object": {
+                          "module": {
+                            "literal": "file_system"
+                          },
+                          "root": {
+                            "runtime": {
+                              "kind": "state-directory",
+                              "name": "caddy"
+                            }
+                          }
+                        }
+                      },
+                      "apps": {
+                        "object": {
+                          "http": {
+                            "object": {
+                              "servers": {
+                                "object": {
+                                  "private": {
+                                    "object": {
+                                      "listen": {
+                                        "array": [
+                                          {
+                                            "runtime": {
+                                              "kind": "service-address",
+                                              "name": "web"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "automatic_https": {
+                                        "literal": {
+                                          "disable": true
+                                        }
+                                      },
+                                      "protocols": {
+                                        "literal": [
+                                          "h1",
+                                          "h2"
+                                        ]
+                                      },
+                                      "routes": {
+                                        "array": [
+                                          {
+                                            "literal": {
+                                              "match": [
+                                                {
+                                                  "path": [
+                                                    "/healthz"
+                                                  ],
+                                                  "method": [
+                                                    "GET",
+                                                    "HEAD"
+                                                  ]
+                                                }
+                                              ],
+                                              "handle": [
+                                                {
+                                                  "handler": "static_response",
+                                                  "status_code": 204
+                                                }
+                                              ],
+                                              "terminal": true
+                                            }
+                                          },
+                                          {
+                                            "object": {
+                                              "match": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "host": {
+                                                        "array": [
+                                                          {
+                                                            "config": "hostname"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "path": {
+                                                        "literal": [
+                                                          "/"
+                                                        ]
+                                                      },
+                                                      "method": {
+                                                        "literal": [
+                                                          "GET",
+                                                          "HEAD"
+                                                        ]
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "handle": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "handler": {
+                                                        "literal": "static_response"
+                                                      },
+                                                      "headers": {
+                                                        "literal": {
+                                                          "Content-Type": [
+                                                            "text/html; charset=utf-8"
+                                                          ],
+                                                          "Content-Security-Policy": [
+                                                            "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                                                          ],
+                                                          "X-Content-Type-Options": [
+                                                            "nosniff"
+                                                          ],
+                                                          "Referrer-Policy": [
+                                                            "no-referrer"
+                                                          ]
+                                                        }
+                                                      },
+                                                      "body": {
+                                                        "literal": ""
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "terminal": {
+                                                "literal": true
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "literal": {
+                                              "handle": [
+                                                {
+                                                  "handler": "static_response",
+                                                  "status_code": 404
+                                                }
+                                              ],
+                                              "terminal": true
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "read_header_timeout": {
+                                        "literal": "10s"
+                                      },
+                                      "idle_timeout": {
+                                        "literal": "30s"
+                                      },
+                                      "max_header_bytes": {
+                                        "literal": 16384
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                "stateDirectories": [
+                  "caddy"
+                ],
+                "health": {
+                  "service": "web",
+                  "path": "/healthz",
+                  "timeoutSeconds": 5
+                },
+                "limits": {
+                  "memoryBytes": 134217728,
+                  "cpuMillis": 500,
+                  "pids": 64
+                }
+              }
+            }
+          ]
+        }
+      },
+      "services": [
+        {
+          "name": "web",
+          "protocol": "http",
+          "containerPort": 24480,
+          "hostPortField": "http_port",
+          "healthPath": "/healthz"
+        }
+      ],
+      "homepage": {
+        "service": "web",
+        "path": "/"
+      }
+    },
+    {
+      "id": "daylight-https",
+      "version": "0.1.0",
+      "packageRevision": 1,
+      "name": {
+        "en": "Daylight · Direct HTTPS",
+        "zh-CN": "Daylight · 直连 HTTPS"
+      },
+      "description": {
+        "en": "Independently released English website with a pinned native Caddy runtime. Own HTTPS listener requires an unused address/port.",
+        "zh-CN": "独立发布的英文站点，内置固定版本 Caddy。使用独立 HTTPS 监听，要求地址和端口空闲。"
+      },
+      "license": "Apache-2.0",
+      "config": [
+        {
+          "key": "hostname",
+          "type": "string",
+          "label": {
+            "en": "Exact hostname",
+            "zh-CN": "精确域名"
+          },
+          "description": {
+            "en": "Use one owned DNS name, without a scheme, port, path or wildcard.",
+            "zh-CN": "填写一个自有域名，不含协议、端口、路径或通配符。"
+          },
+          "required": true,
+          "secret": false
+        },
+        {
+          "key": "http_port",
+          "type": "integer",
+          "label": {
+            "en": "Private HTTP port",
+            "zh-CN": "私网 HTTP 端口"
+          },
+          "description": {
+            "en": "Private origin and health endpoint; choose an unused high port.",
+            "zh-CN": "私网源站和健康检查端口；选择未占用的高位端口。"
+          },
+          "required": true,
+          "secret": false,
+          "default": 24481
+        },
+        {
+          "key": "https_listen",
+          "type": "string",
+          "label": {
+            "en": "Public HTTPS listen address",
+            "zh-CN": "公网 HTTPS 监听地址"
+          },
+          "description": {
+            "en": "An unused local address with port 443, e.g. [2001:db8::10]:443. DNS must point directly here. Never use a port owned by a gateway or another app.",
+            "zh-CN": "空闲的本机地址及 443 端口，例如 [2001:db8::10]:443。DNS 必须直达此地址，不能使用网关或其他应用占用的端口。"
+          },
+          "required": true,
+          "secret": false
+        }
+      ],
+      "artifacts": [
+        {
+          "name": "caddy",
+          "operatingSystem": "linux",
+          "architecture": "amd64",
+          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-amd64.tar.gz",
+          "sha256": "cdb8298beeada4aec0453053a07bd86b1a7a95664b59e6ecae3d1703611c7162",
+          "format": "tar.gz"
+        },
+        {
+          "name": "caddy",
+          "operatingSystem": "linux",
+          "architecture": "arm64",
+          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-arm64.tar.gz",
+          "sha256": "f50741a54e7ff6c9b918f2e29eef5892bd87fcbf5c7229cb038142d581ac3121",
+          "format": "tar.gz"
+        }
+      ],
+      "runtime": {
+        "kind": "systemd",
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services"
+        ],
+        "storage": [
+          {
+            "name": "caddy",
+            "persistent": true
+          }
+        ],
+        "nativeServices": {
+          "namespace": "daylight-https",
+          "users": [
+            "web"
+          ],
+          "services": [
+            {
+              "name": "web",
+              "start": "automatic",
+              "managedUser": "web",
+              "process": {
+                "artifact": "caddy",
+                "executable": "daylight",
+                "files": [
+                  {
+                    "path": "daylight",
+                    "executable": true
+                  },
+                  {
+                    "path": "caddy",
+                    "executable": true
+                  },
+                  {
+                    "path": "LICENSE"
+                  },
+                  {
+                    "path": "README.md"
+                  },
+                  {
+                    "path": "CADDY-README.md"
+                  },
+                  {
+                    "path": "examples/site.json"
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "--config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "config-file",
+                      "name": "caddy.json"
+                    }
+                  }
+                ],
+                "environment": {
+                  "GOMEMLIMIT": {
+                    "literal": "64MiB"
+                  },
+                  "GOMAXPROCS": {
+                    "literal": "1"
+                  },
+                  "XDG_CONFIG_HOME": {
+                    "runtime": {
+                      "kind": "state-directory",
+                      "name": "caddy"
+                    }
+                  },
+                  "XDG_DATA_HOME": {
+                    "runtime": {
+                      "kind": "state-directory",
+                      "name": "caddy"
+                    }
+                  }
+                },
+                "configFiles": [
+                  {
+                    "path": "caddy.json",
+                    "format": "json",
+                    "values": {
+                      "admin": {
+                        "literal": {
+                          "disabled": true
+                        }
+                      },
+                      "storage": {
+                        "object": {
+                          "module": {
+                            "literal": "file_system"
+                          },
+                          "root": {
+                            "runtime": {
+                              "kind": "state-directory",
+                              "name": "caddy"
+                            }
+                          }
+                        }
+                      },
+                      "apps": {
+                        "object": {
+                          "http": {
+                            "object": {
+                              "servers": {
+                                "object": {
+                                  "private": {
+                                    "object": {
+                                      "listen": {
+                                        "array": [
+                                          {
+                                            "runtime": {
+                                              "kind": "service-address",
+                                              "name": "web"
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "automatic_https": {
+                                        "literal": {
+                                          "disable": true
+                                        }
+                                      },
+                                      "protocols": {
+                                        "literal": [
+                                          "h1",
+                                          "h2"
+                                        ]
+                                      },
+                                      "routes": {
+                                        "array": [
+                                          {
+                                            "literal": {
+                                              "match": [
+                                                {
+                                                  "path": [
+                                                    "/healthz"
+                                                  ],
+                                                  "method": [
+                                                    "GET",
+                                                    "HEAD"
+                                                  ]
+                                                }
+                                              ],
+                                              "handle": [
+                                                {
+                                                  "handler": "static_response",
+                                                  "status_code": 204
+                                                }
+                                              ],
+                                              "terminal": true
+                                            }
+                                          },
+                                          {
+                                            "object": {
+                                              "match": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "host": {
+                                                        "array": [
+                                                          {
+                                                            "config": "hostname"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "path": {
+                                                        "literal": [
+                                                          "/"
+                                                        ]
+                                                      },
+                                                      "method": {
+                                                        "literal": [
+                                                          "GET",
+                                                          "HEAD"
+                                                        ]
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "handle": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "handler": {
+                                                        "literal": "static_response"
+                                                      },
+                                                      "headers": {
+                                                        "literal": {
+                                                          "Content-Type": [
+                                                            "text/html; charset=utf-8"
+                                                          ],
+                                                          "Content-Security-Policy": [
+                                                            "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                                                          ],
+                                                          "X-Content-Type-Options": [
+                                                            "nosniff"
+                                                          ],
+                                                          "Referrer-Policy": [
+                                                            "no-referrer"
+                                                          ]
+                                                        }
+                                                      },
+                                                      "body": {
+                                                        "literal": ""
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "terminal": {
+                                                "literal": true
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "literal": {
+                                              "handle": [
+                                                {
+                                                  "handler": "static_response",
+                                                  "status_code": 404
+                                                }
+                                              ],
+                                              "terminal": true
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "read_header_timeout": {
+                                        "literal": "10s"
+                                      },
+                                      "idle_timeout": {
+                                        "literal": "30s"
+                                      },
+                                      "max_header_bytes": {
+                                        "literal": 16384
+                                      }
+                                    }
+                                  },
+                                  "public": {
+                                    "object": {
+                                      "listen": {
+                                        "array": [
+                                          {
+                                            "config": "https_listen"
+                                          }
+                                        ]
+                                      },
+                                      "automatic_https": {
+                                        "literal": {
+                                          "disable_redirects": true
+                                        }
+                                      },
+                                      "protocols": {
+                                        "literal": [
+                                          "h1",
+                                          "h2"
+                                        ]
+                                      },
+                                      "strict_sni_host": {
+                                        "literal": true
+                                      },
+                                      "routes": {
+                                        "array": [
+                                          {
+                                            "object": {
+                                              "match": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "host": {
+                                                        "array": [
+                                                          {
+                                                            "config": "hostname"
+                                                          }
+                                                        ]
+                                                      },
+                                                      "path": {
+                                                        "literal": [
+                                                          "/"
+                                                        ]
+                                                      },
+                                                      "method": {
+                                                        "literal": [
+                                                          "GET",
+                                                          "HEAD"
+                                                        ]
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "handle": {
+                                                "array": [
+                                                  {
+                                                    "object": {
+                                                      "handler": {
+                                                        "literal": "static_response"
+                                                      },
+                                                      "headers": {
+                                                        "literal": {
+                                                          "Content-Type": [
+                                                            "text/html; charset=utf-8"
+                                                          ],
+                                                          "Content-Security-Policy": [
+                                                            "default-src 'none'; style-src 'unsafe-inline'; img-src 'self' data:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+                                                          ],
+                                                          "X-Content-Type-Options": [
+                                                            "nosniff"
+                                                          ],
+                                                          "Referrer-Policy": [
+                                                            "no-referrer"
+                                                          ]
+                                                        }
+                                                      },
+                                                      "body": {
+                                                        "literal": ""
+                                                      }
+                                                    }
+                                                  }
+                                                ]
+                                              },
+                                              "terminal": {
+                                                "literal": true
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "literal": {
+                                              "handle": [
+                                                {
+                                                  "handler": "static_response",
+                                                  "status_code": 404
+                                                }
+                                              ],
+                                              "terminal": true
+                                            }
+                                          }
+                                        ]
+                                      },
+                                      "read_header_timeout": {
+                                        "literal": "10s"
+                                      },
+                                      "idle_timeout": {
+                                        "literal": "30s"
+                                      },
+                                      "max_header_bytes": {
+                                        "literal": 16384
+                                      },
+                                      "tls_connection_policies": {
+                                        "array": [
+                                          {
+                                            "object": {
+                                              "match": {
+                                                "object": {
+                                                  "sni": {
+                                                    "array": [
+                                                      {
+                                                        "config": "hostname"
+                                                      }
+                                                    ]
+                                                  }
+                                                }
+                                              },
+                                              "protocol_min": {
+                                                "literal": "tls1.3"
+                                              }
+                                            }
+                                          },
+                                          {
+                                            "literal": {
+                                              "drop": true
+                                            }
+                                          }
+                                        ]
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          },
+                          "tls": {
+                            "object": {
+                              "automation": {
+                                "object": {
+                                  "policies": {
+                                    "array": [
+                                      {
+                                        "object": {
+                                          "subjects": {
+                                            "array": [
+                                              {
+                                                "config": "hostname"
+                                              }
+                                            ]
+                                          },
+                                          "issuers": {
+                                            "literal": [
+                                              {
+                                                "module": "acme",
+                                                "ca": "https://acme-v02.api.letsencrypt.org/directory",
+                                                "challenges": {
+                                                  "http": {
+                                                    "disabled": true
+                                                  }
+                                                }
+                                              }
+                                            ]
+                                          }
+                                        }
+                                      }
+                                    ]
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                ],
+                "stateDirectories": [
+                  "caddy"
+                ],
+                "health": {
+                  "service": "web",
+                  "path": "/healthz",
+                  "timeoutSeconds": 5
+                },
+                "limits": {
+                  "memoryBytes": 134217728,
+                  "cpuMillis": 500,
+                  "pids": 64
+                },
+                "bindService": true
+              }
+            }
+          ]
+        }
+      },
+      "services": [
+        {
+          "name": "web",
+          "protocol": "http",
+          "containerPort": 24480,
+          "hostPortField": "http_port",
+          "healthPath": "/healthz"
+        }
+      ],
+      "homepage": {
+        "service": "web",
+        "path": "/"
+      }
     }
   ]
 }

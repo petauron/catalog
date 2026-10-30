@@ -121,6 +121,8 @@ func validateNativeServices(app AppManifest, caps map[string]bool) error {
 // NativeArtifactFiles returns the complete signed extraction allowlist for one
 // artifact, including files used by multiple services. It never downloads or
 // executes the artifact. A package cannot reinterpret a shared file's mode.
+// A website launcher and its bundled TLS server must both be declared executable
+// files; declaring the launcher alone does not authorize an implicit helper.
 func NativeArtifactFiles(app AppManifest, artifactName string) ([]ArtifactFile, error) {
 	if err := ValidateRuntime(app); err != nil {
 		return nil, err

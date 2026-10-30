@@ -50,3 +50,5 @@ original TUF signing / conditional R2 upload tools were extracted from
 Original source notices and signed historical metadata are preserved. The
 publisher's pinned `semver` dependency is ISC-licensed; its license is included
 in the installed npm package.
+
+Daylight is an independently released native English website; see [managed website deployment](docs/STATIC-SITES.md) for the first Caddy-only handover and later package upgrades.
