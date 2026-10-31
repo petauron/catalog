@@ -3292,15 +3292,15 @@
     },
     {
       "id": "daylight",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "packageRevision": 1,
       "name": {
         "en": "Daylight",
         "zh-CN": "Daylight"
       },
       "description": {
-        "en": "Independently released English website with a pinned native Caddy runtime. Publish the private origin through a managed gateway.",
-        "zh-CN": "独立发布的英文站点，内置固定版本 Caddy。通过受管网关发布私网源站。"
+        "en": "Independently released website content served by the host's shared managed Caddy. Certificates are managed by Center.",
+        "zh-CN": "独立发布的网站内容，由主机共用的受管 Caddy 提供服务，证书由主控统一管理。"
       },
       "license": "Apache-2.0",
       "config": [
@@ -3339,16 +3339,16 @@
           "name": "caddy",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-amd64.tar.gz",
-          "sha256": "cdb8298beeada4aec0453053a07bd86b1a7a95664b59e6ecae3d1703611c7162",
+          "url": "https://downloads.petauron.com/daylight/v0.2.0/daylight-v0.2.0-linux-amd64.tar.gz",
+          "sha256": "bfe6b91021c61ed4a6782c1a06b6d569bef5cf053b46ec15fdd0afe59bc89261",
           "format": "tar.gz"
         },
         {
           "name": "caddy",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-arm64.tar.gz",
-          "sha256": "f50741a54e7ff6c9b918f2e29eef5892bd87fcbf5c7229cb038142d581ac3121",
+          "url": "https://downloads.petauron.com/daylight/v0.2.0/daylight-v0.2.0-linux-arm64.tar.gz",
+          "sha256": "0c838b11cf2939961743f9109e4db9ac96ae0111ad08460c29b98e227ff7ee53",
           "format": "tar.gz"
         }
       ],
@@ -3356,7 +3356,8 @@
         "kind": "systemd",
         "version": 2,
         "requiredCapabilities": [
-          "native-services"
+          "native-services",
+          "shared-caddy"
         ],
         "storage": [
           {
@@ -3372,7 +3373,7 @@
           "services": [
             {
               "name": "web",
-              "start": "automatic",
+              "start": "manual",
               "managedUser": "web",
               "process": {
                 "artifact": "caddy",
@@ -3397,20 +3398,14 @@
                   },
                   {
                     "path": "examples/site.json"
+                  },
+                  {
+                    "path": "site/index.html"
                   }
                 ],
                 "arguments": [
                   {
-                    "literal": "run"
-                  },
-                  {
-                    "literal": "--config"
-                  },
-                  {
-                    "runtime": {
-                      "kind": "config-file",
-                      "name": "caddy.json"
-                    }
+                    "literal": "version"
                   }
                 ],
                 "environment": {
@@ -3608,11 +3603,6 @@
                 "stateDirectories": [
                   "caddy"
                 ],
-                "health": {
-                  "service": "web",
-                  "path": "/healthz",
-                  "timeoutSeconds": 5
-                },
                 "limits": {
                   "memoryBytes": 134217728,
                   "cpuMillis": 500,
@@ -3639,15 +3629,15 @@
     },
     {
       "id": "daylight-https",
-      "version": "0.1.0",
+      "version": "0.2.0",
       "packageRevision": 1,
       "name": {
         "en": "Daylight · Direct HTTPS",
         "zh-CN": "Daylight · 直连 HTTPS"
       },
       "description": {
-        "en": "Independently released English website with a pinned native Caddy runtime. Own HTTPS listener requires an unused address/port.",
-        "zh-CN": "独立发布的英文站点，内置固定版本 Caddy。使用独立 HTTPS 监听，要求地址和端口空闲。"
+        "en": "Independently released website content served by the host's shared managed Caddy. Certificates are managed by Center.",
+        "zh-CN": "独立发布的网站内容，由主机共用的受管 Caddy 提供服务，证书由主控统一管理。"
       },
       "license": "Apache-2.0",
       "config": [
@@ -3700,16 +3690,16 @@
           "name": "caddy",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-amd64.tar.gz",
-          "sha256": "cdb8298beeada4aec0453053a07bd86b1a7a95664b59e6ecae3d1703611c7162",
+          "url": "https://downloads.petauron.com/daylight/v0.2.0/daylight-v0.2.0-linux-amd64.tar.gz",
+          "sha256": "bfe6b91021c61ed4a6782c1a06b6d569bef5cf053b46ec15fdd0afe59bc89261",
           "format": "tar.gz"
         },
         {
           "name": "caddy",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://downloads.petauron.com/daylight/v0.1.0/daylight-v0.1.0-linux-arm64.tar.gz",
-          "sha256": "f50741a54e7ff6c9b918f2e29eef5892bd87fcbf5c7229cb038142d581ac3121",
+          "url": "https://downloads.petauron.com/daylight/v0.2.0/daylight-v0.2.0-linux-arm64.tar.gz",
+          "sha256": "0c838b11cf2939961743f9109e4db9ac96ae0111ad08460c29b98e227ff7ee53",
           "format": "tar.gz"
         }
       ],
@@ -3717,7 +3707,8 @@
         "kind": "systemd",
         "version": 2,
         "requiredCapabilities": [
-          "native-services"
+          "native-services",
+          "shared-caddy"
         ],
         "storage": [
           {
@@ -3733,7 +3724,7 @@
           "services": [
             {
               "name": "web",
-              "start": "automatic",
+              "start": "manual",
               "managedUser": "web",
               "process": {
                 "artifact": "caddy",
@@ -3758,20 +3749,14 @@
                   },
                   {
                     "path": "examples/site.json"
+                  },
+                  {
+                    "path": "site/index.html"
                   }
                 ],
                 "arguments": [
                   {
-                    "literal": "run"
-                  },
-                  {
-                    "literal": "--config"
-                  },
-                  {
-                    "runtime": {
-                      "kind": "config-file",
-                      "name": "caddy.json"
-                    }
+                    "literal": "version"
                   }
                 ],
                 "environment": {
@@ -4144,17 +4129,11 @@
                 "stateDirectories": [
                   "caddy"
                 ],
-                "health": {
-                  "service": "web",
-                  "path": "/healthz",
-                  "timeoutSeconds": 5
-                },
                 "limits": {
                   "memoryBytes": 134217728,
                   "cpuMillis": 500,
                   "pids": 64
-                },
-                "bindService": true
+                }
               }
             }
           ]
