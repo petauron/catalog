@@ -2,6 +2,47 @@
 
 Related tracking: [#125](https://github.com/petauron/catalog/issues/125).
 
+## Shared Caddy source handoff
+
+The shared runtime change is tracked in
+[Vastora #1128](https://github.com/petauron/vastora/issues/1128). Daylight's next
+release adds the exact packaged `site/index.html`. Existing 0.1.0 archives do
+not contain that file: do not change their extraction allowlist or declare
+`shared-caddy` against those old archives.
+
+After the new Daylight release has passed its exact-source Release workflow,
+verify its published tag/SHA, SHA256SUMS, release.json, both archives and R2
+readback. In a feature worktree run
+`node scripts/prepare-daylight-shared.mjs VERSION VERIFIED_RELEASE_JSON VERIFIED_ARCHIVE_DIRECTORY`.
+This prepares source only, with no signing, deployment or binary execution.
+Review the forward version and immutable digests before the ordinary catalog
+checks and protected publication flow. No unreleased version or digest is
+invented by this source change; `catalog/catalog.json` remains unchanged until
+the release exists.
+
+The recipe retains its application/unit/state identity for managed upgrades but
+changes the web unit to **manual**, with only `daylight version` as its command.
+The unit is never enabled or used as a second server. It requires both
+`native-services` and `shared-caddy`; upgrade Center and Agent support before
+offering this recipe. Existing configuration and certificate directories are
+retained as recovery data and are not executed as an alternate server.
+
+Agent verifies the page from the signed archive and combines it with all gateway
+routes and certificates. Hosts with Docker reuse the managed gateway container;
+native-only hosts run one platform-owned Caddy from the same verified bundle,
+without installing Docker. Center provides exact-name website certificates.
+For a direct HTTPS upgrade, the old site must already have an applied
+Center-managed certificate; otherwise preparation refuses before stopping it.
+Fresh sites can be staged on private HTTP before enabling their certificate.
+
+The first handover may change Docker port bindings and replace the owned
+container. Plan and authorize that transition separately; routine page and
+certificate refreshes use the single owner's combined configuration load.
+Validate protected gateway routes, other sites, actual TLS/H2, REALITY and
+subscription access before deployment acceptance. Publication alone proves
+none of those. Uninstall removes only the site's contribution and preserves
+other users of the shared server.
+
 `daylight` and `daylight-https` deliver the independent [Daylight 0.1.0 release](https://github.com/petauron/daylight/releases/tag/v0.1.0). Its version is separate from the bundled Caddy 2.11.4. Both immutable Linux archives are copied and verified by Daylight CI to the existing download service; the signed recipe pins their SHA256 values. No Docker, new dependency, shell hook or management API is added.
 
 The package owns the English page. The launcher replaces only exact-host root HTML response bodies in memory, retaining deployment listener/TLS/certificate/header/health configuration. There is no inline HTML input or historical-content fallback. Later page updates use ordinary Daylight releases, signed recipe updates and managed application upgrades.
