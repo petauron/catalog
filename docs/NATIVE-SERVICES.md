@@ -89,3 +89,19 @@ installation, recovery, resource ownership inspection and Linux integration
 tests belong to the executor implementation and are required before any catalog
 entry starts using this contract. No current application recipe is migrated by
 this change.
+
+## Senlun Agent
+
+The Senlun Agent recipe uses one unprivileged application-owned service and an
+`agent-state` directory. Initial enrollment requires a one-time token; a reviewed
+first-install handover may instead supply private `existing_identity` JSON. The
+executor must validate that identity against the configured Service URL before
+any activation and must not overwrite an existing identity. Stop an independently
+installed collector before handover. Do not create another monitoring node.
+
+Existing v1 installations require the reviewed Senlun-specific identity-preserving
+upgrade path. The current installation receipt and source manifest are verified,
+the old writer stops, and a bounded recovery record is saved before retiring its
+owned runtime. The new service imports the same identity before starting. The old
+persistent state is retained for recovery; no monitoring database is moved.
+Publish this recipe only after the matching Vastora executor has been delivered.
