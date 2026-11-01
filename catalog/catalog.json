@@ -1002,69 +1002,98 @@
             "zh-CN": "Senlun 配对令牌"
           },
           "description": {
-            "en": "Create a short-lived, single-use token in Senlun before installing this Agent. Only initial enrollment uses it; later upgrades keep the Agent's saved identity.",
-            "zh-CN": "安装前在 Senlun 中创建短期、一次性的配对令牌。仅首次配对使用；后续升级保留探针已保存的身份。"
+            "en": "Required for first enrollment. Leave empty when importing an existing identity; later upgrades retain the saved identity.",
+            "zh-CN": "首次配对时需要；导入既有身份时留空，后续升级保留已保存身份。"
           },
-          "required": true,
+          "required": false,
+          "secret": true
+        },
+        {
+          "key": "existing_identity",
+          "type": "string",
+          "label": {
+            "en": "Existing Agent identity (JSON)",
+            "zh-CN": "现有探针身份（JSON）"
+          },
+          "description": {
+            "en": "Optional private credential JSON for an explicitly approved handover. Stop the previous collector first. The installer validates the Service URL and retains the monitoring identity without enrollment. Initial install only; never paste it into an issue or report.",
+            "zh-CN": "仅首次接管时可选填受限保存的探针凭据 JSON；先停止原探针。安装器核对监控地址并保留原身份，不重新配对。不要写入 issue 或报告。"
+          },
+          "required": false,
           "secret": true
         }
       ],
-      "packageRevision": 4,
+      "packageRevision": 5,
       "runtime": {
         "kind": "systemd",
-        "version": 1,
+        "version": 2,
+        "requiredCapabilities": [
+          "native-services"
+        ],
         "storage": [
           {
-            "name": "state",
+            "name": "agent-state",
             "persistent": true
           }
         ],
-        "systemd": {
-          "artifact": "senlun-agent",
-          "executable": "senlun-agent",
-          "files": [
+        "nativeServices": {
+          "namespace": "senlun",
+          "users": [
+            "agent"
+          ],
+          "services": [
             {
-              "path": "senlun-agent",
-              "executable": true
-            }
-          ],
-          "user": "vastora-senlun",
-          "stateDirectories": [
-            "state"
-          ],
-          "credentials": {
-            "enrollment-token": "enrollment_token"
-          },
-          "environment": {
-            "SENLUN_SERVICE_URL": {
-              "config": "service_url"
-            },
-            "SENLUN_NODE_NAME": {
-              "config": "node_name"
-            },
-            "SENLUN_NODE_GROUP": {
-              "config": "node_group"
-            },
-            "SENLUN_NODE_REGION": {
-              "config": "node_region"
-            },
-            "SENLUN_GEOIP_PROVIDER": {
-              "config": "geoip_provider"
-            },
-            "SENLUN_CREDENTIALS_PATH": {
-              "runtime": {
-                "kind": "state-directory",
-                "name": "state",
-                "path": "agent-credentials.json"
+              "name": "agent",
+              "start": "automatic",
+              "managedUser": "agent",
+              "process": {
+                "artifact": "senlun-agent",
+                "executable": "senlun-agent",
+                "files": [
+                  {
+                    "path": "senlun-agent",
+                    "executable": true
+                  }
+                ],
+                "stateDirectories": [
+                  "agent-state"
+                ],
+                "credentials": {
+                  "enrollment-token": "enrollment_token"
+                },
+                "environment": {
+                  "SENLUN_SERVICE_URL": {
+                    "config": "service_url"
+                  },
+                  "SENLUN_NODE_NAME": {
+                    "config": "node_name"
+                  },
+                  "SENLUN_NODE_GROUP": {
+                    "config": "node_group"
+                  },
+                  "SENLUN_NODE_REGION": {
+                    "config": "node_region"
+                  },
+                  "SENLUN_GEOIP_PROVIDER": {
+                    "config": "geoip_provider"
+                  },
+                  "SENLUN_CREDENTIALS_PATH": {
+                    "runtime": {
+                      "kind": "state-directory",
+                      "name": "agent-state",
+                      "path": "agent-credentials.json"
+                    }
+                  },
+                  "SENLUN_ENROLLMENT_TOKEN_FILE": {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "enrollment-token"
+                    }
+                  }
+                }
               }
-            },
-            "SENLUN_ENROLLMENT_TOKEN_FILE": {
-              "runtime": {
-                "kind": "credential-file",
-                "name": "enrollment-token"
-              }
             }
-          }
+          ]
         }
       }
     },

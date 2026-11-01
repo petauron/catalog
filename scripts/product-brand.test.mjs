@@ -8,14 +8,14 @@ const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import
 const products = [
   ["meridian", "Glivela", "Glivela", "c23c3a2b54a936e9589c5fd47ff1cc7b671ee7040b68c482cc0589e6f50fc4cc"],
   ["senlun", "Senlun", "Senlun", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
-  ["senlun-agent", "Senlun Agent", "Senlun 探针", "022d22f3e89c785363640d0047d38abbbd3c71c0c7cf9bfedd4b3933ccf9303a"],
+  ["senlun-agent", "Senlun Agent", "Senlun 探针", "aefb3f161f869d74228ac8e902a38dd7f7de8cdb0ed2d94f9c7aa46b1ff6ee41"],
 ];
 
 test("reviewed product identities and release coordinates are pinned", () => {
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, id === "meridian" || id === "senlun" ? 5 : 4);
+    assert.equal(app.packageRevision, 5);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
@@ -45,7 +45,7 @@ test("brand metadata does not roll back a later published upstream version", () 
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
     assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, id === "meridian" || id === "senlun" ? 5 : 4);
+    assert.equal(app.packageRevision, 5);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");

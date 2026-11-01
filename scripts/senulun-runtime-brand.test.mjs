@@ -27,10 +27,12 @@ test("verified new release converts runtime names using the current installation
   assert.equal(container.mounts[0].storage, "data");
   assert.equal(container.mounts[0].target, "/var/lib/senlun");
   assert.deepEqual(container.arguments, [{ literal: "migrate-and-serve" }]);
-  assert.equal(agent.runtime.systemd.executable, "senlun-agent");
-  assert.equal(agent.runtime.systemd.user, "vastora-senlun");
-  assert.ok(agent.runtime.systemd.environment.SENLUN_CREDENTIALS_PATH);
-  assert.deepEqual(agent.runtime.systemd.stateDirectories, collector.runtime.systemd.stateDirectories);
+  const native = agent.runtime.nativeServices.services[0];
+  assert.equal(agent.runtime.version, 2);
+  assert.equal(native.process.executable, "senlun-agent");
+  assert.equal(native.managedUser, "agent");
+  assert.ok(native.process.environment.SENLUN_CREDENTIALS_PATH);
+  assert.deepEqual(native.process.stateDirectories, collector.runtime.nativeServices.services[0].process.stateDirectories);
   assert.deepEqual(applyRelease(result, verified, rule), result, "replay changed runtime metadata");
 });
 

@@ -233,10 +233,11 @@ export function migrateSenlunRecipe(app, service) {
       container.arguments = [{ literal: "migrate-and-serve" }];
     }
   } else {
-    const native = app.runtime.systemd;
+    const native = app.runtime.version === 2 ? app.runtime.nativeServices?.services.find(service => service.name === "agent")?.process : app.runtime.systemd;
+    if (!native) throw new Error("Reviewed Senlun Agent runtime is missing");
     native.environment = renameEnvironment(native.environment);
     native.executable = "senlun-agent";
-    native.user = "vastora-senlun";
+    if (app.runtime.version === 1) native.user = "vastora-senlun";
     native.files = native.files.map(file => file.path === "senulun-agent" ? { ...file, path: "senlun-agent" } : file);
   }
 }
