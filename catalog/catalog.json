@@ -1023,12 +1023,13 @@
           "secret": true
         }
       ],
-      "packageRevision": 5,
+      "packageRevision": 6,
       "runtime": {
         "kind": "systemd",
         "version": 2,
         "requiredCapabilities": [
-          "native-services"
+          "native-services",
+          "senlun-icmp"
         ],
         "storage": [
           {
