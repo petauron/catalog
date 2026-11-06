@@ -25,7 +25,7 @@
       ]
     }
   }, {
-    "if": { "properties": { "kind": { "const": "systemd" }, "version": { "const": 2 } } },
+    "if": { "properties": { "kind": { "enum": ["systemd", "native"] }, "version": { "const": 2 } } },
     "then": {
       "additionalProperties": false,
       "required": ["nativeServices"],

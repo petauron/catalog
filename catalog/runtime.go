@@ -134,7 +134,7 @@ type ArtifactFile struct {
 	Executable bool   `json:"executable,omitempty"`
 }
 
-// NativeServicesRuntime is systemd contract version 2. Names are logical,
+// NativeServicesRuntime is the portable native contract version 2. Names are logical,
 // application-scoped identifiers, never host account names or unit paths.
 type NativeServicesRuntime struct {
 	Namespace string          `json:"namespace,omitempty"`

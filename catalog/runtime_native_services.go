@@ -11,8 +11,8 @@ import (
 func validateNativeServices(app AppManifest, caps map[string]bool) error {
 	r := app.Runtime
 	b := r.NativeServices
-	if r.Kind != "systemd" || r.Systemd != nil || r.Docker != nil || b == nil {
-		return errors.New("catalog: systemd version 2 requires only nativeServices")
+	if (r.Kind != "systemd" && r.Kind != "native") || r.Systemd != nil || r.Docker != nil || b == nil {
+		return errors.New("catalog: native version 2 requires only nativeServices")
 	}
 	if !caps["native-services"] {
 		return errors.New("catalog: native services require native-services capability")
@@ -131,7 +131,7 @@ func NativeArtifactFiles(app AppManifest, artifactName string) ([]ArtifactFile, 
 }
 
 func nativeArtifactFiles(r *RuntimeSpec, artifactName string) ([]ArtifactFile, error) {
-	if r == nil || r.Kind != "systemd" || !knownRuntimeVersion(r.Kind, r.Version) {
+	if r == nil || (r.Kind != "systemd" && r.Kind != "native") || !knownRuntimeVersion(r.Kind, r.Version) {
 		return nil, errors.New("catalog: artifact files require supported systemd runtime")
 	}
 	var processes []SystemdRuntime
