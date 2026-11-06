@@ -1,6 +1,6 @@
 # Petauron Catalog
 
-Independent, signed application packages for declarative container and systemd runtimes.
+Independent, signed application packages for declarative container and native service runtimes.
 
 The catalog is a release product, not a deployment service. Publishing a package
 never installs or upgrades applications on connected machines.
@@ -53,3 +53,15 @@ publisher's pinned `semver` dependency is ISC-licensed; its license is included
 in the installed npm package.
 
 Daylight is an independently released native English website; see [managed website deployment](docs/STATIC-SITES.md) for the first Caddy-only handover and later package upgrades.
+
+## Portable native services
+
+`runtime.kind: native` with `version: 2` uses the nativeServices declaration on
+an actual systemd or OpenRC executor. It requires explicit `native: 2` support;
+a systemd-only executor does not implicitly accept it. Existing `systemd` v2
+packages remain systemd-only, and unknown runtime versions remain displayable
+but non-executable. Service paths and account identities are selected locally,
+not by remote shell fragments or host-specific paths in the manifest.
+
+Publishing this SDK change does not publish or replace signed application
+recipes. Consumer upgrades and package publication remain separate steps.

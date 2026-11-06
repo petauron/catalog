@@ -173,3 +173,21 @@ func TestSystemdV2ExecutorSupportsExistingV1OnlyByExplicitContract(t *testing.T)
 		t.Fatal("unknown future executor implicitly accepted")
 	}
 }
+
+func TestPortableNativeContractRequiresExplicitExecutor(t *testing.T) {
+	app := nativeServicesFixture()
+	app.Runtime.Kind = "native"
+	if err := ValidateRuntime(app); err != nil {
+		t.Fatal(err)
+	}
+	if CheckRuntimeSupport(app, ExecutorSupport{Versions: map[string]int{"systemd": 2}, Capabilities: app.Runtime.RequiredCapabilities}).Supported {
+		t.Fatal("systemd capability alone must not promise portable native support")
+	}
+	if !CheckRuntimeSupport(app, ExecutorSupport{Versions: map[string]int{"native": 2}, Capabilities: app.Runtime.RequiredCapabilities}).Supported {
+		t.Fatal("portable native executor rejected")
+	}
+	app.Runtime.Version = 1
+	if CheckRuntimeSupport(app, ExecutorSupport{Versions: map[string]int{"native": 2}, Capabilities: app.Runtime.RequiredCapabilities}).Supported {
+		t.Fatal("executed an undeclared native version")
+	}
+}

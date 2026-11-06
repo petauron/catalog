@@ -16,7 +16,7 @@ var runtimeName = regexp.MustCompile(`^[a-z0-9][a-z0-9.-]{0,62}$`)
 var userName = regexp.MustCompile(`^(?:[a-z_][a-z0-9_-]{0,31}|[0-9]{1,10})(?::(?:[a-z_][a-z0-9_-]{0,31}|[0-9]{1,10}))?$`)
 
 func knownRuntimeVersion(kind string, version int) bool {
-	return (kind == "docker" && version == 1) || (kind == "systemd" && (version == 1 || version == 2))
+	return (kind == "docker" && version == 1) || (kind == "systemd" && (version == 1 || version == 2)) || (kind == "native" && version == 2)
 }
 
 // UnmarshalJSON keeps a future runtime opaque without relaxing known versions.
@@ -161,7 +161,7 @@ func ValidateRuntime(app AppManifest) error {
 		return validateNativeServices(app, caps)
 	}
 	if r.NativeServices != nil {
-		return errors.New("catalog: nativeServices requires systemd version 2")
+		return errors.New("catalog: nativeServices requires a supported native version 2 runtime")
 	}
 	if r.Kind == "docker" {
 		if r.Docker == nil || r.Systemd != nil || len(r.Docker.Containers) < 1 || len(r.Docker.Containers) > 32 {
