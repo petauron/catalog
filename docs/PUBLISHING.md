@@ -82,7 +82,7 @@ node scripts/prepare-glivela-release.mjs "$RELEASE_TAG" "$RELEASE_SHA" "$RELEASE
 This operator-run helper waits for nothing and fails if the exact Glivela release
 or its newest exact-source push CI has not succeeded. It checks the protected
 source/tag identity, authenticated release inventory, `SHA256SUMS`, both downloaded
-native archives and the immutable two-platform controller image index. It never
+native archives and the immutable two-platform controller image index. Release assets use the exact authenticated GitHub asset ID through the existing CLI, with bounded output and unchanged inventory, size and digest checks; browser download URLs remain the published recipe coordinates. It never
 executes downloaded files. It then updates only the four Glivela recipe versions
 and release coordinates, reviewed UI checkout SHA and its existing pin contract.
 It also advances only Glivela's machine-identity digest and version comment in
