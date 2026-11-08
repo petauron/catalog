@@ -9,6 +9,7 @@ import (
 	"debug/elf"
 	"encoding/binary"
 	"encoding/hex"
+	"encoding/json"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -159,5 +160,64 @@ func TestArtifactDecompressionAndMemberCountBounds(t *testing.T) {
 	}
 	if _, err := ExtractArtifact(io.LimitReader(strings.NewReader("abc"), 3), filepath.Join(t.TempDir(), "raw"), Artifact{Format: "raw"}, []ArtifactFile{{Path: "../bad"}}); err == nil {
 		t.Fatal("unsafe raw destination accepted")
+	}
+}
+
+type artifactRequestFunc func(*http.Request) (*http.Response, error)
+
+func (f artifactRequestFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
+
+func TestGitHubReleaseAssetKeepsIdentityBoundsAndDigest(t *testing.T) {
+	content := []byte("artifact")
+	hash := sha256.Sum256(content)
+	artifact := Artifact{URL: "https://github.com/owner/repository/releases/download/v1/agent", SHA256: hex.EncodeToString(hash[:])}
+	metadataURL := artifact.URL
+	payload := content
+	var assetCalls int
+	var oversized bool
+	client := &http.Client{Transport: artifactRequestFunc(func(r *http.Request) (*http.Response, error) {
+		if r.URL.Host != "api.github.com" || r.URL.Scheme != "https" || r.Header.Get("Authorization") != "" {
+			t.Fatalf("unexpected request origin or credentials: %s", r.URL.Host)
+		}
+		var raw []byte
+		switch r.URL.Path {
+		case "/repos/owner/repository/releases/tags/v1":
+			if r.Header.Get("Accept") != "application/vnd.github+json" {
+				t.Fatal("missing metadata accept")
+			}
+			raw, _ = json.Marshal(map[string]any{"tag_name": "v1", "assets": []map[string]any{{"id": 7, "name": "agent", "browser_download_url": metadataURL, "state": "uploaded", "size": len(content), "digest": "sha256:" + artifact.SHA256}}})
+		case "/repos/owner/repository/releases/assets/7":
+			if r.Header.Get("Accept") != "application/octet-stream" {
+				t.Fatal("missing binary accept")
+			}
+			assetCalls++
+			raw = payload
+		default:
+			t.Fatalf("unexpected asset route: %s", r.URL.Path)
+		}
+		length := int64(len(raw))
+		if oversized {
+			length = 2 << 20
+		}
+		return &http.Response{StatusCode: 200, Header: make(http.Header), ContentLength: length, Body: io.NopCloser(bytes.NewReader(raw)), Request: r}, nil
+	})}
+	raw, err := DownloadArtifact(context.Background(), client, artifact)
+	if err != nil || !bytes.Equal(raw, content) || assetCalls != 1 {
+		t.Fatalf("exact asset failed: %v", err)
+	}
+	payload = []byte("tampered")
+	if _, err := DownloadArtifact(context.Background(), client, artifact); err == nil {
+		t.Fatal("metadata digest trusted instead of actual bytes")
+	}
+	payload = content
+	metadataURL = artifact.URL + "-other"
+	before := assetCalls
+	if _, err := DownloadArtifact(context.Background(), client, artifact); err == nil || assetCalls != before {
+		t.Fatal("mismatched original URL reached binary download")
+	}
+	metadataURL = artifact.URL
+	oversized = true
+	if _, err := DownloadArtifact(context.Background(), client, artifact); err == nil || assetCalls != before {
+		t.Fatal("oversized metadata accepted")
 	}
 }

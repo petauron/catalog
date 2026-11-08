@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"debug/elf"
 	"encoding/hex"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -256,6 +257,8 @@ func DownloadArtifact(ctx context.Context, client *http.Client, artifact Artifac
 			configured.Timeout = 2 * time.Minute
 		}
 	}
+	ctx, cancel := context.WithTimeout(ctx, configured.Timeout)
+	defer cancel()
 	previousRedirect := configured.CheckRedirect
 	configured.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || request.URL.Scheme != "https" || request.URL.Host == "" || request.URL.User != nil || request.URL.Fragment != "" {
@@ -266,10 +269,15 @@ func DownloadArtifact(ctx context.Context, client *http.Client, artifact Artifac
 		}
 		return nil
 	}
-	request, err := http.NewRequestWithContext(ctx, http.MethodGet, artifact.URL, nil)
+	downloadURL, expectedSize, err := githubReleaseAsset(ctx, &configured, parsed, artifact)
 	if err != nil {
 		return nil, err
 	}
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, downloadURL, nil)
+	if err != nil {
+		return nil, err
+	}
+	request.Header.Set("Accept", "application/octet-stream")
 	response, err := configured.Do(request)
 	if err != nil {
 		return nil, err
@@ -288,9 +296,81 @@ func DownloadArtifact(ctx context.Context, client *http.Client, artifact Artifac
 	if len(raw) == 0 || int64(len(raw)) > MaxArtifactBytes {
 		return nil, errors.New("catalog: artifact exceeds download bound")
 	}
+	if expectedSize > 0 && int64(len(raw)) != expectedSize {
+		return nil, errors.New("catalog: release asset size mismatch")
+	}
 	hash := sha256.Sum256(raw)
 	if hex.EncodeToString(hash[:]) != artifact.SHA256 {
 		return nil, errors.New("catalog: artifact SHA256 mismatch")
 	}
 	return raw, nil
+}
+
+// Resolve canonical GitHub release URLs through its official API. Keep the
+// recipe URL as the identity; never accept another release asset or fall back
+// after a failed lookup. The caller still authenticates every downloaded byte.
+func githubReleaseAsset(ctx context.Context, client *http.Client, parsed *url.URL, artifact Artifact) (string, int64, error) {
+	parts := strings.Split(strings.TrimPrefix(parsed.Path, "/"), "/")
+	if parsed.Host != "github.com" || len(parts) != 6 || parts[2] != "releases" || parts[3] != "download" {
+		return artifact.URL, 0, nil
+	}
+	base := "https://api.github.com/repos/" + url.PathEscape(parts[0]) + "/" + url.PathEscape(parts[1]) + "/releases/"
+	request, err := http.NewRequestWithContext(ctx, http.MethodGet, base+"tags/"+url.PathEscape(parts[4]), nil)
+	if err != nil {
+		return "", 0, err
+	}
+	request.Header.Set("Accept", "application/vnd.github+json")
+	response, err := client.Do(request)
+	if err != nil {
+		return "", 0, err
+	}
+	defer response.Body.Close()
+	if response.StatusCode != http.StatusOK {
+		return "", 0, fmt.Errorf("catalog: release metadata HTTP status %d", response.StatusCode)
+	}
+	const maximum = 1 << 20
+	if response.ContentLength > maximum {
+		return "", 0, errors.New("catalog: release metadata exceeds bound")
+	}
+	raw, err := io.ReadAll(io.LimitReader(response.Body, maximum+1))
+	if err != nil {
+		return "", 0, err
+	}
+	if len(raw) > maximum {
+		return "", 0, errors.New("catalog: release metadata exceeds bound")
+	}
+	var release struct {
+		Draft  bool   `json:"draft"`
+		Tag    string `json:"tag_name"`
+		Assets []struct {
+			ID     int64  `json:"id"`
+			Name   string `json:"name"`
+			URL    string `json:"browser_download_url"`
+			State  string `json:"state"`
+			Size   int64  `json:"size"`
+			Digest string `json:"digest"`
+		} `json:"assets"`
+	}
+	if err := json.Unmarshal(raw, &release); err != nil {
+		return "", 0, err
+	}
+	if release.Draft || release.Tag != parts[4] {
+		return "", 0, errors.New("catalog: release identity mismatch")
+	}
+	downloadURL := ""
+	var size int64
+	for _, asset := range release.Assets {
+		if asset.Name != parts[5] {
+			continue
+		}
+		if downloadURL != "" || asset.ID <= 0 || asset.URL != artifact.URL || asset.State != "uploaded" || asset.Size <= 0 || asset.Size > MaxArtifactBytes || (asset.Digest != "" && asset.Digest != "sha256:"+artifact.SHA256) {
+			return "", 0, errors.New("catalog: release asset identity mismatch")
+		}
+		downloadURL = base + fmt.Sprintf("assets/%d", asset.ID)
+		size = asset.Size
+	}
+	if downloadURL == "" {
+		return "", 0, errors.New("catalog: release asset missing")
+	}
+	return downloadURL, size, nil
 }
