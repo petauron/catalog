@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 // Operator-run handoff only: prepare reviewed source changes, never publish,
 // sign, create tags, dispatch workflows or contact a Center/Agent.
+import { execFileSync } from "node:child_process";
 import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -26,7 +27,10 @@ try {
     const found = release.assets.filter(item => item.name === name);
     const url = `https://github.com/${repository}/releases/download/${tag}/${name}`;
     if (found.length !== 1 || found[0].state !== "uploaded" || found[0].browser_download_url !== url || !Number.isSafeInteger(found[0].size) || found[0].size <= 0 || found[0].size > maximum) throw new Error("Required published asset is missing or invalid");
-    const bytes = await fetchBounded(url, maximum);
+    if (!Number.isSafeInteger(found[0].id) || found[0].id <= 0) throw new Error("Required published asset identity is invalid");
+    // Use the exact authenticated asset ID after browser download URLs returned
+    // HTTP 504. Bound stdout while downloading; no downloaded file is executed.
+    const bytes = execFileSync("gh", ["api", "--header", "Accept: application/octet-stream", `repos/${repository}/releases/assets/${found[0].id}`], { stdio: ["ignore", "pipe", "pipe"], maxBuffer: maximum, timeout: 180000 });
     if (bytes.length !== found[0].size || found[0].digest !== `sha256:${sha256(bytes)}`) throw new Error("Published asset does not match authenticated inventory");
     return bytes;
   };
