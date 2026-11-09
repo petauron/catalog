@@ -1375,7 +1375,7 @@
     {
       "id": "glivela-entry",
       "version": "0.1.0-alpha.115",
-      "packageRevision": 2,
+      "packageRevision": 3,
       "name": {
         "en": "Glivela Entry",
         "zh-CN": "Glivela 线路端"
@@ -1501,12 +1501,21 @@
           {
             "name": "node-state",
             "persistent": true
+          },
+          {
+            "name": "pair-manager-state",
+            "persistent": true
+          },
+          {
+            "name": "companion-state",
+            "persistent": true
           }
         ],
         "nativeServices": {
           "namespace": "glivela",
           "users": [
-            "xray"
+            "xray",
+            "companion-xray"
           ],
           "services": [
             {
@@ -1545,7 +1554,9 @@
                 ],
                 "user": "root",
                 "stateDirectories": [
-                  "node-state"
+                  "node-state",
+                  "pair-manager-state",
+                  "companion-state"
                 ],
                 "credentials": {
                   "certificate": "certificate_pem",
@@ -1670,6 +1681,47 @@
                   }
                 ]
               }
+            },
+            {
+              "name": "companion-xray",
+              "start": "manual",
+              "managedUser": "companion-xray",
+              "stateCredentials": {
+                "configuration.json": {
+                  "storage": "companion-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration.json"
+                    }
+                  }
+                ]
+              }
             }
           ]
         }
@@ -1687,7 +1739,7 @@
     {
       "id": "glivela-node",
       "version": "0.1.0-alpha.115",
-      "packageRevision": 2,
+      "packageRevision": 3,
       "name": {
         "en": "Glivela Landing",
         "zh-CN": "Glivela 落地端"
@@ -1799,12 +1851,21 @@
           {
             "name": "node-state",
             "persistent": true
+          },
+          {
+            "name": "pair-manager-state",
+            "persistent": true
+          },
+          {
+            "name": "companion-state",
+            "persistent": true
           }
         ],
         "nativeServices": {
           "namespace": "glivela",
           "users": [
-            "xray"
+            "xray",
+            "companion-xray"
           ],
           "services": [
             {
@@ -1843,7 +1904,9 @@
                 ],
                 "user": "root",
                 "stateDirectories": [
-                  "node-state"
+                  "node-state",
+                  "pair-manager-state",
+                  "companion-state"
                 ],
                 "credentials": {
                   "certificate": "certificate_pem",
@@ -1966,6 +2029,48 @@
                     }
                   }
                 ]
+              }
+            },
+            {
+              "name": "companion-xray",
+              "start": "manual",
+              "managedUser": "companion-xray",
+              "stateCredentials": {
+                "configuration.json": {
+                  "storage": "companion-state",
+                  "path": "config.json"
+                }
+              },
+              "process": {
+                "artifact": "bundle",
+                "executable": "xray",
+                "files": [
+                  {
+                    "path": "xray",
+                    "executable": true
+                  }
+                ],
+                "arguments": [
+                  {
+                    "literal": "run"
+                  },
+                  {
+                    "literal": "-format"
+                  },
+                  {
+                    "literal": "json"
+                  },
+                  {
+                    "literal": "-config"
+                  },
+                  {
+                    "runtime": {
+                      "kind": "credential-file",
+                      "name": "configuration.json"
+                    }
+                  }
+                ],
+                "bindService": true
               }
             }
           ]

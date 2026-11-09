@@ -77,7 +77,7 @@ test("production recipes use schema 4 and reviewed runtime declarations", () => 
     if (glivela) {
       assert.equal(app.runtime.kind, "systemd");
       assert.equal(app.runtime.nativeServices.namespace, "glivela");
-      assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), app.id === "glivela-dual" ? ["node", "entry-xray", "landing-xray"] : ["node", "xray"]);
+      assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), app.id === "glivela-dual" ? ["node", "entry-xray", "landing-xray"] : ["node", "xray", "companion-xray"]);
     }
   }
   const plan = readFileSync(new URL("./catalog-plan.mjs", import.meta.url), "utf8");

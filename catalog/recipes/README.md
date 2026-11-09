@@ -40,6 +40,26 @@ application-owned configuration and data rather than rerun initialization.
 Generic uninstall backs up and stops both declared native services, retaining
 persistent data unless a separate purge is explicitly authorized.
 
+The single-role profiles also reserve a separate manual `companion-xray`
+worker/user, private `companion-state` and `pair-manager-state`. The existing
+manager's bootstrap, original worker/user and `node-state` remain unchanged;
+an ordinary update does not enable the second role, enroll an identity or
+add a public listener. A companion entry worker alone receives `bindService`.
+The new worker receives only its own read-only `configuration.json` snapshot.
+The original role's existing service binding and statistics generation are
+not renamed into the fresh-install dual profile.
+
+Explicit pairing requires the Glivela `stage-node-pair` maintenance command
+from [the related source change](https://redirect.github.com/petauron/glivela/issues/73),
+the installed extra resources and a complete private paired bootstrap.
+Retain the exact original child and its credentials/worker/state; use the
+other independent worker/state and a new role identity for the companion.
+The command only validates, backs up and atomically saves the bootstrap.
+Service lifecycle, authenticated source grants and real route acceptance
+remain separate operator steps. This recipe PR neither signs a catalog nor
+authorizes conversion of installed nodes; no application release coordinates
+are changed by adding these dormant resources.
+
 Required existing host tools are systemd, iproute2 and nftables. The next
 Glivela release bundles its pinned iperf3 diagnostic and license with the
 node distribution; the current published catalog keeps its existing allowlist

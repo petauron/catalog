@@ -2,10 +2,10 @@
   "kind": "systemd",
   "version": 2,
   "requiredCapabilities": ["native-services", "root"],
-  "storage": [{"name": "node-state", "persistent": true}],
+  "storage": [{"name": "node-state", "persistent": true}, {"name": "pair-manager-state", "persistent": true}, {"name": "companion-state", "persistent": true}],
   "nativeServices": {
 	"namespace": "glivela",
-    "users": ["xray"],
+    "users": ["xray", "companion-xray"],
     "services": [
       {
         "name": "node",
@@ -24,7 +24,7 @@
             {"path": "glivela-ui.css"}
           ],
           "user": "root",
-          "stateDirectories": ["node-state"],
+          "stateDirectories": ["node-state", "pair-manager-state", "companion-state"],
           "credentials": {"certificate": "certificate_pem", "key": "private_key_pem", "ca": "ca_pem"},
           "arguments": [{"literal": "-config"}, {"runtime": {"kind": "config-file", "name": "node.json"}}],
           "configFiles": [{
@@ -60,6 +60,47 @@
           "bindService": true,
           "files": [{"path": "xray", "executable": true}],
           "arguments": [{"literal": "run"}, {"literal": "-format"}, {"literal": "json"}, {"literal": "-config"}, {"runtime": {"kind": "credential-file", "name": "configuration.json"}}]
+        }
+      },
+      {
+        "name": "companion-xray",
+        "start": "manual",
+        "managedUser": "companion-xray",
+        "stateCredentials": {
+          "configuration.json": {
+            "storage": "companion-state",
+            "path": "config.json"
+          }
+        },
+        "process": {
+          "artifact": "bundle",
+          "executable": "xray",
+          "files": [
+            {
+              "path": "xray",
+              "executable": true
+            }
+          ],
+          "arguments": [
+            {
+              "literal": "run"
+            },
+            {
+              "literal": "-format"
+            },
+            {
+              "literal": "json"
+            },
+            {
+              "literal": "-config"
+            },
+            {
+              "runtime": {
+                "kind": "credential-file",
+                "name": "configuration.json"
+              }
+            }
+          ]
         }
       }
     ]
