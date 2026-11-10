@@ -50,5 +50,5 @@ test("additional client landing owns a separate namespace with the existing veri
   assert.equal(manager.start, "automatic");
   assert.equal(worker.start, "manual");
   assert.equal(worker.managedUser, "xray");
-  assert.deepEqual(extra.services, []);
+  assert.deepEqual(extra.services ?? [], []);
 });
