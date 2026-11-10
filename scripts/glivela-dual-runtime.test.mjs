@@ -30,5 +30,25 @@ test("dual-role package keeps separate authenticated worker identities and verif
   assert.equal(second.stateCredentials["configuration.json"].storage, "landing-state");
   for (const field of dual.config.filter(f => /pem$/.test(f.key))) assert.equal(field.secret, true);
   const helper = readFileSync(new URL("./prepare-glivela-release.mjs", import.meta.url), "utf8");
-  assert.match(helper, /\["meridian", "glivela-entry", "glivela-node", "glivela-dual"\]/);
+  assert.match(helper, /\["meridian", "glivela-entry", "glivela-node", "glivela-dual", "glivela-client-landing"\]/);
+});
+
+
+test("additional client landing owns a separate namespace with the existing verified runtime", () => {
+  const c = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
+  const base = c.apps.find(a => a.id === "glivela-node");
+  const extra = c.apps.find(a => a.id === "glivela-client-landing");
+  assert.equal(extra.version, base.version);
+  assert.deepEqual(extra.artifacts, base.artifacts);
+  assert.deepEqual(extra.config, base.config);
+  assert.notEqual(extra.runtime.nativeServices.namespace, base.runtime.nativeServices.namespace);
+  const expected = structuredClone(base.runtime);
+  expected.nativeServices.namespace = "glivela-client";
+  assert.deepEqual(extra.runtime, expected);
+  assert.deepEqual(extra.runtime, JSON.parse(readFileSync(new URL("../catalog/recipes/glivela-client-landing.runtime.json", import.meta.url))));
+  const [manager, worker] = extra.runtime.nativeServices.services;
+  assert.equal(manager.start, "automatic");
+  assert.equal(worker.start, "manual");
+  assert.equal(worker.managedUser, "xray");
+  assert.deepEqual(extra.services ?? [], []);
 });

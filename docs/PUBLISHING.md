@@ -86,7 +86,7 @@ native archives and the immutable two-platform controller image index. Release
 assets use the exact authenticated GitHub asset ID through the existing CLI,
 with bounded output and unchanged inventory, size and digest checks; browser
 download URLs remain the published recipe coordinates. It never executes
-downloaded files. It then updates only the four Glivela recipe versions
+downloaded files. It then updates only the five Glivela recipe versions
 and release coordinates, reviewed UI checkout SHA and its existing pin contract.
 It also advances only Glivela's machine-identity digest and version comment in
 the existing brand contract. The current recipe must first match its old digest;
