@@ -101,4 +101,4 @@ replacing its unit, identity or journal. Enroll a new `clientOnly:true` landing
 using a compatible Glivela release; this omits the 1080 server-forwarding listener.
 The application owns exact client source grants and the fixed final exit.
 Publishing this recipe alone does not enroll, install, start public listeners,
-change another landing or deploy any application. Related: Glivela #87.
+change another landing or deploy any application. Related: [main issue](https://redirect.github.com/petauron/glivela/issues/87).
