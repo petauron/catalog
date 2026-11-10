@@ -73,9 +73,10 @@ test("production recipes use schema 4 and reviewed runtime declarations", () => 
     const staticSite = ["static-site", "static-site-https", "daylight", "daylight-https"].includes(app.id);
     const senlunAgent = app.id === "senlun-agent";
     assert.equal(app.runtime?.version, glivela || staticSite || senlunAgent ? 2 : 1);
-    if (glivela || staticSite || senlunAgent) assert.equal(app.runtime.kind, "systemd");
+    const portable = ["glivela-entry", "senlun-agent", "daylight", "daylight-https"].includes(app.id);
+    if (glivela || staticSite || senlunAgent) assert.equal(app.runtime.kind, portable ? "native" : "systemd");
     if (glivela) {
-      assert.equal(app.runtime.kind, "systemd");
+      assert.equal(app.runtime.kind, portable ? "native" : "systemd");
       assert.equal(app.runtime.nativeServices.namespace, "glivela");
       assert.deepEqual(app.runtime.nativeServices.services.map(service => service.name), app.id === "glivela-dual" ? ["node", "entry-xray", "landing-xray"] : ["node", "xray"]);
     }

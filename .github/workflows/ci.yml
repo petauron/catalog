@@ -35,7 +35,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: petauron/vastora
-          ref: 71a0b351260dac5c06491a898d949c11d290066c
+          ref: 06ac18920660756f4623d6861ea671f1727c39a8
           path: vastora-consumer
           persist-credentials: false
       - name: Validate production recipe with the reviewed schema 4 consumer

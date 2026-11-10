@@ -14,6 +14,12 @@ A transport-only first installation does not initialize or replace owned data.
 
 ## Native nodes
 
+The entry recipe uses portable `native` v2 on systemd and OpenRC. The Senlun
+probe and Daylight content recipes use the same portable contract. Native
+shared-Caddy websites on OpenRC require the Agent fix tracked by Vastora #1214;
+publishing recipes does not upgrade existing installations. Existing kernel-bound
+landing listeners are not claimed for a userspace-only private network.
+
 `glivela-entry.runtime.json` and `glivela-node.runtime.json` use the same native
 node/core bundle and installation contract. The role in the application-owned
 bootstrap is `entry` or `landing`; Vastora does not interpret it. Both declare:

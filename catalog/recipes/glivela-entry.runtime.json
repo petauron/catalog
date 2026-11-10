@@ -1,5 +1,5 @@
 {
-  "kind": "systemd",
+  "kind": "native",
   "version": 2,
   "requiredCapabilities": ["native-services", "root"],
   "storage": [{"name": "node-state", "persistent": true}],
