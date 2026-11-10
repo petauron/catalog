@@ -90,3 +90,15 @@ The JSON credential filename requires the matching Glivela alpha.63 or later
 entry process verifier. Persistent state stays `config.json`; runtime identities,
 source permissions and accounting are retained. This fixes the actual installed
 Xray 26.10.21 startup path, not just temporary config-test filenames.
+
+
+## Additional client-only landing
+
+`glivela-client-landing.runtime.json` reuses the same checked Glivela/Xray bundle
+with a distinct `glivela-client` native namespace, installation, worker user and
+persistent state. It can coexist with the ordinary landing recipe without
+replacing its unit, identity or journal. Enroll a new `clientOnly:true` landing
+using a compatible Glivela release; this omits the 1080 server-forwarding listener.
+The application owns exact client source grants and the fixed final exit.
+Publishing this recipe alone does not enroll, install, start public listeners,
+change another landing or deploy any application. Related: Glivela #87.
