@@ -2,15 +2,15 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 
-test('Glivela alpha.120 publication builds solely from its reviewed application source', () => {
+test('Glivela alpha.121 publication builds solely from its reviewed application source', () => {
   const workflow=readFileSync(new URL('../.github/workflows/publish.yml',import.meta.url),'utf8');
   const catalog=JSON.parse(readFileSync(new URL('../catalog/catalog.json',import.meta.url),'utf8'));
-  assert.equal(catalog.apps.find(app=>app.id==='meridian').version,'0.1.0-alpha.120');
+  assert.equal(catalog.apps.find(app=>app.id==='meridian').version,'0.1.0-alpha.121');
   const controller=catalog.apps.find(app=>app.id==='meridian');
   assert.equal(controller.packageRevision,5);
   assert.deepEqual(controller.services.find(service=>service.name==='controller'),{name:'controller',protocol:'https',containerPort:9443,defaultHostPort:19443,management:true});
   assert.doesNotMatch(workflow,/VASTORA_WEB_SOURCE|ui-dependency|repository: petauron\/vastora/);
-  assert.match(workflow,/ref: fbfeee312baf968d60616bd7f31a21bfc9e742a8/);
+  assert.match(workflow,/ref: f2241d99d03b8ab951a5dffd36528d2dc597c9bc/);
   assert.ok(workflow.includes('ui-glivela-$version.js'));
   assert.ok(workflow.includes('ui-glivela-$version.css'));
 });
