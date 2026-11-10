@@ -966,6 +966,21 @@
           "secret": false
         },
         {
+          "key": "service_http_proxy",
+          "type": "string",
+          "label": {
+            "en": "Private management HTTP proxy",
+            "zh-CN": "私网管理 HTTP 代理"
+          },
+          "description": {
+            "en": "Optional explicit HTTP CONNECT proxy for the Senlun service connection on a no-TUN host, such as http://127.0.0.1:1056. Leave empty for the normal connection. Network probes still measure their targets directly.",
+            "zh-CN": "无 TUN 主机连接 Senlun 时，可填写已配置的回环 HTTP CONNECT 代理，例如 http://127.0.0.1:1056。普通节点留空；延迟探测仍直接连接目标。"
+          },
+          "required": false,
+          "secret": false,
+          "default": ""
+        },
+        {
           "key": "node_name",
           "type": "string",
           "label": {
@@ -1023,7 +1038,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 8,
+      "packageRevision": 9,
       "runtime": {
         "kind": "native",
         "version": 2,
@@ -1089,6 +1104,9 @@
                       "kind": "credential-file",
                       "name": "enrollment-token"
                     }
+                  },
+                  "HTTPS_PROXY": {
+                    "config": "service_http_proxy"
                   }
                 }
               }
