@@ -1023,9 +1023,9 @@
           "secret": true
         }
       ],
-      "packageRevision": 7,
+      "packageRevision": 8,
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services"
@@ -1375,7 +1375,7 @@
     {
       "id": "glivela-entry",
       "version": "0.1.0-alpha.116",
-      "packageRevision": 2,
+      "packageRevision": 3,
       "name": {
         "en": "Glivela Entry",
         "zh-CN": "Glivela 线路端"
@@ -1491,7 +1491,7 @@
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",
@@ -3322,7 +3322,7 @@
     {
       "id": "daylight",
       "version": "0.2.0",
-      "packageRevision": 1,
+      "packageRevision": 2,
       "name": {
         "en": "Daylight",
         "zh-CN": "Daylight"
@@ -3382,7 +3382,7 @@
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",
@@ -3659,7 +3659,7 @@
     {
       "id": "daylight-https",
       "version": "0.2.0",
-      "packageRevision": 1,
+      "packageRevision": 2,
       "name": {
         "en": "Daylight · Direct HTTPS",
         "zh-CN": "Daylight · 直连 HTTPS"
@@ -3733,7 +3733,7 @@
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",

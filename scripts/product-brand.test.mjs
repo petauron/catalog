@@ -8,20 +8,20 @@ const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import
 const products = [
   ["meridian", "Glivela", "Glivela", "60ba3126ab55ef036f99b20efab7da328494b92d390eff6aa13e325559296139"],
   ["senlun", "Senlun", "Senlun", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
-  ["senlun-agent", "Senlun Agent", "Senlun 探针", "aefb3f161f869d74228ac8e902a38dd7f7de8cdb0ed2d94f9c7aa46b1ff6ee41"],
+  ["senlun-agent", "Senlun Agent", "Senlun 探针", "b776117a20e837e3e8ec969b65264c9e59824c01a10211f0b0a23f9cb0e88bfa"],
 ];
 
 test("reviewed product identities and release coordinates are pinned", () => {
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, id === "senlun-agent" ? 7 : 5);
+    assert.equal(app.packageRevision, id === "senlun-agent" ? 8 : 5);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela alpha.116 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs and all executable,
+    // Reviewed baseline includes Glivela alpha.116 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs, the portable native probe contract and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
@@ -45,7 +45,7 @@ test("brand metadata does not roll back a later published upstream version", () 
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
     assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, id === "senlun-agent" ? 7 : 5);
+    assert.equal(app.packageRevision, id === "senlun-agent" ? 8 : 5);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");
