@@ -91,14 +91,12 @@ entry process verifier. Persistent state stays `config.json`; runtime identities
 source permissions and accounting are retained. This fixes the actual installed
 Xray 26.10.21 startup path, not just temporary config-test filenames.
 
+## Per-line client exit selection
 
-## Additional client-only landing
-
-`glivela-client-landing.runtime.json` reuses the same checked Glivela/Xray bundle
-with a distinct `glivela-client` native namespace, installation, worker user and
-persistent state. It can coexist with the ordinary landing recipe without
-replacing its unit, identity or journal. Enroll a new `clientOnly:true` landing
-using a compatible Glivela release; this omits the 1080 server-forwarding listener.
-The application owns exact client source grants and the fixed final exit.
-Publishing this recipe alone does not enroll, install, start public listeners,
-change another landing or deploy any application. Related: [main issue](https://redirect.github.com/petauron/glivela/issues/87).
+The ordinary landing recipe also hosts independently bound IPv4/IPv6 client
+exits inside its existing worker. Glivela owns per-line selection, exact source
+grants, local address checks and fixed-family routing. The existing default
+IPv6 relay, node identity, credentials, services and state are retained. No
+additional application or native namespace is required. The superseded
+additional-landing recipe is withdrawn from the current catalog; immutable
+release history is unchanged. Related: [main issue](https://redirect.github.com/petauron/glivela/issues/87).
