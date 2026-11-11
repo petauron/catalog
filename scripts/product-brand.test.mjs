@@ -6,7 +6,7 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
-  ["meridian", "Glivela", "Glivela", "34e547d6d612c05b089bc4531abbe5d03b82046a18c2fbd2d248ace38a67153e"],
+  ["meridian", "Glivela", "Glivela", "10f49a497d3a8fba66c34bc7cde593cea74852be4a04bc1bfd3289e4bd06a427"],
   ["senlun", "Senlun", "Senlun", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
   ["senlun-agent", "Senlun Agent", "Senlun 探针", "979931c62a87cad39ba5a8da3298b1558d8a765094c5e4de50c7da810b565308"],
 ];
@@ -21,7 +21,7 @@ test("reviewed product identities and release coordinates are pinned", () => {
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela alpha.125 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs, the portable native probe contract with its optional explicit management proxy and all executable,
+    // Reviewed baseline includes Glivela alpha.126 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs, the portable native probe contract with its optional explicit management proxy and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
