@@ -1,0 +1,62 @@
+name: Mirror verified Glivela native distributions
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published Glivela tag
+        type: string
+        required: true
+      sha:
+        description: Exact protected release source SHA
+        type: string
+        required: true
+      run_id:
+        description: Successful source release run
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: official-glivela-native-mirror
+  queue: max
+  cancel-in-progress: false
+jobs:
+  mirror:
+    if: github.repository == 'petauron/catalog' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: catalog-signing
+    permissions:
+      contents: read
+      actions: read
+      packages: read
+    env:
+      CATALOG_PRODUCTION_ENABLED: ${{ vars.CATALOG_PRODUCTION_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Verify exact source, release inventory and native runtime before storage credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GLIVELA_TAG: ${{ inputs.tag }}
+          GLIVELA_SHA: ${{ inputs.sha }}
+          GLIVELA_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          npm ci --ignore-scripts
+          node scripts/prepare-glivela-release.mjs --stage-native "$GLIVELA_TAG" "$GLIVELA_SHA" "$GLIVELA_RUN_ID" "$RUNNER_TEMP/glivela-native-mirror"
+      - name: Copy immutable bytes and verify official public origin
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET_NAME: ${{ vars.CATALOG_R2_BUCKET_NAME }}
+          R2_ENDPOINT: https://${{ vars.CATALOG_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: node scripts/mirror-glivela-native.mjs "$RUNNER_TEMP/glivela-native-mirror"
+      - name: Remove temporary distributions
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/glivela-native-mirror"

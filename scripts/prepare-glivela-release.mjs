@@ -2,17 +2,31 @@
 // Operator-run handoff only: prepare reviewed source changes, never publish,
 // sign, create tags, dispatch workflows or contact a Center/Agent.
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync, mkdirSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { isDeepStrictEqual } from "node:util";
 import { compareVersions, execute, fetchBounded, parseChecksums, sha256 } from "./release-source.mjs";
+import {nativeMirrorURL, verifyNativeMirror} from "./mirror-glivela-native.mjs";
 
 try {
-  const [tag, sha, runId, ...extra] = process.argv.slice(2);
+  const args = process.argv.slice(2);
+  const stageNative = args[0] === "--stage-native";
+  if (stageNative) args.shift();
+  const [tag, sha, runId, ...extra] = args;
+  const staging = stageNative ? extra.shift() : null;
+  if (stageNative && (process.env.CATALOG_PRODUCTION_ENABLED !== "true" || process.env.GITHUB_REPOSITORY !== "petauron/catalog" || process.env.GITHUB_REF !== "refs/heads/main" || !/^[a-f0-9]{40}$/.test(process.env.GITHUB_SHA ?? "") || path.dirname(staging ?? "") !== process.env.RUNNER_TEMP || path.basename(staging) !== "glivela-native-mirror")) throw new Error("Native staging requires the protected official publication job");
   if (extra.length || !/^v[0-9]+\.[0-9]+\.[0-9]+(?:-(?:alpha|beta|rc)\.[0-9]+)?$/.test(tag ?? "") || !/^[a-f0-9]{40}$/.test(sha ?? "") || !/^[1-9][0-9]*$/.test(runId ?? "")) throw new Error("Usage: node scripts/prepare-glivela-release.mjs TAG EXACT_SHA SUCCESSFUL_RUN_ID");
-  const branch = execute("git", ["branch", "--show-current"]).toString().trim();
-  if (!branch || branch === "main" || execute("git", ["status", "--porcelain"]).length) throw new Error("Use a clean feature worktree; existing drafts and main must not be changed");
+  if (stageNative) {
+    const ownRuns = JSON.parse(execute("gh", ["api", `repos/petauron/catalog/actions/workflows/ci.yml/runs?event=push&head_sha=${process.env.GITHUB_SHA}&per_page=100`])).workflow_runs.sort((a,b)=>b.run_number-a.run_number);
+    const own = ownRuns[0];
+    const ownJobs = own ? JSON.parse(execute("gh", ["api", `repos/petauron/catalog/actions/runs/${own.id}/jobs?filter=latest&per_page=100`])).jobs : [];
+    if (execute("git", ["rev-parse", "HEAD"]).toString().trim() !== process.env.GITHUB_SHA || ownJobs.filter(job=>job.name === "verify" && job.status === "completed" && job.conclusion === "success").length !== 1) throw new Error("Exact publisher source and required verification must match");
+    if (!own || own.head_sha !== process.env.GITHUB_SHA || own.head_branch !== "main" || own.status !== "completed" || own.conclusion !== "success" || own.path !== ".github/workflows/ci.yml" || JSON.parse(execute("gh", ["api", "repos/petauron/catalog/branches/main"])).protected !== true) throw new Error("Exact protected publisher CI must succeed first");
+  } else {
+    const branch = execute("git", ["branch", "--show-current"]).toString().trim();
+    if (!branch || branch === "main" || execute("git", ["status", "--porcelain"]).length) throw new Error("Use a clean feature worktree; existing drafts and main must not be changed");
+  }
   const repository = "petauron/glivela";
   const api = endpoint => JSON.parse(execute("gh", ["api", `repos/${repository}/${endpoint}`]));
   const release = api(`releases/tags/${tag}`);
@@ -51,12 +65,14 @@ try {
   const index = JSON.parse(manifest);
   if (image.reference !== `ghcr.io/petauron/glivela@sha256:${sha256(manifest)}` || JSON.stringify(index.manifests?.filter(item => item.platform?.os === "linux").map(item => item.platform.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Immutable image index must contain both supported platforms");
   const digests = {};
+  const nativeBundles = {};
   const iperfDigests = { amd64: "ef4c89f3fc01c56cf00d34b900024c74f68e540dab452eef4fd902544d9c1c64", arm64: "34364466812357fe021a8647cb433c8006b0360e3b690ecda470a979a2601031" };
   const temporary = mkdtempSync(path.join(tmpdir(), "glivela-release-"));
   try {
     for (const arch of ["amd64", "arm64"]) {
       const bundle = await checked(`glivela-${version}-linux-${arch}.tar.gz`, 128 * 1024 * 1024);
       digests[arch] = sha256(bundle);
+      nativeBundles[arch] = bundle;
       const file = path.join(temporary, `${arch}.tar.gz`);
       writeFileSync(file, bundle, { mode: 0o600, flag: "wx" });
       const members = execute("tar", ["-tzf", file]).toString("utf8").trim().split("\n");
@@ -65,74 +81,87 @@ try {
       }
       const iperf = execute("tar", ["-xOzf", file, "iperf3"]);
       const metadata = JSON.parse(execute("tar", ["-xOzf", file, "runtime.json"]));
-      if (sha256(iperf) !== iperfDigests[arch] || metadata.iperf3?.version !== "3.22" || metadata.iperf3.sha256 !== iperfDigests[arch]) throw new Error("Glivela diagnostic identity differs from the reviewed release");
+      if (metadata.version !== version || metadata.commit !== sha || sha256(iperf) !== iperfDigests[arch] || metadata.iperf3?.version !== "3.22" || metadata.iperf3.sha256 !== iperfDigests[arch]) throw new Error("Glivela diagnostic identity differs from the reviewed release");
     }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
-  const catalogPath = "catalog/catalog.json";
-  const catalog = JSON.parse(readFileSync(catalogPath));
-  const apps = ["meridian", "glivela-entry", "glivela-node", "glivela-dual"].map(id => catalog.apps.find(app => app.id === id));
-  if (apps.some(app => !app) || new Set(apps.map(app => app.version)).size !== 1) throw new Error("Reviewed Glivela recipes do not have one version");
-  const oldVersion = apps[0].version;
-  if (compareVersions(version, oldVersion) <= 0) throw new Error("Only a newer release can prepare a catalog update");
-  // Match the existing brand contract's machine-identity projection. Verify
-  // the old identity before touching release coordinates, never bless an
-  // unrelated runtime/config change by blindly regenerating test hashes.
-  const machineDigest = app => {
-    const identity = structuredClone(app);
-    delete identity.name;
-    delete identity.description;
-    delete identity.packageRevision;
-    identity.config = identity.config.map(({ label, description, ...field }) => field);
-    return sha256(JSON.stringify(identity));
-  };
-  const brandPath = "scripts/product-brand.test.mjs";
-  const brandContract = readFileSync(brandPath, "utf8");
-  const brandPin = /^(\s*\["meridian", "Glivela", "Glivela", ")([a-f0-9]{64})("\],)$/gm;
-  const brandMatches = [...brandContract.matchAll(brandPin)];
-  const baseline = `Reviewed baseline includes Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} release coordinates`;
-  if (brandMatches.length !== 1 || brandMatches[0][2] !== machineDigest(apps[0]) || brandContract.split(baseline).length !== 2) throw new Error("Reviewed Glivela brand identity baseline differs from the current recipe");
-  const workflowPath = ".github/workflows/publish.yml";
-  const workflow = readFileSync(workflowPath, "utf8");
-  const pin = /repository: petauron\/glivela\n          ref: ([a-f0-9]{40})/g;
-  const matches = [...workflow.matchAll(pin)];
-  if (matches.length !== 1) throw new Error("Expected one reviewed UI source pin");
-  const oldSHA = matches[0][1];
-  const testPath = "scripts/ui-publication-pins.test.mjs";
-  const contract = readFileSync(testPath, "utf8");
-  if (!contract.includes(oldVersion) || !contract.includes(oldSHA)) throw new Error("Reviewed UI contract differs from source pins");
-  const controller = apps[0].images?.find(item => item.name === "controller");
-  if (!controller) throw new Error("Reviewed controller image mapping is missing");
-  controller.reference = image.reference;
-  for (const app of apps) app.version = version;
-  for (const app of apps.slice(1)) {
-    // Only add the reviewed application-owned diagnostic files to the existing
-    // runtime. Never carry unrelated template changes into release coordinates.
-    const nextRuntime = JSON.parse(readFileSync(`catalog/recipes/${app.id}.runtime.json`));
-    const previousRuntime = structuredClone(nextRuntime);
-    const files = previousRuntime.nativeServices?.services?.find(service => service.name === "node")?.process?.files;
-    if (!Array.isArray(files) || files.filter(file => file.path === "iperf3" && file.executable === true).length !== 1 || files.filter(file => file.path === "LICENSE.iperf3" && !Object.hasOwn(file, "executable")).length !== 1) throw new Error("Reviewed diagnostic allowlist is invalid");
-    previousRuntime.nativeServices.services.find(service => service.name === "node").process.files = files.filter(file => !["iperf3", "LICENSE.iperf3"].includes(file.path));
-    if (files.length !== previousRuntime.nativeServices.services.find(service => service.name === "node").process.files.length + 2 || (!isDeepStrictEqual(previousRuntime, app.runtime) && !isDeepStrictEqual(nextRuntime, app.runtime))) throw new Error("Unrelated native runtime change requires separate review");
-    app.runtime = nextRuntime;
-    if (JSON.stringify(app.artifacts?.map(entry => entry.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Expected two reviewed native artifact mappings");
-    for (const entry of app.artifacts) {
-      if (entry.name !== "bundle" || entry.operatingSystem !== "linux" || !digests[entry.architecture]) throw new Error("Unreviewed native artifact mapping");
-      entry.url = `https://github.com/${repository}/releases/download/${tag}/glivela-${version}-linux-${entry.architecture}.tar.gz`;
-      entry.sha256 = digests[entry.architecture];
+  if (stageNative) {
+    mkdirSync(staging, {mode:0o700});
+    const artifacts = [];
+    for (const architecture of ["amd64","arm64"]) {
+      const name = `glivela-${version}-linux-${architecture}.tar.gz`;
+      writeFileSync(path.join(staging,name),nativeBundles[architecture],{mode:0o600,flag:"wx"});
+      artifacts.push({architecture,name,size:nativeBundles[architecture].length,sha256:digests[architecture]});
     }
+    writeFileSync(path.join(staging,"mirror.json"),JSON.stringify({version,commit:sha,runId,artifacts}),{mode:0o600,flag:"wx"});
+    console.log("Staged two source-verified native Glivela bundles; no publication or catalog edit performed.");
+  } else {
+    for (const architecture of ["amd64","arm64"]) await verifyNativeMirror(version,architecture,digests[architecture],nativeBundles[architecture].length);
+    const catalogPath = "catalog/catalog.json";
+    const catalog = JSON.parse(readFileSync(catalogPath));
+    const apps = ["meridian", "glivela-entry", "glivela-node", "glivela-dual"].map(id => catalog.apps.find(app => app.id === id));
+    if (apps.some(app => !app) || new Set(apps.map(app => app.version)).size !== 1) throw new Error("Reviewed Glivela recipes do not have one version");
+    const oldVersion = apps[0].version;
+    if (compareVersions(version, oldVersion) <= 0) throw new Error("Only a newer release can prepare a catalog update");
+    // Match the existing brand contract's machine-identity projection. Verify
+    // the old identity before touching release coordinates, never bless an
+    // unrelated runtime/config change by blindly regenerating test hashes.
+    const machineDigest = app => {
+      const identity = structuredClone(app);
+      delete identity.name;
+      delete identity.description;
+      delete identity.packageRevision;
+      identity.config = identity.config.map(({ label, description, ...field }) => field);
+      return sha256(JSON.stringify(identity));
+    };
+    const brandPath = "scripts/product-brand.test.mjs";
+    const brandContract = readFileSync(brandPath, "utf8");
+    const brandPin = /^(\s*\["meridian", "Glivela", "Glivela", ")([a-f0-9]{64})("\],)$/gm;
+    const brandMatches = [...brandContract.matchAll(brandPin)];
+    const baseline = `Reviewed baseline includes Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} release coordinates`;
+    if (brandMatches.length !== 1 || brandMatches[0][2] !== machineDigest(apps[0]) || brandContract.split(baseline).length !== 2) throw new Error("Reviewed Glivela brand identity baseline differs from the current recipe");
+    const workflowPath = ".github/workflows/publish.yml";
+    const workflow = readFileSync(workflowPath, "utf8");
+    const pin = /repository: petauron\/glivela\n          ref: ([a-f0-9]{40})/g;
+    const matches = [...workflow.matchAll(pin)];
+    if (matches.length !== 1) throw new Error("Expected one reviewed UI source pin");
+    const oldSHA = matches[0][1];
+    const testPath = "scripts/ui-publication-pins.test.mjs";
+    const contract = readFileSync(testPath, "utf8");
+    if (!contract.includes(oldVersion) || !contract.includes(oldSHA)) throw new Error("Reviewed UI contract differs from source pins");
+    const controller = apps[0].images?.find(item => item.name === "controller");
+    if (!controller) throw new Error("Reviewed controller image mapping is missing");
+    controller.reference = image.reference;
+    for (const app of apps) app.version = version;
+    for (const app of apps.slice(1)) {
+      // Only add the reviewed application-owned diagnostic files to the existing
+      // runtime. Never carry unrelated template changes into release coordinates.
+      const nextRuntime = JSON.parse(readFileSync(`catalog/recipes/${app.id}.runtime.json`));
+      const previousRuntime = structuredClone(nextRuntime);
+      const files = previousRuntime.nativeServices?.services?.find(service => service.name === "node")?.process?.files;
+      if (!Array.isArray(files) || files.filter(file => file.path === "iperf3" && file.executable === true).length !== 1 || files.filter(file => file.path === "LICENSE.iperf3" && !Object.hasOwn(file, "executable")).length !== 1) throw new Error("Reviewed diagnostic allowlist is invalid");
+      previousRuntime.nativeServices.services.find(service => service.name === "node").process.files = files.filter(file => !["iperf3", "LICENSE.iperf3"].includes(file.path));
+      if (files.length !== previousRuntime.nativeServices.services.find(service => service.name === "node").process.files.length + 2 || (!isDeepStrictEqual(previousRuntime, app.runtime) && !isDeepStrictEqual(nextRuntime, app.runtime))) throw new Error("Unrelated native runtime change requires separate review");
+      app.runtime = nextRuntime;
+      if (JSON.stringify(app.artifacts?.map(entry => entry.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Expected two reviewed native artifact mappings");
+      for (const entry of app.artifacts) {
+        if (entry.name !== "bundle" || entry.operatingSystem !== "linux" || !digests[entry.architecture]) throw new Error("Unreviewed native artifact mapping");
+        entry.url = nativeMirrorURL(version, entry.architecture);
+        entry.sha256 = digests[entry.architecture];
+      }
+    }
+    const nextBrandContract = brandContract
+      .replace(brandPin, (_, prefix, oldDigest, suffix) => `${prefix}${machineDigest(apps[0])}${suffix}`)
+      .replace(baseline, `Reviewed baseline includes Glivela ${version.replace(/^0\.1\.0-/, "")} release coordinates`);
+    // Resolve and validate every input before changing these four review files.
+    writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
+    writeFileSync(workflowPath, workflow.replace(pin, `repository: petauron/glivela\n          ref: ${sha}`));
+    writeFileSync(testPath, contract.replace(`Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} publication`, `Glivela ${version.replace(/^0\.1\.0-/, "")} publication`).replace(`'${oldVersion}'`, `'${version}'`).replaceAll(oldSHA, sha));
+    writeFileSync(brandPath, nextBrandContract);
+    console.log(`Prepared review-only Glivela ${tag} from https://github.com/${repository}/actions/runs/${runId}`);
+    console.log("Review git diff, submit a PR and wait for its required CI. Merging does not sign, publish or deploy the catalog.");
   }
-  const nextBrandContract = brandContract
-    .replace(brandPin, (_, prefix, oldDigest, suffix) => `${prefix}${machineDigest(apps[0])}${suffix}`)
-    .replace(baseline, `Reviewed baseline includes Glivela ${version.replace(/^0\.1\.0-/, "")} release coordinates`);
-  // Resolve and validate every input before changing these four review files.
-  writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
-  writeFileSync(workflowPath, workflow.replace(pin, `repository: petauron/glivela\n          ref: ${sha}`));
-  writeFileSync(testPath, contract.replace(`Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} publication`, `Glivela ${version.replace(/^0\.1\.0-/, "")} publication`).replace(`'${oldVersion}'`, `'${version}'`).replaceAll(oldSHA, sha));
-  writeFileSync(brandPath, nextBrandContract);
-  console.log(`Prepared review-only Glivela ${tag} from https://github.com/${repository}/actions/runs/${runId}`);
-  console.log("Review git diff, submit a PR and wait for its required CI. Merging does not sign, publish or deploy the catalog.");
 } catch (error) {
   // Child-process stderr can contain authentication details. Print only our own
   // fixed diagnostics; no release bytes, registry tokens or signed URLs.
