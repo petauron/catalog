@@ -22,6 +22,7 @@ reject older revisions; a new client cannot detect a mirror hiding newer release
 
 - [Publication, credentials, and recovery](docs/PUBLISHING.md)
 - [Review-only Glivela release handoff](docs/PUBLISHING.md#glivela-review-only-release-handoff)
+- [Glivela native delivery for IPv6-only nodes](docs/PUBLISHING.md#glivela-native-delivery-on-ipv6-only-nodes)
 - [Glivela native installation handover](docs/GLIVELA-HANDOVER.md)
 - [Managed static websites](docs/STATIC-SITES.md)
 - [Shared Caddy source handoff](docs/STATIC-SITES.md#shared-caddy-source-handoff)

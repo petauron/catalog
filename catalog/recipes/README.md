@@ -14,6 +14,12 @@ A transport-only first installation does not initialize or replace owned data.
 
 ## Native nodes
 
+The entry recipe uses portable `native` v2 on systemd and OpenRC. The Senlun
+probe and Daylight content recipes use the same portable contract. Native
+shared-Caddy websites on OpenRC require the Agent fix tracked by Vastora #1214;
+publishing recipes does not upgrade existing installations. Existing kernel-bound
+landing listeners are not claimed for a userspace-only private network.
+
 `glivela-entry.runtime.json` and `glivela-node.runtime.json` use the same native
 node/core bundle and installation contract. The role in the application-owned
 bootstrap is `entry` or `landing`; Vastora does not interpret it. Both declare:
@@ -104,3 +110,13 @@ The JSON credential filename requires the matching Glivela alpha.63 or later
 entry process verifier. Persistent state stays `config.json`; runtime identities,
 source permissions and accounting are retained. This fixes the actual installed
 Xray 26.10.21 startup path, not just temporary config-test filenames.
+
+## Per-line client exit selection
+
+The ordinary landing recipe also hosts independently bound IPv4/IPv6 client
+exits inside its existing worker. Glivela owns per-line selection, exact source
+grants, local address checks and fixed-family routing. The existing default
+IPv6 relay, node identity, credentials, services and state are retained. No
+additional application or native namespace is required. The superseded
+additional-landing recipe is withdrawn from the current catalog; immutable
+release history is unchanged. Related: [main issue](https://redirect.github.com/petauron/glivela/issues/87).

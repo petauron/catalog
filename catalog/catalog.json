@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.115",
+      "version": "0.1.0-alpha.139",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -618,7 +618,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:d842e106072da9707aec0636a3ea524a87f6932fe644c14422af07c6888976db"
+          "reference": "ghcr.io/petauron/glivela@sha256:db5496579bf215736555059f241f08c2427b0377d3f365c6d3731251ba5a9977"
         }
       ],
       "packageRevision": 5,
@@ -966,6 +966,21 @@
           "secret": false
         },
         {
+          "key": "service_http_proxy",
+          "type": "string",
+          "label": {
+            "en": "Private management HTTP proxy",
+            "zh-CN": "私网管理 HTTP 代理"
+          },
+          "description": {
+            "en": "Optional explicit HTTP CONNECT proxy for the Senlun service connection on a no-TUN host, such as http://127.0.0.1:1056. Leave empty for the normal connection. Network probes still measure their targets directly.",
+            "zh-CN": "无 TUN 主机连接 Senlun 时，可填写已配置的回环 HTTP CONNECT 代理，例如 http://127.0.0.1:1056。普通节点留空；延迟探测仍直接连接目标。"
+          },
+          "required": false,
+          "secret": false,
+          "default": ""
+        },
+        {
           "key": "node_name",
           "type": "string",
           "label": {
@@ -1023,9 +1038,9 @@
           "secret": true
         }
       ],
-      "packageRevision": 7,
+      "packageRevision": 9,
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services"
@@ -1089,6 +1104,9 @@
                       "kind": "credential-file",
                       "name": "enrollment-token"
                     }
+                  },
+                  "HTTPS_PROXY": {
+                    "config": "service_http_proxy"
                   }
                 }
               }
@@ -1374,8 +1392,8 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.115",
-      "packageRevision": 3,
+      "version": "0.1.0-alpha.139",
+      "packageRevision": 4,
       "name": {
         "en": "Glivela Entry",
         "zh-CN": "Glivela 线路端"
@@ -1477,21 +1495,21 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-amd64.tar.gz",
-          "sha256": "f17f3623db48a5ffe53e901384926e21d4d16c9d619cf7349dc38a9f1aab3996",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-amd64.tar.gz",
+          "sha256": "3e919807c36a2126ab8372ad07cc608db6a6679a60a7e9d12ccd541ee2f630f2",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-arm64.tar.gz",
-          "sha256": "cdb5ccaa240dfe998dfd976e339cbaf65300d6520eb6d3f0d7e38d70200a7395",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-arm64.tar.gz",
+          "sha256": "1eadc60a15973ddfa20c67716c3e53ea065f760c5e44f7e4913358768cc74d1c",
           "format": "tar.gz"
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",
@@ -1738,7 +1756,7 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.115",
+      "version": "0.1.0-alpha.139",
       "packageRevision": 3,
       "name": {
         "en": "Glivela Landing",
@@ -1827,16 +1845,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-amd64.tar.gz",
-          "sha256": "f17f3623db48a5ffe53e901384926e21d4d16c9d619cf7349dc38a9f1aab3996",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-amd64.tar.gz",
+          "sha256": "3e919807c36a2126ab8372ad07cc608db6a6679a60a7e9d12ccd541ee2f630f2",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-arm64.tar.gz",
-          "sha256": "cdb5ccaa240dfe998dfd976e339cbaf65300d6520eb6d3f0d7e38d70200a7395",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-arm64.tar.gz",
+          "sha256": "1eadc60a15973ddfa20c67716c3e53ea065f760c5e44f7e4913358768cc74d1c",
           "format": "tar.gz"
         }
       ],
@@ -2973,7 +2991,7 @@
     },
     {
       "id": "glivela-dual",
-      "version": "0.1.0-alpha.115",
+      "version": "0.1.0-alpha.139",
       "packageRevision": 1,
       "name": {
         "en": "Glivela Entry + Landing",
@@ -3090,16 +3108,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-amd64.tar.gz",
-          "sha256": "f17f3623db48a5ffe53e901384926e21d4d16c9d619cf7349dc38a9f1aab3996",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-amd64.tar.gz",
+          "sha256": "3e919807c36a2126ab8372ad07cc608db6a6679a60a7e9d12ccd541ee2f630f2",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/glivela/releases/download/v0.1.0-alpha.115/glivela-0.1.0-alpha.115-linux-arm64.tar.gz",
-          "sha256": "cdb5ccaa240dfe998dfd976e339cbaf65300d6520eb6d3f0d7e38d70200a7395",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.139/glivela-0.1.0-alpha.139-linux-arm64.tar.gz",
+          "sha256": "1eadc60a15973ddfa20c67716c3e53ea065f760c5e44f7e4913358768cc74d1c",
           "format": "tar.gz"
         }
       ],
@@ -3427,7 +3445,7 @@
     {
       "id": "daylight",
       "version": "0.2.0",
-      "packageRevision": 1,
+      "packageRevision": 2,
       "name": {
         "en": "Daylight",
         "zh-CN": "Daylight"
@@ -3487,7 +3505,7 @@
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",
@@ -3764,7 +3782,7 @@
     {
       "id": "daylight-https",
       "version": "0.2.0",
-      "packageRevision": 1,
+      "packageRevision": 2,
       "name": {
         "en": "Daylight · Direct HTTPS",
         "zh-CN": "Daylight · 直连 HTTPS"
@@ -3838,7 +3856,7 @@
         }
       ],
       "runtime": {
-        "kind": "systemd",
+        "kind": "native",
         "version": 2,
         "requiredCapabilities": [
           "native-services",
