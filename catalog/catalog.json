@@ -502,7 +502,7 @@
     },
     {
       "id": "meridian",
-      "version": "0.1.0-alpha.150",
+      "version": "0.1.0-alpha.151",
       "name": {
         "en": "Glivela",
         "zh-CN": "Glivela"
@@ -618,7 +618,7 @@
       "images": [
         {
           "name": "controller",
-          "reference": "ghcr.io/petauron/glivela@sha256:b4f40ec679536d2e333a5c9f4871a033f36088b59750bba216b1e5429996df40"
+          "reference": "ghcr.io/petauron/glivela@sha256:e0ba64df735cfbea3114d6215b6f5292f83d694d0cd01b4c4c1c0d38a3f7802e"
         }
       ],
       "packageRevision": 5,
@@ -1392,7 +1392,7 @@
     },
     {
       "id": "glivela-entry",
-      "version": "0.1.0-alpha.150",
+      "version": "0.1.0-alpha.151",
       "packageRevision": 4,
       "name": {
         "en": "Glivela Entry",
@@ -1495,16 +1495,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-amd64.tar.gz",
-          "sha256": "0d79efe7bfc015c39d9b7ef5553ca3384ce297c5c94fa4eee07f3a220fcc05f5",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-amd64.tar.gz",
+          "sha256": "96b3b1de85d9109c1c306dc691d6a8ea35d54cc3e1bf326f43b831d6679b836f",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-arm64.tar.gz",
-          "sha256": "dce19200dbd4a012cfee4ea8829ea2da731171c439db34e8e07e3fc3ba774a6f",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-arm64.tar.gz",
+          "sha256": "927d544dfceb713db29fb23c6151482c7bec362e07e0479145710182383da24f",
           "format": "tar.gz"
         }
       ],
@@ -1756,7 +1756,7 @@
     },
     {
       "id": "glivela-node",
-      "version": "0.1.0-alpha.150",
+      "version": "0.1.0-alpha.151",
       "packageRevision": 3,
       "name": {
         "en": "Glivela Landing",
@@ -1845,16 +1845,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-amd64.tar.gz",
-          "sha256": "0d79efe7bfc015c39d9b7ef5553ca3384ce297c5c94fa4eee07f3a220fcc05f5",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-amd64.tar.gz",
+          "sha256": "96b3b1de85d9109c1c306dc691d6a8ea35d54cc3e1bf326f43b831d6679b836f",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-arm64.tar.gz",
-          "sha256": "dce19200dbd4a012cfee4ea8829ea2da731171c439db34e8e07e3fc3ba774a6f",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-arm64.tar.gz",
+          "sha256": "927d544dfceb713db29fb23c6151482c7bec362e07e0479145710182383da24f",
           "format": "tar.gz"
         }
       ],
@@ -2991,7 +2991,7 @@
     },
     {
       "id": "glivela-dual",
-      "version": "0.1.0-alpha.150",
+      "version": "0.1.0-alpha.151",
       "packageRevision": 1,
       "name": {
         "en": "Glivela Entry + Landing",
@@ -3108,16 +3108,16 @@
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-amd64.tar.gz",
-          "sha256": "0d79efe7bfc015c39d9b7ef5553ca3384ce297c5c94fa4eee07f3a220fcc05f5",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-amd64.tar.gz",
+          "sha256": "96b3b1de85d9109c1c306dc691d6a8ea35d54cc3e1bf326f43b831d6679b836f",
           "format": "tar.gz"
         },
         {
           "name": "bundle",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.150/glivela-0.1.0-alpha.150-linux-arm64.tar.gz",
-          "sha256": "dce19200dbd4a012cfee4ea8829ea2da731171c439db34e8e07e3fc3ba774a6f",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.1.0-alpha.151/glivela-0.1.0-alpha.151-linux-arm64.tar.gz",
+          "sha256": "927d544dfceb713db29fb23c6151482c7bec362e07e0479145710182383da24f",
           "format": "tar.gz"
         }
       ],
