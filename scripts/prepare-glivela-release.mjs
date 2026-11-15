@@ -66,6 +66,7 @@ try {
   if (image.reference !== `ghcr.io/petauron/glivela@sha256:${sha256(manifest)}` || JSON.stringify(index.manifests?.filter(item => item.platform?.os === "linux").map(item => item.platform.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Immutable image index must contain both supported platforms");
   const digests = {};
   const nativeBundles = {};
+  const hostBudget = new Map();
   const iperfDigests = { amd64: "ef4c89f3fc01c56cf00d34b900024c74f68e540dab452eef4fd902544d9c1c64", arm64: "34364466812357fe021a8647cb433c8006b0360e3b690ecda470a979a2601031" };
   const temporary = mkdtempSync(path.join(tmpdir(), "glivela-release-"));
   try {
@@ -81,11 +82,14 @@ try {
       }
       const iperf = execute("tar", ["-xOzf", file, "iperf3"]);
       const metadata = JSON.parse(execute("tar", ["-xOzf", file, "runtime.json"]));
+      if (metadata.hostTCPBudget !== undefined && metadata.hostTCPBudget !== "vastora-v1") throw new Error("Unsupported native TCP budget protocol");
+      hostBudget.set(arch, metadata.hostTCPBudget === "vastora-v1");
       if (metadata.version !== version || metadata.commit !== sha || sha256(iperf) !== iperfDigests[arch] || metadata.iperf3?.version !== "3.22" || metadata.iperf3.sha256 !== iperfDigests[arch]) throw new Error("Glivela diagnostic identity differs from the reviewed release");
     }
   } finally {
     rmSync(temporary, { recursive: true, force: true });
   }
+  if (hostBudget.get("amd64") !== hostBudget.get("arm64")) throw new Error("Native architectures disagree on the TCP budget protocol");
   if (stageNative) {
     mkdirSync(staging, {mode:0o700});
     const artifacts = [];
@@ -130,6 +134,7 @@ try {
     const testPath = "scripts/ui-publication-pins.test.mjs";
     const contract = readFileSync(testPath, "utf8");
     if (!contract.includes(oldVersion) || !contract.includes(oldSHA)) throw new Error("Reviewed UI contract differs from source pins");
+    const runtimeWrites = [];
     const controller = apps[0].images?.find(item => item.name === "controller");
     if (!controller) throw new Error("Reviewed controller image mapping is missing");
     controller.reference = image.reference;
@@ -137,12 +142,23 @@ try {
     for (const app of apps.slice(1)) {
       // Only add the reviewed application-owned diagnostic files to the existing
       // runtime. Never carry unrelated template changes into release coordinates.
-      const nextRuntime = JSON.parse(readFileSync(`catalog/recipes/${app.id}.runtime.json`));
+      const recipePath = `catalog/recipes/${app.id}.runtime.json`;
+      const recipeText = readFileSync(recipePath, "utf8");
+      const nextRuntime = JSON.parse(recipeText);
       const previousRuntime = structuredClone(nextRuntime);
       const files = previousRuntime.nativeServices?.services?.find(service => service.name === "node")?.process?.files;
       if (!Array.isArray(files) || files.filter(file => file.path === "iperf3" && file.executable === true).length !== 1 || files.filter(file => file.path === "LICENSE.iperf3" && !Object.hasOwn(file, "executable")).length !== 1) throw new Error("Reviewed diagnostic allowlist is invalid");
       previousRuntime.nativeServices.services.find(service => service.name === "node").process.files = files.filter(file => !["iperf3", "LICENSE.iperf3"].includes(file.path));
       if (files.length !== previousRuntime.nativeServices.services.find(service => service.name === "node").process.files.length + 2 || (!isDeepStrictEqual(previousRuntime, app.runtime) && !isDeepStrictEqual(nextRuntime, app.runtime))) throw new Error("Unrelated native runtime change requires separate review");
+      const caps = nextRuntime.requiredCapabilities;
+      if (isDeepStrictEqual(caps, ["native-services", "root"]) && hostBudget.get("amd64")) {
+        caps.push("host-tcp-budget");
+        const updated = recipeText.replace(/("requiredCapabilities"\s*:\s*\[\s*"native-services",)(\s*)"root"(\s*\])/, '$1$2"root",$2"host-tcp-budget"$3');
+        if (!isDeepStrictEqual(JSON.parse(updated), nextRuntime)) throw new Error("Cannot stage the exact native permission change");
+        runtimeWrites.push([recipePath, updated]);
+      } else if (caps.includes("host-tcp-budget") && !hostBudget.get("amd64")) {
+        throw new Error("Cannot retain a host permission for a bundle without the matching client");
+      }
       app.runtime = nextRuntime;
       if (JSON.stringify(app.artifacts?.map(entry => entry.architecture).sort()) !== '["amd64","arm64"]') throw new Error("Expected two reviewed native artifact mappings");
       for (const entry of app.artifacts) {
@@ -155,6 +171,7 @@ try {
       .replace(brandPin, (_, prefix, oldDigest, suffix) => `${prefix}${machineDigest(apps[0])}${suffix}`)
       .replace(baseline, `Reviewed baseline includes Glivela ${version.replace(/^0\.1\.0-/, "")} release coordinates`);
     // Resolve and validate every input before changing these four review files.
+    for (const [file, value] of runtimeWrites) writeFileSync(file, value);
     writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
     writeFileSync(workflowPath, workflow.replace(pin, `repository: petauron/glivela\n          ref: ${sha}`));
     writeFileSync(testPath, contract.replace(`Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} publication`, `Glivela ${version.replace(/^0\.1\.0-/, "")} publication`).replace(`'${oldVersion}'`, `'${version}'`).replaceAll(oldSHA, sha));
