@@ -36,7 +36,9 @@ test("dual-role package keeps separate authenticated worker identities and verif
   assert.deepEqual(dual.artifacts, entry.artifacts);
   assert.deepEqual(dual.services, []);
   assert.deepEqual(dual.runtime, JSON.parse(readFileSync(new URL("../catalog/recipes/glivela-dual.runtime.json", import.meta.url))));
-  assert.deepEqual(dual.runtime.requiredCapabilities, ["native-services", "root"]);
+  assert.deepEqual(dual.runtime.requiredCapabilities, entry.runtime.requiredCapabilities);
+  const caps = dual.runtime.requiredCapabilities;
+  assert.deepEqual(caps, caps.includes("host-tcp-budget") ? ["native-services", "root", "host-tcp-budget"] : ["native-services", "root"]);
   const { users, services } = dual.runtime.nativeServices;
   assert.deepEqual(users, ["entry-xray", "landing-xray"]);
   assert.deepEqual(services.map(s => [s.name, s.start]), [["node", "automatic"], ["entry-xray", "manual"], ["landing-xray", "manual"]]);

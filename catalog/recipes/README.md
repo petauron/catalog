@@ -120,3 +120,9 @@ IPv6 relay, node identity, credentials, services and state are retained. No
 additional application or native namespace is required. The superseded
 additional-landing recipe is withdrawn from the current catalog; immutable
 release history is unchanged. Related: [main issue](https://redirect.github.com/petauron/glivela/issues/87).
+
+Native Glivela release preparation adds the fixed host TCP-budget permission
+only after the verified amd64 and arm64 bundles both declare the same supported
+protocol. The published recipe is unchanged until that version goes through a
+separate review and signing. Approval covers only fixed budget tiers and restoration
+by the enrolled host. Containers and OpenRC do not obtain a host writer.
