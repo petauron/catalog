@@ -3,7 +3,8 @@
   "version": 2,
   "requiredCapabilities": [
     "native-services",
-    "root"
+    "root",
+    "host-tcp-budget"
   ],
   "storage": [
     {
