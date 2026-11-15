@@ -327,7 +327,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 1,
+      "packageRevision": 2,
       "runtime": {
         "kind": "docker",
         "version": 1,
@@ -357,6 +357,9 @@
                 },
                 "AUTH_ENABLED": {
                   "literal": "true"
+                },
+                "WORK_DIR": {
+                  "literal": "/data"
                 }
               },
               "mounts": [
@@ -374,7 +377,18 @@
                 "service": "dashboard",
                 "path": "/",
                 "timeoutSeconds": 30
-              }
+              },
+              "user": "app:app",
+              "command": [
+                {
+                  "literal": "/usr/bin/env"
+                }
+              ],
+              "arguments": [
+                {
+                  "literal": "/app/cpa-usage-keeper"
+                }
+              ]
             }
           ]
         }
