@@ -6,7 +6,7 @@ import { mergeReviewedRecipes } from "./catalog-plan.mjs";
 
 const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
 const products = [
-  ["meridian", "Glivela", "Glivela", "d9c08cb41304331086c3cc6ed4454b63ac5b2c1e7a9de2a798af0ebf4d27f304"],
+  ["meridian", "Glivela", "Glivela", "3f4a1b9386baf16534b3854307e680a25757c793770e7712d5d2225fabe9c37a"],
   ["senlun", "Senlun", "Senlun", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
   ["senlun-agent", "Senlun Agent", "Senlun 探针", "979931c62a87cad39ba5a8da3298b1558d8a765094c5e4de50c7da810b565308"],
 ];
