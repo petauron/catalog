@@ -145,10 +145,15 @@ extra workflow credential or relaxed signing environment is needed.
 
 ## Senlun upgrade handoff
 
-One verified Senlun release updates both catalog entries together: `senlun` pins
-the multiarchitecture Service image digest, and `senlun-agent` pins the amd64 and
-arm64 archive URLs and checksums. The completed release ledger contains the
-exact candidate and source request, so operators can review what was published.
+`senlun` pins the verified Service image and its Service version. The Agent
+version is read from the checked release commit and its Release Please manifest,
+independently of the Service tag. When that Agent version is unchanged, the
+previously signed Agent artifact coordinates remain unchanged. To advance it,
+the separate `senlun-agent-v...` release must be public at the same checked
+source, and contain both verified archive digests. The Service release's
+source, native archives, checksums and attestations still pass the existing
+verification. The completed release ledger retains the exact candidate and
+source request for review.
 Normal version changes use this manual release-input workflow; PRs review changes
 to source policy, recipes and publishing code rather than copy release coordinates
 into source. A later reviewed recipe publication preserves newer accepted release

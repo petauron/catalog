@@ -164,6 +164,10 @@ function releaseFixture(t) {
       return Buffer.from(args.includes("--format") ? JSON.stringify(fixture.statements ?? recoveryStatements(info.run)) : "");
     }
     const endpoint = args.at(-1);
+    if (endpoint.includes('/contents/')) {
+      const text = endpoint.includes('version.txt') ? '0.1.0-alpha.5\n' : JSON.stringify({ '.': '0.1.0-alpha.5', crates: '0.1.0-alpha.5' });
+      return Buffer.from(JSON.stringify({ type: 'file', encoding: 'base64', size: Buffer.byteLength(text), content: Buffer.from(text).toString('base64') }));
+    }
     if (endpoint.includes("/actions/workflows/")) {
       const sha = new URL(`https://fixture.invalid/${endpoint}`).searchParams.get("head_sha");
       const ci = { ...info.run, id: sha === request.sha ? 201 : 202, run_number: 10, event: "push", head_branch: "main", head_sha: sha, path: rule.recovery.ciWorkflow };
@@ -281,7 +285,7 @@ test("incomplete or unverified Pulse releases never produce an update candidate"
 
 test("updates only declared artifact coordinates, preserves recipe revisions and rejects rollback/mutation", () => {
   const input = { schemaVersion: 4, apps: [{ id: "senlun", version: "0.1.0-alpha.4", packageRevision: 3, images: [{ name: "senlun", reference: "old" }] }, { id: "senlun-agent", version: "0.1.0-alpha.4", packageRevision: 2, artifacts: [{ name: "senlun-agent", operatingSystem: "linux", architecture: "amd64", format: "tar.gz", stripComponents: 1, url: "old", sha256: "old" }] }] };
-  const verified = { version: "0.1.0-alpha.5", image: "new", artifacts: [{ name: "senlun-agent", operatingSystem: "linux", architecture: "amd64", url: "new", sha256: "new" }] };
+  const verified = { version: "0.1.0-alpha.5", agentVersion: "0.1.0-alpha.5", image: "new", artifacts: [{ name: "senlun-agent", operatingSystem: "linux", architecture: "amd64", url: "new", sha256: "new" }] };
   const next = applyRelease(input, verified, rule);
   assert.equal(next.apps[0].packageRevision, 3); assert.equal(next.apps[1].artifacts[0].stripComponents, 1); assert.equal(input.apps[0].version, "0.1.0-alpha.4");
   assert.deepEqual(applyRelease(next, verified, rule), next);

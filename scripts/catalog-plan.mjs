@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, lstatSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validatePublication, verifyLedgerAsset } from "./publish-catalog.mjs";
-import { applyRelease, compareVersions, execute, migrateSenlunRecipe, sha256, validateRequest, verifyRelease } from "./release-source.mjs";
+import { applyRelease, compareVersions, execute, migrateSenlunRecipe, sha256, validateRequest, verifyAgentRelease, verifyRelease } from "./release-source.mjs";
 
 export function loadImportedLedger(directory) {
   const index = JSON.parse(readFileSync(path.join(directory, "index.json")));
@@ -114,7 +114,13 @@ export async function preparePublication(env = process.env, run = execute, verif
   if (!plan.resume) {
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));
-      plan.candidate = applyRelease(plan.candidate, verified, registry.sources[request.application]);
+      const rule = registry.sources[request.application];
+      const previous = plan.active.apps.find(app => app.id === rule.artifactApp);
+      const candidate = plan.candidate.apps.find(app => app.id === rule.artifactApp);
+      if (!previous || !candidate || compareVersions(verified.agentVersion, previous.version) < 0) throw new Error("Agent version would move backwards");
+      if (compareVersions(verified.agentVersion, previous.version) > 0) verifyAgentRelease(verified, rule, run);
+      else if (candidate.version !== previous.version || JSON.stringify(candidate.artifacts) !== JSON.stringify(previous.artifacts)) throw new Error("Unchanged Agent coordinates require their own reviewed publication");
+      plan.candidate = applyRelease(plan.candidate, verified, rule);
     }
     const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps);
     if (!changed) return { noop: true };
