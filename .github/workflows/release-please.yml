@@ -99,7 +99,18 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
+      - name: Require this run to still match protected main
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$current" = "$GITHUB_SHA" ]; then
+            echo "matches=true" >> "$GITHUB_OUTPUT"
+          fi
       - name: Check changes since the last source release
+        if: steps.current.outputs.matches == 'true'
         id: source_changes
         run: node scripts/source-release-needed.mjs
       - name: Maintain version PR without publishing
