@@ -25,6 +25,14 @@ protected main. Its attestation pins the workflow commit while the verified
 predicate separately pins the original product commit and exact recovery attempt;
 both commits need successful real CI. See `docs/PUBLISHING.md` for the gates.
 
+The next source version PR is maintained only when the checked main tree has
+source changes since the last source release tag. Catalog manifests, reviewed
+runtime recipes, existing recipe-pin assertions and a
+Glivela UI checkout-ref-only change are catalog inputs, not source releases.
+A mixed change or an unrecognized path still requests a source version PR. If
+the release tag or comparison cannot be verified, the usual release flow runs.
+This selection does not change CI or the separately dispatched signed catalog.
+
 Local workflow edits alone do not activate releases. Push/review the changes,
 then verify the first version PR CI and release run before calling the migration
 complete. No local builds or tests are implied by this configuration change.

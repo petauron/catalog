@@ -92,7 +92,29 @@ jobs:
       pull-requests: write
       actions: write
     steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Require this run to still match protected main
+        id: current
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -eu
+          current=$(gh api "repos/$GITHUB_REPOSITORY/git/ref/heads/main" --jq .object.sha)
+          if [ "$current" = "$GITHUB_SHA" ]; then
+            echo "matches=true" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Check changes since the last source release
+        if: steps.current.outputs.matches == 'true'
+        id: source_changes
+        run: node scripts/source-release-needed.mjs
       - name: Maintain version PR without publishing
+        if: steps.source_changes.outputs.needed == 'true'
         id: release_pr
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5
         with:
