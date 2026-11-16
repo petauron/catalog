@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.1](https://github.com/petauron/catalog/compare/v0.5.0...v0.5.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **release:** separate catalog inputs from source releases ([6a69242](https://github.com/petauron/catalog/commit/6a69242a1904902e723926a28a8b8b7485e2b7bc)), closes [#216](https://github.com/petauron/catalog/issues/216)
+
 ## [0.5.0](https://github.com/petauron/catalog/compare/v0.4.0...v0.5.0) (2026-11-15)
 
 
