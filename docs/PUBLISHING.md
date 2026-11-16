@@ -145,6 +145,16 @@ extra workflow credential or relaxed signing environment is needed.
 
 ## Senlun upgrade handoff
 
+`catalog/target-custom.json` contains reviewed exact package-version
+equivalences. It is signed as custom metadata on the stable TUF target, without
+changing application manifests or installed receipts. An equivalence applies
+only to the named app, target version and recipe revision, and the explicitly
+listed installed version and recipe revision. A later version or revision is
+not equivalent unless separately reviewed. This preserves update notifications
+for real later changes, and existing clients can ignore TUF custom metadata.
+Review the source, dependency lock and build inputs before adding an entry.
+The input is included in the protected publication plan and signed ledger.
+
 `senlun` pins the verified Service image and its Service version. The Agent
 version is read from the checked release commit and its Release Please manifest,
 independently of the Service tag. When that Agent version is unchanged, the

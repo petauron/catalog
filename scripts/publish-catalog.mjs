@@ -105,7 +105,7 @@ export function unpackPublication(bundle, directory) {
 }
 
 export function publishCatalog(options, run = execFileSync, upload = uploadCatalog) {
-  const { revision, commit, repository, work, rootDirectory, catalog, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL, uiBundle, uiStyle, legacyV3 = false } = options;
+  const { revision, commit, repository, work, rootDirectory, catalog, targetCustom, binDirectory, bucket, endpoint, bootstrap = false, supersede = false, runURL, uiBundle, uiStyle, legacyV3 = false } = options;
   // Report only fixed stage names. Child-process errors may contain protected
   // signer or storage details, so the workflow must never print them.
   const stage = name => console.error(`Catalog publication stage: ${name}`);
@@ -176,6 +176,7 @@ export function publishCatalog(options, run = execFileSync, upload = uploadCatal
     unpackPublication(bundle, staged);
   } else {
     const args = ["--catalog", catalog, "--revision", String(revision), "--output", staged];
+    if (targetCustom) args.push("--target-custom", targetCustom);
     if (legacyV3) args.push("--legacy-v3");
     if (uiBundle) {
       for (const asset of [uiBundle, uiStyle]) {
