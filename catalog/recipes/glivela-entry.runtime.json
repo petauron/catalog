@@ -4,7 +4,7 @@
   "requiredCapabilities": ["native-services", "root", "host-tcp-budget"],
   "storage": [{"name": "node-state", "persistent": true}, {"name": "pair-manager-state", "persistent": true}, {"name": "companion-state", "persistent": true}],
   "nativeServices": {
-	"namespace": "glivela",
+    "namespace": "glivela",
     "users": ["xray", "companion-xray"],
     "services": [
       {
