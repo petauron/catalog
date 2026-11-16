@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.5.2](https://github.com/petauron/catalog/compare/v0.5.1...v0.5.2) (2026-11-16)
+
+
+### Bug Fixes
+
+* **catalog:** normalize entry recipe indentation ([245a186](https://github.com/petauron/catalog/commit/245a1869fe55828b83ffd7ae79d38a8ca8ce34af))
+
 ## [0.5.1](https://github.com/petauron/catalog/compare/v0.5.0...v0.5.1) (2026-11-16)
 
 
