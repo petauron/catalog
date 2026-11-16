@@ -8,7 +8,7 @@ test("verified new release converts runtime names using the current installation
   const before = JSON.stringify(baseline);
   const rule = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url))).sources.senlun;
   const collector = baseline.apps.find(app => app.id === rule.artifactApp);
-  const verified = { version: "1.0.0", image: "ghcr.io/example/monitor@sha256:" + "a".repeat(64), artifacts: collector.artifacts.map(item => ({ ...item, url: "https://example.invalid/senlun.tar.gz", sha256: "b".repeat(64) })) };
+  const verified = { version: "1.0.0", agentVersion: "1.0.0", image: "ghcr.io/example/monitor@sha256:" + "a".repeat(64), artifacts: collector.artifacts.map(item => ({ ...item, url: "https://example.invalid/senlun.tar.gz", sha256: "b".repeat(64) })) };
   const result = applyRelease(baseline, verified, rule);
   assert.equal(JSON.stringify(baseline), before, "historical recipe was modified");
   const service = result.apps.find(app => app.id === rule.imageApp);
@@ -42,7 +42,7 @@ test("reviewed UI-only publication retains the accepted Senlun runtime contract"
   const rule = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url))).sources.senlun;
   const collector = baseline.apps.find(app => app.id === rule.artifactApp);
   const active = applyRelease(baseline, {
-    version: "1.0.0", image: "ghcr.io/example/monitor@sha256:" + "a".repeat(64),
+    version: "1.0.0", agentVersion: "1.0.0", image: "ghcr.io/example/monitor@sha256:" + "a".repeat(64),
     artifacts: collector.artifacts.map(item => ({ ...item, url: "https://example.invalid/senlun.tar.gz", sha256: "b".repeat(64) })),
   }, rule);
   const merged = mergeReviewedRecipes(baseline, active);

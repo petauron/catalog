@@ -133,6 +133,18 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   verifyReleaseIdentity(request, rule, { release, run, jobs, tag: ref?.type === "commit" ? ref.sha : undefined, comparison: api(`compare/${request.sha}...${rule.branch}`), branch: api(`branches/${rule.branch}`),
     ...(recovery ? { signerComparison: api(`compare/${run.head_sha}...${rule.branch}`), sourceToSigner: api(`compare/${request.sha}...${run.head_sha}`) } : {}),
   });
+  // The Service tag and Agent version are independent. Read both the Agent
+  // version and Release Please manifest from the exact checked source commit.
+  const sourceFile = name => {
+    const file = api(`contents/${name}?ref=${request.sha}`);
+    if (file.type !== "file" || file.encoding !== "base64" || typeof file.content !== "string" || !Number.isSafeInteger(file.size) || file.size < 1 || file.size > 65536) throw new Error("Invalid component version source");
+    const encoded = file.content.replace(/\s/g, ""), bytes = Buffer.from(encoded, "base64");
+    if (bytes.length !== file.size || bytes.toString("base64") !== encoded) throw new Error("Invalid component version encoding");
+    return bytes.toString("utf8");
+  };
+  const agentVersion = sourceFile("crates/senlun-agent/version.txt").trim();
+  const sourceManifest = JSON.parse(sourceFile(".release-please-manifest.json"));
+  if (!versionPattern.test(agentVersion) || sourceManifest.crates !== agentVersion || sourceManifest["."] !== request.tag.slice(1)) throw new Error("Independent component versions do not match the release source");
   if (recovery) {
     console.log("Release verification stage: exact-product-ci");
     requireRecoveryCI(pages, rule, request.sha);
@@ -183,7 +195,28 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   attest(`oci://${image}`);
   // catalog-check independently reads both OCI platform configs and verifies
   // archive members/ELF headers after this materializes the candidate catalog.
-  return { request, version: request.tag.slice(1), artifacts, image };
+  return { request, version: request.tag.slice(1), agentVersion, artifacts, image };
+}
+
+// An increased Agent version is eligible only after its own Release Please
+// release is public at the same source SHA and contains the verified archives.
+export function verifyAgentRelease(verified, rule, runCommand = execute) {
+  if (!versionPattern.test(verified.agentVersion)) throw new Error("Invalid Agent version");
+  const tag = `senlun-agent-v${verified.agentVersion}`;
+  const api = endpoint => JSON.parse(runCommand("gh", ["api", `repos/${rule.repository}/${endpoint}`]));
+  const release = api(`releases/tags/${tag}`);
+  if (release.tag_name !== tag || release.draft !== false || !release.published_at || release.target_commitish !== verified.request.sha || release.author?.login !== "github-actions[bot]" || !Array.isArray(release.assets)) throw new Error("Independent Agent release is not published at the verified source");
+  let ref = api(`git/ref/tags/${tag}`).object;
+  for (let i = 0; ref?.type === "tag" && i < 4; i++) {
+    if (!/^[a-f0-9]{40}$/.test(ref.sha)) throw new Error("Invalid Agent tag object");
+    ref = api(`git/tags/${ref.sha}`).object;
+  }
+  if (ref?.type !== "commit" || ref.sha !== verified.request.sha) throw new Error("Agent tag does not identify the checked source");
+  for (const artifact of verified.artifacts) {
+    const name = new URL(artifact.url).pathname.split("/").at(-1);
+    const assets = release.assets.filter(asset => asset.name === name && asset.state === "uploaded" && asset.digest === `sha256:${artifact.sha256}`);
+    if (assets.length !== 1) throw new Error("Agent release does not contain the verified native artifact");
+  }
 }
 
 export function applyRelease(catalog, verified, rule) {
@@ -191,9 +224,13 @@ export function applyRelease(catalog, verified, rule) {
   for (const id of [rule.imageApp, rule.artifactApp]) {
     const app = next.apps.find(item => item.id === id);
     if (!app) throw new Error("Release policy references an unregistered recipe");
-    if (compareVersions(verified.version, app.version) < 0) throw new Error("Refusing application version rollback");
+    const version = id === rule.artifactApp ? verified.agentVersion : verified.version;
+    if (compareVersions(version, app.version) < 0) throw new Error("Refusing application version rollback");
+    // New Service builds contain a freshly built Agent archive even when the
+    // Agent version is unchanged. Keep its previously signed coordinates.
+    if (id === rule.artifactApp && version === app.version) continue;
     const original = structuredClone(app);
-    app.version = verified.version;
+    app.version = version;
     if (id === rule.imageApp) {
       const image = app.images?.find(item => item.name === rule.imageName);
       if (!image) throw new Error("Reviewed image mapping is missing");
