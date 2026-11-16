@@ -74,7 +74,11 @@ func buildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string
 		return nil, err
 	}
 	if len(targetCustom) > 0 {
-		if _, err := ParseTargetCustom(targetCustom); err != nil {
+		customValue, err := ParseTargetCustom(targetCustom)
+		if err != nil {
+			return nil, err
+		}
+		if err := ValidateTargetCustomForApps(customValue, apps); err != nil {
 			return nil, err
 		}
 		custom := json.RawMessage(targetCustom)

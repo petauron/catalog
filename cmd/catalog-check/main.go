@@ -58,7 +58,11 @@ func run(args []string) error {
 		if err != nil {
 			return err
 		}
-		if _, err := catalog.ParseTargetCustom(custom); err != nil {
+		customValue, err := catalog.ParseTargetCustom(custom)
+		if err != nil {
+			return err
+		}
+		if err := catalog.ValidateTargetCustomForApps(customValue, value.Apps); err != nil {
 			return err
 		}
 	}

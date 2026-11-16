@@ -60,3 +60,26 @@ func ParseTargetCustom(raw []byte) (TargetCustom, error) {
 func validVersionIdentity(value VersionIdentity) bool {
 	return value.PackageRevision > 0 && int64(value.PackageRevision) <= maxPortableInteger && semverPattern.MatchString(value.Version) && semver.IsValid("v"+value.Version)
 }
+
+// ValidateTargetCustomForApps prevents signing an equivalence for a package
+// newer than the verified catalog. Older anchors remain harmless and inactive.
+func ValidateTargetCustomForApps(value TargetCustom, apps []AppManifest) error {
+	for _, entry := range value.VersionEquivalences {
+		found := false
+		for _, app := range apps {
+			if app.ID != entry.AppID {
+				continue
+			}
+			found = true
+			comparison := semver.Compare("v"+entry.Target.Version, "v"+app.Version)
+			if comparison > 0 || (comparison == 0 && entry.Target.PackageRevision > app.PackageRevision) {
+				return errors.New("catalog: target equivalence is newer than the catalog package")
+			}
+			break
+		}
+		if !found {
+			return errors.New("catalog: target equivalence references an absent app")
+		}
+	}
+	return nil
+}
