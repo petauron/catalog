@@ -21,7 +21,7 @@ func TestOfficialStagedRepositoryUsesIndependentVerification(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	files, err := BuildOfficialRepository(root, raw, nil, "stable", OfficialAcceptance{}, now, signers)
+	files, err := BuildOfficialRepository(root, raw, nil, nil, "stable", OfficialAcceptance{}, now, signers)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -80,16 +80,16 @@ func TestOfficialUIAssetsAreVersionBoundAndIndependentlyVerified(t *testing.T) {
 		t.Fatal(err)
 	}
 	assets := map[string][]byte{script: []byte("export const version = '1.2.3';"), style: []byte("body{color:green}")}
-	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: assets[script]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: assets[script]}, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("unpaired UI script accepted")
 	}
-	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{"ui-glivela-9.9.9.js": assets[script]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{"ui-glivela-9.9.9.js": assets[script]}, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("UI for another version accepted")
 	}
-	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: make([]byte, MaxOfficialUIBytes+1), style: assets[style]}, "stable", OfficialAcceptance{}, now, signers); err == nil {
+	if _, err := BuildOfficialRepository(root, raw, map[string][]byte{script: make([]byte, MaxOfficialUIBytes+1), style: assets[style]}, nil, "stable", OfficialAcceptance{}, now, signers); err == nil {
 		t.Fatal("oversized UI script accepted")
 	}
-	files, err := BuildOfficialRepository(root, raw, assets, "stable", OfficialAcceptance{}, now, signers)
+	files, err := BuildOfficialRepository(root, raw, assets, nil, "stable", OfficialAcceptance{}, now, signers)
 	if err != nil {
 		t.Fatal(err)
 	}

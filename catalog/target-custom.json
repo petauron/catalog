@@ -1,0 +1,13 @@
+{
+  "versionEquivalences": [
+    {
+      "appId": "senlun-agent",
+      "target": { "version": "0.1.0-alpha.70", "packageRevision": 9 },
+      "equivalent": [
+        { "version": "0.1.0-alpha.67", "packageRevision": 9 },
+        { "version": "0.1.0-alpha.68", "packageRevision": 9 },
+        { "version": "0.1.0-alpha.69", "packageRevision": 9 }
+      ]
+    }
+  ]
+}

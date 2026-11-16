@@ -35,7 +35,9 @@ export function catalogFromBundle(bundle) {
   const state = validatePublication(bundle);
   const target = JSON.parse(Buffer.from(bundle.files[`targets/${state.sha256}.stable.json`], "base64"));
   if (!target.catalog?.apps || !Number.isFinite(Date.parse(target.expiresAt))) throw new Error("Ledger target has no catalog");
-  return { catalog: target.catalog, expiresAt: target.expiresAt };
+  const targets = JSON.parse(Buffer.from(bundle.files[`${state.revision}.targets.json`], "base64"));
+  const custom = targets.signed?.targets?.["stable.json"]?.custom ?? null;
+  return { catalog: target.catalog, expiresAt: target.expiresAt, custom };
 }
 
 export function mergeReviewedRecipes(reviewed, active) {
@@ -68,14 +70,14 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
   const revision = Number(latest.tag_name.slice(9));
   if (!Number.isSafeInteger(revision) || revision < 1 || !bundles.has(latest.tag_name)) throw new Error("Invalid ledger high-water mark");
   const bundle = bundles.get(latest.tag_name);
-  const { catalog: active, expiresAt } = catalogFromBundle(bundle);
+  const { catalog: active, expiresAt, custom: activeCustom } = catalogFromBundle(bundle);
   if (latest.draft) {
     if (latest.target_commitish !== commit || JSON.stringify(bundle.request) !== JSON.stringify(request) || bundle.recipesSHA256 !== recipesSHA256 || !bundle.inputCatalog) throw new Error("Pending publication blocks progress; rerun its original commit and request");
     if (Date.parse(expiresAt) <= now.getTime()) throw new Error("Pending signatures expired; operator recovery required, never re-sign this revision");
     return { revision, resume: true, catalogBytes: Buffer.from(bundle.inputCatalog, "base64"), request, recipesSHA256 };
   }
   if (!Number.isSafeInteger(revision + 1)) throw new Error("Publication revision exhausted");
-  return { revision: revision + 1, resume: false, active, candidate: mergeReviewedRecipes(reviewed, active), request, recipesSHA256 };
+  return { revision: revision + 1, resume: false, active, activeCustom, candidate: mergeReviewedRecipes(reviewed, active), request, recipesSHA256 };
 }
 
 export async function preparePublication(env = process.env, run = execute, verify = verifyRelease) {
@@ -109,8 +111,12 @@ export async function preparePublication(env = process.env, run = execute, verif
   if (request.kind === undefined) validateRequest(request, registry);
   else if (request.kind !== "reviewed") throw new Error("Unsupported publication request");
   const reviewedBytes = readFileSync("catalog/catalog.json");
+  const customBytes = readFileSync("catalog/target-custom.json");
+  if (!customBytes.length || customBytes.length > 16384) throw new Error("Invalid reviewed target custom size");
+  const custom = JSON.parse(customBytes);
   console.log("Catalog preparation stage: reviewed-recipe-plan");
-  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: sha256(reviewedBytes) });
+  const inputHash = sha256(Buffer.concat([Buffer.from(`catalog:${reviewedBytes.length}\n`), reviewedBytes, customBytes]));
+  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash });
   if (!plan.resume) {
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));
@@ -122,18 +128,20 @@ export async function preparePublication(env = process.env, run = execute, verif
       else if (candidate.version !== previous.version || JSON.stringify(candidate.artifacts) !== JSON.stringify(previous.artifacts)) throw new Error("Unchanged Agent coordinates require their own reviewed publication");
       plan.candidate = applyRelease(plan.candidate, verified, rule);
     }
-    const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps);
+    const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps) || JSON.stringify(custom) !== JSON.stringify(plan.activeCustom);
     if (!changed) return { noop: true };
     plan.candidate.generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
     plan.catalogBytes = Buffer.from(JSON.stringify(plan.candidate));
   }
   const catalog = path.join(work, "candidate.json");
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
+  const targetCustom = path.join(work, "target-custom.json");
+  writeFileSync(targetCustom, customBytes, { mode: 0o600, flag: "wx" });
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
   console.log("Catalog preparation stage: consumer-artifact-validation");
-  run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--root-directory", "catalog/trust", "--artifacts"]);
-  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
+  run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--target-custom", targetCustom, "--root-directory", "catalog/trust", "--artifacts"]);
+  const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, targetCustom, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
   return result;
 }

@@ -39,6 +39,7 @@ func run(args []string) error {
 	output := f.String("output", "", "new output directory; must not exist")
 	uiBundlePath := f.String("ui-bundle", "", "reviewed Meridian UI script")
 	uiStylePath := f.String("ui-style", "", "reviewed Meridian UI stylesheet")
+	customPath := f.String("target-custom", "", "reviewed target custom metadata")
 	keyFiles := map[string]*string{}
 	for _, role := range []string{"targets", "snapshot", "timestamp"} {
 		keyFiles[role] = f.String(role+"-keys", "", "comma-separated protected PKCS8 Ed25519 key files")
@@ -159,10 +160,24 @@ func run(args []string) error {
 		}
 	}
 	var files map[string][]byte
+	var targetCustom []byte
+	if *customPath != "" {
+		info, err := os.Lstat(*customPath)
+		if err != nil || !info.Mode().IsRegular() || info.Mode()&os.ModeSymlink != 0 || info.Size() <= 0 || info.Size() > 16384 {
+			return errors.New("catalog-publish: invalid target custom file")
+		}
+		targetCustom, err = os.ReadFile(*customPath)
+		if err != nil {
+			return err
+		}
+		if *legacyV3 {
+			return errors.New("catalog-publish: target custom is unsupported for legacy catalogs")
+		}
+	}
 	if *legacyV3 {
 		files, err = catalog.BuildLegacyOfficialRepository(root, target, uiBundles, *channel, previous, now, signers)
 	} else {
-		files, err = catalog.BuildOfficialRepository(root, target, uiBundles, *channel, previous, now, signers)
+		files, err = catalog.BuildOfficialRepository(root, target, uiBundles, targetCustom, *channel, previous, now, signers)
 	}
 	if err != nil {
 		return err

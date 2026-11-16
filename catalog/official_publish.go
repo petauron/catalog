@@ -15,12 +15,12 @@ import (
 // BuildOfficialRepository produces immutable objects and the final timestamp
 // pointer. It cannot generate/rotate roots or upload content. Publish all other
 // files before timestamp.json, under an exclusive channel publication lock.
-func BuildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, channel string, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
+func BuildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, targetCustom []byte, channel string, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
 	value, acceptance, err := ValidateOfficialTarget(targetBytes, channel, previous, now)
 	if err != nil {
 		return nil, err
 	}
-	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, channel, value.Apps, acceptance, previous, now, signers)
+	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, targetCustom, channel, value.Apps, acceptance, previous, now, signers)
 }
 
 // BuildLegacyOfficialRepository signs the deployed schema 3 wire format while
@@ -30,10 +30,10 @@ func BuildLegacyOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[
 	if err != nil {
 		return nil, err
 	}
-	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, channel, value.appReferences(), acceptance, previous, now, signers)
+	return buildOfficialRepository(rootBytes, targetBytes, uiBundles, nil, channel, value.appReferences(), acceptance, previous, now, signers)
 }
 
-func buildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, channel string, apps []AppManifest, acceptance, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
+func buildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string][]byte, targetCustom []byte, channel string, apps []AppManifest, acceptance, previous OfficialAcceptance, now time.Time, signers map[string][]signature.Signer) (map[string][]byte, error) {
 	if acceptance.Revision <= previous.Revision {
 		return nil, errors.New("catalog: publication requires a new revision")
 	}
@@ -72,6 +72,17 @@ func buildOfficialRepository(rootBytes, targetBytes []byte, uiBundles map[string
 	target, err := metadata.TargetFile().FromBytes(channel+".json", targetBytes, "sha256")
 	if err != nil {
 		return nil, err
+	}
+	if len(targetCustom) > 0 {
+		customValue, err := ParseTargetCustom(targetCustom)
+		if err != nil {
+			return nil, err
+		}
+		if err := ValidateTargetCustomForApps(customValue, apps); err != nil {
+			return nil, err
+		}
+		custom := json.RawMessage(targetCustom)
+		target.Custom = &custom
 	}
 	hash := sha256.Sum256(targetBytes)
 	files["targets/"+hex.EncodeToString(hash[:])+"."+channel+".json"] = targetBytes

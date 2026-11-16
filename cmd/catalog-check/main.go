@@ -29,6 +29,7 @@ func run(args []string) error {
 	f := flag.NewFlagSet("catalog-check", flag.ContinueOnError)
 	input := f.String("catalog", "catalog/catalog.json", "reviewed catalog")
 	rootDirectory := f.String("root-directory", "", "optional reviewed public root chain directory (1.root.json onward)")
+	customPath := f.String("target-custom", "", "optional reviewed TUF target custom metadata")
 	artifacts := f.Bool("artifacts", false, "download and verify public native assets and OCI manifests for both supported platforms")
 	if err := f.Parse(args); err != nil {
 		return err
@@ -51,6 +52,19 @@ func run(args []string) error {
 	}
 	if err := catalog.ValidateCatalog(value); err != nil {
 		return err
+	}
+	if *customPath != "" {
+		custom, err := os.ReadFile(*customPath)
+		if err != nil {
+			return err
+		}
+		customValue, err := catalog.ParseTargetCustom(custom)
+		if err != nil {
+			return err
+		}
+		if err := catalog.ValidateTargetCustomForApps(customValue, value.Apps); err != nil {
+			return err
+		}
 	}
 	if !*artifacts {
 		return nil
