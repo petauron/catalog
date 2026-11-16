@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.6.1](https://github.com/petauron/catalog/compare/v0.6.0...v0.6.1) (2026-11-16)
+
+
+### Bug Fixes
+
+* **catalog:** publish Glivela 0.1.0-alpha.163 ([dcb944f](https://github.com/petauron/catalog/commit/dcb944f2d8d2683cd2ba5453439edb05b201b09a))
+* sign exact application version equivalences ([1a0779e](https://github.com/petauron/catalog/commit/1a0779eb909328fa6e68411bef9e0d62d26e9cce))
+
 ## [0.6.0](https://github.com/petauron/catalog/compare/v0.5.1...v0.6.0) (2026-11-16)
 
 
