@@ -4,7 +4,7 @@
   "apps": [
     {
       "id": "cpa",
-      "version": "8.0.28",
+      "version": "8.0.79",
       "name": {
         "en": "CPA",
         "zh-CN": "CPA"
@@ -17,7 +17,7 @@
       "images": [
         {
           "name": "cli-proxy-api",
-          "reference": "eceasy/cli-proxy-api:v8.0.28@sha256:5de1679350c368fb031d46900da30d97c1e9e9a3b150fc4c4181e7e65022a09e"
+          "reference": "eceasy/cli-proxy-api:v8.0.79@sha256:ce02dd2ba9186024762d8b6525c068c5a5fab78435b8d82d9c03f7ce74feeb5b"
         }
       ],
       "services": [
