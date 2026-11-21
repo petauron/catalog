@@ -1,5 +1,15 @@
 # Changelog
 
+## [0.6.2](https://github.com/petauron/catalog/compare/v0.6.1...v0.6.2) (2026-11-21)
+
+
+### Bug Fixes
+
+* **catalog:** publish Glivela 0.1.0 ([#235](https://github.com/petauron/catalog/issues/235)) ([b73812f](https://github.com/petauron/catalog/commit/b73812fca832bb4f2111f58b1e311567832aba5e))
+* **catalog:** publish Glivela startup recovery ([e232406](https://github.com/petauron/catalog/commit/e232406b610788984f9b332300e68f71e3808909))
+* **catalog:** update CPA to 8.0.79 ([d9a5485](https://github.com/petauron/catalog/commit/d9a5485debaaf98de57eaf80966c1ea38609cc65))
+* **cpa:** declare trusted Tunnel client IP recipes for CPA and Keeper ([#232](https://github.com/petauron/catalog/issues/232)) ([0fde6bb](https://github.com/petauron/catalog/commit/0fde6bbae7fc9a473c1636fa0afeff2eea4951d1))
+
 ## [0.6.1](https://github.com/petauron/catalog/compare/v0.6.0...v0.6.1) (2026-11-16)
 
 
