@@ -3,6 +3,7 @@ package catalog
 import (
 	"encoding/json"
 	"os"
+	"slices"
 	"strings"
 	"testing"
 )
@@ -24,7 +25,10 @@ func TestCPARecipeUsesV8AndDisablesIndependentPanelUpdates(t *testing.T) {
 			t.Fatal("CPA version and immutable image must agree")
 		}
 		container := app.Runtime.Docker.Containers[0]
-		data, err := RenderConfigFile(container.ConfigFiles[0], map[string]any{"debug": false}, map[string]string{"api_key": "example-client-key", "management_key": "example-management-key"})
+		if !slices.Contains(app.Runtime.RequiredCapabilities, "host-network") || !slices.Contains(app.Runtime.RequiredCapabilities, "cpa-tunnel-identity") {
+			t.Fatal("old executors must not accept the CPA identity recipe")
+		}
+		data, err := RenderConfigFile(container.ConfigFiles[0], map[string]any{"debug": false}, map[string]string{"api_key": "example-client-key", "management_key": "example-management-key"}, map[string]string{"private-address:": "100.64.0.2"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -40,7 +44,7 @@ func TestCPARecipeUsesV8AndDisablesIndependentPanelUpdates(t *testing.T) {
 			t.Fatal("panel policy or management identity lost")
 		}
 		server := config["server"].(map[string]any)
-		if server["port"] != float64(8317) || server["host"] != "0.0.0.0" {
+		if server["port"] != float64(8317) || server["host"] != "100.64.0.2" || len(server["trusted-proxies"].([]any)) != 0 || !container.HostNetwork {
 			t.Fatal("listener changed")
 		}
 		access := config["access"].(map[string]any)
@@ -58,10 +62,40 @@ func TestCPARecipeUsesV8AndDisablesIndependentPanelUpdates(t *testing.T) {
 		if len(container.Mounts) != 4 {
 			t.Fatal("persistent auth/log/plugin mounts changed")
 		}
-		if app.PackageRevision != 2 || container.Mounts[3].Storage != "management-panel" || container.Mounts[3].Target != "/CLIProxyAPI/static" {
+		if app.PackageRevision != 3 || container.Mounts[3].Storage != "management-panel" || container.Mounts[3].Target != "/CLIProxyAPI/static" {
 			t.Fatal("compatible management panel is not retained across container updates")
 		}
 		return
 	}
 	t.Fatal("CPA recipe missing")
+}
+
+func TestKeeperOriginMigrationRequiresCurrentExecutor(t *testing.T) {
+	raw, err := os.ReadFile("catalog.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := ParseCatalog(raw)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, app := range c.Apps {
+		if app.ID == "keeper" {
+			if app.PackageRevision != 3 || !slices.Contains(app.Runtime.RequiredCapabilities, "cpa-tunnel-identity") {
+				t.Fatal("Keeper origin migration is not gated")
+			}
+			c := app.Runtime.Docker.Containers[0]
+			if len(c.Command) != 1 || len(c.Arguments) != 1 {
+				t.Fatal("Keeper must preserve its non-privileged command and binary argument")
+			}
+			cmd, cmdErr := ResolveString(c.Command[0], nil, nil)
+			arg, argErr := ResolveString(c.Arguments[0], nil, nil)
+			work, workErr := ResolveString(c.Environment["WORK_DIR"], nil, nil)
+			if c.User != "app:app" || cmdErr != nil || cmd != "/usr/bin/env" || argErr != nil || arg != "/app/cpa-usage-keeper" || workErr != nil || work != "/data" || slices.Contains(app.Runtime.RequiredCapabilities, "root") {
+				t.Fatal("Keeper must run the pinned image's app identity without a privileged chown/su-exec entrypoint")
+			}
+			return
+		}
+	}
+	t.Fatal("Keeper recipe missing")
 }
