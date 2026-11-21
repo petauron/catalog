@@ -101,12 +101,14 @@
           "secret": true
         }
       ],
-      "packageRevision": 2,
+      "packageRevision": 3,
       "runtime": {
         "kind": "docker",
         "version": 1,
         "requiredCapabilities": [
-          "root"
+          "root",
+          "host-network",
+          "cpa-tunnel-identity"
         ],
         "storage": [
           {
@@ -132,6 +134,7 @@
               "name": "cpa",
               "image": "cli-proxy-api",
               "user": "0:0",
+              "hostNetwork": true,
               "environment": {
                 "TZ": {
                   "config": "timezone"
@@ -148,10 +151,15 @@
                     "server": {
                       "object": {
                         "host": {
-                          "literal": "0.0.0.0"
+                          "runtime": {
+                            "kind": "private-address"
+                          }
                         },
                         "port": {
                           "literal": 8317
+                        },
+                        "trusted-proxies": {
+                          "array": []
                         }
                       }
                     },
@@ -327,10 +335,13 @@
           "secret": true
         }
       ],
-      "packageRevision": 2,
+      "packageRevision": 3,
       "runtime": {
         "kind": "docker",
         "version": 1,
+        "requiredCapabilities": [
+          "cpa-tunnel-identity"
+        ],
         "storage": [
           {
             "name": "data",
