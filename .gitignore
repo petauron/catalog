@@ -8,3 +8,10 @@
 .env
 .cache/
 *.test
+
+/tasks/
+/archive/
+/workspaces/
+.DS_Store
+.env.*
+!.env.example
