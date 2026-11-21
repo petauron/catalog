@@ -20,7 +20,7 @@ func TestCPARecipeUsesV8AndDisablesIndependentPanelUpdates(t *testing.T) {
 		if app.ID != "cpa" {
 			continue
 		}
-		if app.Version != "8.0.28" || !strings.Contains(app.Images[0].Reference, "v8.0.28@sha256:") {
+		if app.Version != "8.0.79" || !strings.Contains(app.Images[0].Reference, "v8.0.79@sha256:") {
 			t.Fatal("CPA version and immutable image must agree")
 		}
 		container := app.Runtime.Docker.Containers[0]
