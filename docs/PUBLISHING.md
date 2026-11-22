@@ -7,17 +7,42 @@ Installing/upgrading an application still requires an administrator's action.
 
 ## Release request contract
 
-The protected `publish.yml` workflow runs only through manual `workflow_dispatch`.
-After the application's release publishing job succeeds, an administrator selects
-`kind=release` and supplies `application`, `tag`, the tag's exact source `sha`, and
-the successful source release `run_id`. The GitHub Actions page exposes these
-fields; the equivalent CLI call for a completed, reviewed Senlun release is:
+The protected `publish.yml` workflow supports manual `workflow_dispatch` as well as
+automatic pull-only reconciliation (`repository_dispatch` type `catalog-reconcile` for
+instant wakeup and a 15-minute `schedule` fallback).
+
+For manual dispatch, after an application's release publishing job succeeds, an
+administrator selects `kind=release` and supplies `application`, `tag`, the tag's exact
+source `sha`, and the successful source release `run_id`. The equivalent CLI call for a
+completed, reviewed Senlun release is:
 
 ```sh
 gh workflow run publish.yml --repo petauron/catalog --ref main \
-  -f kind=release -f application=pulse -f tag="$RELEASE_TAG" \
+  -f kind=release -f application=senlun -f tag="$RELEASE_TAG" \
   -f sha="$RELEASE_SHA" -f run_id="$RELEASE_RUN_ID"
 ```
+
+For automatic publication, an unprivileged `discover` job (running outside the
+`catalog-signing` environment with no signing keys or storage credentials) runs
+`scripts/catalog-reconcile.mjs` against `catalog/sources.json`:
+
+- Upstream wakeup events (`repository_dispatch` `catalog-reconcile`) carry no trust
+  payload; `discover` ignores `client_payload` and resolves all release identities from
+  the reviewed registry and authenticated GitHub APIs.
+- Only sources with `autoPublish.enabled: true` are automatically published, subject to
+  their per-source `autoPublish.allowPrerelease` policy (`senlun` auto-publishes stable
+  SemVer releases; prereleases and manual recoveries remain explicit `workflow_dispatch`).
+- When an upstream commit advances the independent Agent version, `discover` waits until
+  `senlun-agent-v<version>` is also published at the same commit SHA before handing off to
+  `publish`.
+- Pending draft `catalog-rN` releases block automatic publication fail-closed, two
+  consecutive failed automated runs trip a circuit breaker until a manual recovery run
+  succeeds, and setting Repository Variable `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all
+  automatic runs without affecting manual `workflow_dispatch`.
+- `publish` still independently re-verifies every request through `catalog-plan.mjs`,
+  SLSA attestations and `catalog-check --artifacts` before entering `catalog-signing`.
+- Reviewed recipe changes (`kind=reviewed`) remain manual by default
+  (`autoPublishReviewed: false`).
 
 The historical Pulse alpha.5 release was delivered by
 [catalog-r8](https://github.com/petauron/catalog/releases/tag/catalog-r8).
@@ -25,8 +50,6 @@ The completed schema 3 publisher cutover is recorded in `catalog/migration.json`
 [CUTOVER-V3.md](CUTOVER-V3.md) preserves its acceptance procedure. Check the resulting catalog
 workflow run and public signed revision before claiming publication. `kind=reviewed`
 handles a reviewed recipe change.
-Neither an application release nor a catalog source change triggers publication
-automatically. No periodic workflow is configured.
 
 `catalog/sources.json` is the reviewed source registry. Senlun is the first
 registered source, including its Alpha releases. The publisher derives its repository,

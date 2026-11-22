@@ -21,11 +21,21 @@ test("allocates monotonic revisions under the serialized workflow", () => {
   assert.throws(() => choosePlan({ ...setup(), releases: [] }), /existing history/);
 });
 
-test("catalog publication only has a manual trigger", () => {
+test("catalog publication isolates unprivileged discovery from protected signing", () => {
   const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /(^|\n)\s*schedule:/);
-  assert.doesNotMatch(workflow, /\bpoll\b|\brenew\b|CATALOG_NOTIFY|create-github-app-token/);
+  assert.match(workflow, /repository_dispatch:\s*\n\s*types:\s*\[catalog-reconcile\]/);
+  assert.match(workflow, /(^|\n)\s*schedule:/);
+  assert.match(workflow, /CATALOG_AUTOPUBLISH_DISABLED/);
+  assert.doesNotMatch(workflow, /github\.event\.client_payload|create-github-app-token|CATALOG_NOTIFY/);
+  const discoverStart = workflow.indexOf("  discover:");
+  const publishStart = workflow.indexOf("  publish:");
+  assert.ok(discoverStart > 0 && publishStart > discoverStart);
+  const discoverBlock = workflow.slice(discoverStart, publishStart);
+  assert.ok(discoverBlock.includes("node scripts/catalog-reconcile.mjs"));
+  assert.ok(!discoverBlock.includes("environment: catalog-signing"));
+  assert.ok(!discoverBlock.includes("CATALOG_SIGNERS"));
+  assert.ok(!discoverBlock.includes("R2_SECRET_ACCESS_KEY"));
 });
 
 test("pending publication only resumes original commit/request/recipe and exact signed input", () => {
