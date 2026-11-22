@@ -13,29 +13,45 @@ const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", impo
 const senlunRule = registry.sources.senlun;
 const sha = "a".repeat(40);
 
-test("circuit breaker trips after two automated failures since last publication and ignores noop runs", () => {
+test("circuit breaker trips on two publish-job failures since last publication and resets on manual success", () => {
   const sinceIso = "2026-11-22T05:00:00Z";
+  const failedRuns = [
+    { id: 10, run_number: 10, event: "schedule", status: "completed", conclusion: "failure", run_started_at: "2026-11-22T05:15:00Z" },
+    { id: 9, run_number: 9, event: "repository_dispatch", status: "completed", conclusion: "failure", run_started_at: "2026-11-22T05:05:00Z" },
+  ];
+  const publishFailedJobs = () => [{ name: "publish", conclusion: "failure" }];
   assert.deepEqual(
-    isCircuitOpen([
-      { id: 12, run_number: 12, event: "schedule", status: "completed", conclusion: "success", created_at: "2026-11-22T05:30:00Z" },
-      { id: 10, run_number: 10, event: "schedule", status: "completed", conclusion: "failure", created_at: "2026-11-22T05:15:00Z" },
-      { id: 9, run_number: 9, event: "repository_dispatch", status: "completed", conclusion: "failure", created_at: "2026-11-22T05:05:00Z" },
-    ], { currentRunId: "13", sinceIso }),
+    isCircuitOpen(failedRuns, [], { currentRunId: "13", sinceIso, jobsForRun: publishFailedJobs }),
     { open: true, failures: 2 },
   );
+  // Transient discover-only blips do not latch the permanent publish circuit breaker.
   assert.deepEqual(
-    isCircuitOpen([
-      { id: 11, run_number: 11, event: "workflow_dispatch", status: "completed", conclusion: "success", created_at: "2026-11-22T05:20:00Z" },
-      { id: 10, run_number: 10, event: "schedule", status: "completed", conclusion: "failure", created_at: "2026-11-22T05:15:00Z" },
-      { id: 9, run_number: 9, event: "schedule", status: "completed", conclusion: "failure", created_at: "2026-11-22T05:05:00Z" },
-    ], { currentRunId: "12", sinceIso }),
+    isCircuitOpen(failedRuns, [], {
+      currentRunId: "13",
+      sinceIso,
+      jobsForRun: () => [{ name: "discover", conclusion: "failure" }],
+    }),
     { open: false, failures: 0 },
   );
+  // A successful manual workflow_dispatch after the failures resets the breaker.
   assert.deepEqual(
-    isCircuitOpen([
-      { id: 10, run_number: 10, event: "schedule", status: "completed", conclusion: "failure", created_at: "2026-11-22T04:55:00Z" },
-      { id: 9, run_number: 9, event: "schedule", status: "completed", conclusion: "failure", created_at: "2026-11-22T04:40:00Z" },
-    ], { currentRunId: "11", sinceIso }),
+    isCircuitOpen(
+      failedRuns,
+      [{ id: 11, run_number: 11, event: "workflow_dispatch", status: "completed", conclusion: "success", run_started_at: "2026-11-22T05:20:00Z" }],
+      { currentRunId: "12", sinceIso, jobsForRun: publishFailedJobs },
+    ),
+    { open: false, failures: 0 },
+  );
+  // Failures prior to latest catalog publication do not count.
+  assert.deepEqual(
+    isCircuitOpen(
+      [
+        { id: 10, run_number: 10, event: "schedule", status: "completed", conclusion: "failure", run_started_at: "2026-11-22T04:55:00Z" },
+        { id: 9, run_number: 9, event: "schedule", status: "completed", conclusion: "failure", run_started_at: "2026-11-22T04:40:00Z" },
+      ],
+      [],
+      { currentRunId: "11", sinceIso, jobsForRun: publishFailedJobs },
+    ),
     { open: false, failures: 0 },
   );
 });
@@ -103,7 +119,7 @@ test("findVerifiedSourceRun admits in-progress push run once publishing job succ
   assert.equal(pending, null);
 });
 
-test("checkAgentReleaseReady waits when bumped Agent release is still draft or missing", () => {
+test("checkAgentReleaseReady verifies published release, assets, prerelease policy, and tag commit", () => {
   const versionFile = version => ({
     type: "file",
     encoding: "base64",
@@ -122,15 +138,31 @@ test("checkAgentReleaseReady waits when bumped Agent release is still draft or m
     throw new Error("404");
   });
   assert.equal(missing.ready, false);
-  const published = checkAgentReleaseReady(senlunRule, sha, "0.1.0", endpoint => {
+  const noAssets = checkAgentReleaseReady(senlunRule, sha, "0.1.0", endpoint => {
     if (endpoint.startsWith("contents/crates/senlun-agent/version.txt")) return versionFile("0.1.1");
+    if (endpoint.startsWith("git/ref/tags/")) return { object: { type: "commit", sha } };
     return {
       tag_name: "senlun-agent-v0.1.1",
       draft: false,
+      prerelease: false,
       published_at: "2026-11-22T05:50:00Z",
       target_commitish: sha,
       author: { login: "github-actions[bot]" },
       assets: [],
+    };
+  });
+  assert.equal(noAssets.ready, false);
+  const published = checkAgentReleaseReady(senlunRule, sha, "0.1.0", endpoint => {
+    if (endpoint.startsWith("contents/crates/senlun-agent/version.txt")) return versionFile("0.1.1");
+    if (endpoint.startsWith("git/ref/tags/")) return { object: { type: "commit", sha } };
+    return {
+      tag_name: "senlun-agent-v0.1.1",
+      draft: false,
+      prerelease: false,
+      published_at: "2026-11-22T05:50:00Z",
+      target_commitish: sha,
+      author: { login: "github-actions[bot]" },
+      assets: [{ state: "uploaded" }, { state: "uploaded" }],
     };
   });
   assert.deepEqual(published, { ready: true, agentVersion: "0.1.1" });

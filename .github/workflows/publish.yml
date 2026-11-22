@@ -35,8 +35,10 @@ jobs:
     if: github.repository == 'petauron/catalog' && github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
+    # GitHub hides draft releases under contents:read; write is needed strictly to
+    # detect pending draft catalog-rN releases fail-closed before entering catalog-signing.
     permissions:
-      contents: read
+      contents: write
       actions: read
     outputs:
       should_publish: ${{ steps.reconcile.outputs.should_publish }}
@@ -62,7 +64,10 @@ jobs:
           node scripts/catalog-reconcile.mjs
   publish:
     needs: [discover]
+    # Explicit !cancelled() is required so a skipped discover job on manual
+    # workflow_dispatch does not cause implicit success() to skip publish.
     if: >-
+      !cancelled() &&
       github.repository == 'petauron/catalog' &&
       github.ref == 'refs/heads/main' &&
       ((github.event_name == 'workflow_dispatch' && needs.discover.result == 'skipped') ||
@@ -112,6 +117,8 @@ jobs:
           go build -o "$CATALOG_BIN/catalog-verify" ./cmd/catalog-verify
       - name: Warn before offline root rotation is required
         run: node scripts/root-expiry.mjs
+      # discover is skipped on workflow_dispatch (so needs.discover.outputs.* are empty),
+      # making the ternary fallback exact even for empty manual inputs (e.g. kind=reviewed).
       - name: Resolve source, verify artifacts, and allocate a durable revision
         id: prepare
         env:

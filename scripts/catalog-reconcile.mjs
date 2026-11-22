@@ -1,7 +1,7 @@
 // Pull-only reconciler that discovers eligible upstream releases or reviewed
 // recipe updates without holding any signing keys or storage credentials.
 // Outputs are untrusted hints re-verified from scratch inside catalog-plan.mjs.
-import { mkdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -11,24 +11,53 @@ import { compareVersions, execute, validateRequest } from "./release-source.mjs"
 
 const AUTO_EVENTS = new Set(["schedule", "repository_dispatch"]);
 const MAX_CONSECUTIVE_AUTO_FAILURES = 2;
+const RUN_ID_PATTERN = /^[1-9][0-9]{0,19}$/;
 const CANONICAL_TAG = /^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(alpha|beta|rc)\.(0|[1-9][0-9]*))?$/;
 const AGENT_VERSION_PATTERN = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(alpha|beta|rc)\.(0|[1-9][0-9]*))?$/;
 
-export function isCircuitOpen(runs, { currentRunId = "", sinceIso = "" } = {}) {
-  const sinceMs = sinceIso ? Date.parse(sinceIso) : Number.NaN;
-  const ordered = [...runs]
-    .filter(run => String(run.id) !== String(currentRunId))
+function runTimestampMs(run) {
+  return Date.parse(run?.run_started_at ?? run?.created_at ?? "");
+}
+
+function isPublishJobFailure(jobs) {
+  return (jobs ?? []).some(
+    job => job?.name === "publish" && (job.conclusion === "failure" || job.conclusion === "timed_out"),
+  );
+}
+
+export function isCircuitOpen(
+  failedRuns,
+  manualSuccessRuns,
+  { currentRunId = "", sinceIso = "", jobsForRun = null } = {},
+) {
+  let resetMs = sinceIso ? Date.parse(sinceIso) : Number.NaN;
+  for (const run of manualSuccessRuns ?? []) {
+    if (String(run?.id) === String(currentRunId)) continue;
+    if (run?.event !== "workflow_dispatch" || run?.status !== "completed" || run?.conclusion !== "success") continue;
+    const ts = runTimestampMs(run);
+    if (Number.isFinite(ts) && (!Number.isFinite(resetMs) || ts > resetMs)) resetMs = ts;
+  }
+
+  const candidates = [...(failedRuns ?? [])]
+    .filter(run =>
+      run &&
+      String(run.id) !== String(currentRunId) &&
+      AUTO_EVENTS.has(run.event) &&
+      run.status === "completed" &&
+      (run.conclusion === "failure" || run.conclusion === "timed_out"),
+    )
     .sort((a, b) => (b.run_number ?? 0) - (a.run_number ?? 0));
+
   let failures = 0;
-  for (const run of ordered) {
-    if (run.status !== "completed" || run.conclusion === "cancelled" || run.conclusion === "skipped") continue;
-    const createdMs = Date.parse(run.created_at ?? "");
-    if (Number.isFinite(sinceMs) && Number.isFinite(createdMs) && createdMs <= sinceMs) break;
-    if (run.event === "workflow_dispatch" && run.conclusion === "success") return { open: false, failures: 0 };
-    if (AUTO_EVENTS.has(run.event) && (run.conclusion === "failure" || run.conclusion === "timed_out")) {
-      failures += 1;
-      if (failures >= MAX_CONSECUTIVE_AUTO_FAILURES) return { open: true, failures };
+  for (const run of candidates) {
+    const ts = runTimestampMs(run);
+    if (Number.isFinite(resetMs) && Number.isFinite(ts) && ts <= resetMs) break;
+    if (jobsForRun) {
+      if (!RUN_ID_PATTERN.test(String(run.id))) continue;
+      if (!isPublishJobFailure(jobsForRun(run.id))) continue;
     }
+    failures += 1;
+    if (failures >= MAX_CONSECUTIVE_AUTO_FAILURES) return { open: true, failures };
   }
   return { open: false, failures };
 }
@@ -55,6 +84,7 @@ export function findVerifiedSourceRun(runs, jobsForRun, rule, sha, tag = "") {
   const candidates = runs
     .filter(run =>
       run &&
+      RUN_ID_PATTERN.test(String(run.id)) &&
       run.event === "push" &&
       run.path === rule.workflow &&
       run.head_sha === sha &&
@@ -64,7 +94,7 @@ export function findVerifiedSourceRun(runs, jobsForRun, rule, sha, tag = "") {
     )
     .sort((a, b) => (b.run_number ?? 0) - (a.run_number ?? 0));
   for (const run of candidates) {
-    const jobs = jobsForRun(run.id);
+    const jobs = jobsForRun(run.id) ?? [];
     const publishing = jobs.filter(job => job.name === rule.publishJob);
     if (publishing.length === 1 && publishing[0].status === "completed" && publishing[0].conclusion === "success") {
       return run;
@@ -93,6 +123,20 @@ function readSourceFile(api, filePath, sha) {
   return bytes.toString("utf8");
 }
 
+function resolveTagCommit(api, tag) {
+  let ref;
+  try {
+    ref = api(`git/ref/tags/${tag}`)?.object;
+    for (let i = 0; ref?.type === "tag" && i < 4; i++) {
+      if (!/^[a-f0-9]{40}$/.test(ref.sha)) return null;
+      ref = api(`git/tags/${ref.sha}`)?.object;
+    }
+  } catch {
+    return null;
+  }
+  return ref?.type === "commit" && /^[a-f0-9]{40}$/.test(ref.sha) ? ref.sha : null;
+}
+
 export function checkAgentReleaseReady(rule, sha, activeAgentVersion, api) {
   const agentVersion = readSourceFile(api, "crates/senlun-agent/version.txt", sha).trim();
   if (!AGENT_VERSION_PATTERN.test(agentVersion)) {
@@ -101,6 +145,12 @@ export function checkAgentReleaseReady(rule, sha, activeAgentVersion, api) {
   const cmp = compareVersions(agentVersion, activeAgentVersion);
   if (cmp < 0) return { ready: false, reason: `agent version ${agentVersion} is older than active ${activeAgentVersion}` };
   if (cmp === 0) return { ready: true, agentVersion };
+
+  const allowPrerelease = rule?.autoPublish?.allowPrerelease === true && rule?.allowPrerelease === true;
+  if (agentVersion.includes("-") && !allowPrerelease) {
+    return { ready: false, reason: `prerelease agent version ${agentVersion} is not enabled for autoPublish` };
+  }
+
   const agentTag = `senlun-agent-v${agentVersion}`;
   let agentRelease;
   try {
@@ -108,26 +158,23 @@ export function checkAgentReleaseReady(rule, sha, activeAgentVersion, api) {
   } catch {
     return { ready: false, reason: `waiting for ${agentTag} to be published` };
   }
+  const uploadedAssets = (agentRelease.assets ?? []).filter(asset => asset?.state === "uploaded");
   if (
     agentRelease.tag_name !== agentTag ||
     agentRelease.draft !== false ||
     !agentRelease.published_at ||
+    agentRelease.prerelease !== agentVersion.includes("-") ||
     agentRelease.target_commitish !== sha ||
     agentRelease.author?.login !== "github-actions[bot]" ||
-    !Array.isArray(agentRelease.assets)
+    uploadedAssets.length < 2
   ) {
     return { ready: false, reason: `waiting for ${agentTag} to finish publishing at ${sha}` };
   }
-  return { ready: true, agentVersion };
-}
-
-function resolveTagCommit(api, tag) {
-  let ref = api(`git/ref/tags/${tag}`).object;
-  for (let i = 0; ref?.type === "tag" && i < 4; i++) {
-    if (!/^[a-f0-9]{40}$/.test(ref.sha)) return null;
-    ref = api(`git/tags/${ref.sha}`).object;
+  const agentTagSha = resolveTagCommit(api, agentTag);
+  if (agentTagSha !== sha) {
+    return { ready: false, reason: `waiting for ${agentTag} tag ref to resolve to ${sha}` };
   }
-  return ref?.type === "commit" && /^[a-f0-9]{40}$/.test(ref.sha) ? ref.sha : null;
+  return { ready: true, agentVersion };
 }
 
 export function reconcileCatalog(env = process.env, run = execute) {
@@ -146,6 +193,9 @@ export function reconcileCatalog(env = process.env, run = execute) {
   const liveReleases = catalogPages("releases?per_page=100")
     .flat()
     .filter(entry => /^catalog-r[1-9][0-9]*$/.test(entry.tag_name));
+  if (liveReleases.some(entry => imported.some(item => item.release.tag_name === entry.tag_name))) {
+    throw new Error("New and historical revisions collide");
+  }
   const allReleases = [...liveReleases, ...imported.map(item => item.release)]
     .sort((a, b) => Number(b.tag_name.slice(9)) - Number(a.tag_name.slice(9)));
   const latest = allReleases[0];
@@ -158,16 +208,23 @@ export function reconcileCatalog(env = process.env, run = execute) {
     };
   }
 
-  const runsResp = catalogApi("actions/workflows/publish.yml/runs?branch=main&per_page=20");
-  const circuit = isCircuitOpen(runsResp.workflow_runs ?? [], {
+  // Query filtered run endpoints so 15-minute no-op cron runs cannot evict failed runs
+  // out of a single page, and inspect jobs so transient discover blips do not latch the breaker.
+  const failedRuns = [
+    ...(catalogApi("actions/workflows/publish.yml/runs?branch=main&status=failure&per_page=20").workflow_runs ?? []),
+    ...(catalogApi("actions/workflows/publish.yml/runs?branch=main&status=timed_out&per_page=20").workflow_runs ?? []),
+  ];
+  const manualSuccessRuns = catalogApi("actions/workflows/publish.yml/runs?branch=main&event=workflow_dispatch&status=success&per_page=10").workflow_runs ?? [];
+  const circuit = isCircuitOpen(failedRuns, manualSuccessRuns, {
     currentRunId: env.GITHUB_RUN_ID ?? "",
     sinceIso: latest.published_at ?? latest.created_at ?? "",
+    jobsForRun: runId => catalogApi(`actions/runs/${runId}/jobs?filter=latest&per_page=20`).jobs ?? [],
   });
   if (circuit.open) {
     return {
       publish: false,
       warning: true,
-      reason: `circuit breaker open after ${circuit.failures} consecutive failed automated catalog runs; run a manual workflow_dispatch after inspecting the failure`,
+      reason: `circuit breaker open after ${circuit.failures} failed automated catalog publish runs; run a manual workflow_dispatch after inspecting the failure`,
     };
   }
 
@@ -184,14 +241,16 @@ export function reconcileCatalog(env = process.env, run = execute) {
       };
     }
     const baseTemp = env.RUNNER_TEMP || os.tmpdir();
-    const work = path.join(baseTemp, `catalog-reconcile-${process.pid}-${Date.now()}`);
-    mkdirSync(work, { mode: 0o700 });
+    const work = mkdtempSync(path.join(baseTemp, "catalog-reconcile-"));
     try {
       run("gh", ["release", "download", latest.tag_name, "--repo", repository, "--pattern", "catalog-publication.json", "--dir", work]);
       const bytes = readFileSync(path.join(work, "catalog-publication.json"));
       verifyLedgerAsset(latest, bytes);
       latestBundle = JSON.parse(bytes);
       validatePublication(latestBundle);
+      if (latestBundle.commit !== latest.target_commitish || latestBundle.revision !== Number(latest.tag_name.slice(9))) {
+        throw new Error("Release ledger identity mismatch");
+      }
     } finally {
       rmSync(work, { recursive: true, force: true });
     }
@@ -208,7 +267,7 @@ export function reconcileCatalog(env = process.env, run = execute) {
 
     const upstreamApi = endpoint => JSON.parse(run("gh", ["api", `repos/${rule.repository}/${endpoint}`]));
     const upstreamPages = endpoint => JSON.parse(run("gh", ["api", "--paginate", "--slurp", `repos/${rule.repository}/${endpoint}`]));
-    const upstreamReleases = upstreamApi("releases?per_page=30");
+    const upstreamReleases = upstreamApi("releases?per_page=100");
     const candidate = selectCandidateRelease(upstreamReleases, activeApp.version, rule);
     if (!candidate) continue;
 
@@ -228,7 +287,7 @@ export function reconcileCatalog(env = process.env, run = execute) {
     const sourceRuns = upstreamApi(`actions/workflows/${workflowFile}/runs?head_sha=${sha}&event=push&per_page=20`).workflow_runs ?? [];
     const matchedRun = findVerifiedSourceRun(
       sourceRuns,
-      runId => upstreamPages(`actions/runs/${runId}/jobs?filter=latest&per_page=100`).flatMap(page => page.jobs),
+      runId => upstreamPages(`actions/runs/${runId}/jobs?filter=latest&per_page=100`).flatMap(page => page.jobs ?? []),
       rule,
       sha,
       candidate.tag_name,
@@ -303,8 +362,8 @@ if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.a
         run_id: result.runId ?? "",
       });
     }
-  } catch (error) {
-    console.error(`Catalog reconciliation failed: ${error?.message ?? "unknown error"}`);
+  } catch {
+    console.error("Catalog reconciliation did not complete; check ledger integrity and upstream API access.");
     process.exitCode = 1;
   }
 }
