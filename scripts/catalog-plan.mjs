@@ -140,7 +140,20 @@ export async function preparePublication(env = process.env, run = execute, verif
   // Validation always runs without signing/storage credentials and independently
   // confirms both platform manifests and native ELF/archive contracts.
   console.log("Catalog preparation stage: consumer-artifact-validation");
-  run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--target-custom", targetCustom, "--root-directory", "catalog/trust", "--artifacts"]);
+  try {
+    run(path.join(env.CATALOG_BIN, "catalog-check"), ["--catalog", catalog, "--target-custom", targetCustom, "--root-directory", "catalog/trust", "--artifacts"]);
+  } catch (error) {
+    const stderr = Buffer.isBuffer(error?.stderr) ? error.stderr.toString("utf8") : typeof error?.stderr === "string" ? error.stderr : "";
+    let line = stderr.split(/\r?\n/).map(item => item.trim()).find(item => /^(?:catalog-check|catalog): /.test(item));
+    if (line) {
+      for (const secret of [env.GH_TOKEN, env.GITHUB_TOKEN]) {
+        const trimmed = typeof secret === "string" ? secret.trim() : "";
+        if (trimmed.length > 0) line = line.replaceAll(trimmed, "***");
+      }
+      console.error(line.replace(/[\x00-\x1f\x7f]+/g, " ").slice(0, 300));
+    }
+    throw error;
+  }
   const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, targetCustom, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
   return result;

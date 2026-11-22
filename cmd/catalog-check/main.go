@@ -8,7 +8,9 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/google/go-containerregistry/pkg/authn"
@@ -71,9 +73,10 @@ func run(args []string) error {
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Minute)
 	defer cancel()
+	artifactClient := artifactHTTPClient()
 	for _, app := range value.Apps {
 		for _, artifact := range app.Artifacts {
-			if err := catalog.VerifyNativeArtifact(ctx, app, artifact); err != nil {
+			if err := catalog.VerifyNativeArtifactWithClient(ctx, artifactClient, app, artifact); err != nil {
 				return fmt.Errorf("catalog-check: %s %s artifact failed verification: %w", app.ID, artifact.Architecture, err)
 			}
 		}
@@ -123,4 +126,37 @@ func verifyImage(ctx context.Context, reference string) error {
 		}
 	}
 	return nil
+}
+
+type githubAPITokenTransport struct {
+	base  http.RoundTripper
+	token string
+}
+
+func (t githubAPITokenTransport) RoundTrip(request *http.Request) (*http.Response, error) {
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+	cloned := request.Clone(request.Context())
+	if cloned.URL != nil && t.token != "" && cloned.URL.Scheme == "https" && cloned.URL.User == nil && strings.EqualFold(cloned.URL.Host, "api.github.com") {
+		if cloned.Header == nil {
+			cloned.Header = make(http.Header)
+		}
+		cloned.Header.Set("Authorization", "Bearer "+t.token)
+	} else {
+		cloned.Header.Del("Authorization")
+	}
+	return base.RoundTrip(cloned)
+}
+
+func artifactHTTPClient() *http.Client {
+	token := strings.TrimSpace(os.Getenv("GH_TOKEN"))
+	if token == "" {
+		token = strings.TrimSpace(os.Getenv("GITHUB_TOKEN"))
+	}
+	if token == "" || strings.IndexFunc(token, func(r rune) bool { return r <= 0x20 || r >= 0x7f }) >= 0 {
+		return nil
+	}
+	return &http.Client{Transport: githubAPITokenTransport{base: http.DefaultTransport, token: token}}
 }

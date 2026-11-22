@@ -203,6 +203,13 @@ func VerifyELF(path, architecture string) error {
 // VerifyNativeArtifact verifies a public asset's complete digest and declared
 // executable architecture. It has no signing, installation, or execution side effects.
 func VerifyNativeArtifact(ctx context.Context, app AppManifest, artifact Artifact) error {
+	return VerifyNativeArtifactWithClient(ctx, nil, app, artifact)
+}
+
+// VerifyNativeArtifactWithClient behaves like VerifyNativeArtifact while allowing
+// callers to supply a bounded HTTP client (for example, scoped api.github.com
+// read-only authentication).
+func VerifyNativeArtifactWithClient(ctx context.Context, client *http.Client, app AppManifest, artifact Artifact) error {
 	if err := ValidateApp(app); err != nil {
 		return err
 	}
@@ -219,7 +226,7 @@ func VerifyNativeArtifact(ctx context.Context, app AppManifest, artifact Artifac
 	if !declared {
 		return errors.New("catalog: undeclared artifact")
 	}
-	raw, err := DownloadArtifact(ctx, nil, artifact)
+	raw, err := DownloadArtifact(ctx, client, artifact)
 	if err != nil {
 		return err
 	}
@@ -263,6 +270,9 @@ func DownloadArtifact(ctx context.Context, client *http.Client, artifact Artifac
 	configured.CheckRedirect = func(request *http.Request, via []*http.Request) error {
 		if len(via) >= 5 || request.URL.Scheme != "https" || request.URL.Host == "" || request.URL.User != nil || request.URL.Fragment != "" {
 			return errors.New("catalog: unsafe artifact redirect")
+		}
+		if !strings.EqualFold(request.URL.Host, "api.github.com") {
+			request.Header.Del("Authorization")
 		}
 		if previousRedirect != nil {
 			return previousRedirect(request, via)
