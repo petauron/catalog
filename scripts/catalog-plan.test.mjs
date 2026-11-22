@@ -21,18 +21,32 @@ test("allocates monotonic revisions under the serialized workflow", () => {
   assert.throws(() => choosePlan({ ...setup(), releases: [] }), /existing history/);
 });
 
-test("catalog publication only has a manual trigger", () => {
+test("catalog publication isolates unprivileged discovery from protected signing", () => {
   const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_dispatch:/);
-  assert.doesNotMatch(workflow, /(^|\n)\s*schedule:/);
-  assert.doesNotMatch(workflow, /\bpoll\b|\brenew\b|CATALOG_NOTIFY|create-github-app-token/);
+  assert.match(workflow, /repository_dispatch:\s*\n\s*types:\s*\[catalog-reconcile\]/);
+  assert.match(workflow, /(^|\n)\s*schedule:/);
+  assert.match(workflow, /CATALOG_AUTOPUBLISH_DISABLED/);
+  assert.doesNotMatch(workflow, /github\.event\.client_payload|create-github-app-token|CATALOG_NOTIFY/);
+  const discoverStart = workflow.indexOf("  discover:");
+  const publishStart = workflow.indexOf("  publish:");
+  assert.ok(discoverStart > 0 && publishStart > discoverStart);
+  const discoverBlock = workflow.slice(discoverStart, publishStart);
+  const publishBlock = workflow.slice(publishStart);
+  assert.ok(discoverBlock.includes("node scripts/catalog-reconcile.mjs"));
+  assert.ok(discoverBlock.includes("contents: write"), "discover needs contents:write to see draft releases fail-closed");
+  assert.ok(!discoverBlock.includes("environment: catalog-signing"));
+  assert.ok(!discoverBlock.includes("CATALOG_SIGNERS"));
+  assert.ok(!discoverBlock.includes("R2_SECRET_ACCESS_KEY"));
+  assert.ok(publishBlock.includes("!cancelled()"), "publish must include !cancelled() so skipped discover does not skip manual workflow_dispatch");
 });
 
-test("pending publication only resumes original commit/request/recipe and exact signed input", () => {
+test("pending publication only resumes original commit/request/recipe on manual workflow_dispatch", () => {
   const input = setup({ draft: true });
   const next = choosePlan(input);
   assert.equal(next.revision, 7); assert.equal(next.resume, true);
   assert.equal(next.catalogBytes.toString(), JSON.stringify(reviewed));
+  assert.throws(() => choosePlan({ ...input, allowDraftResume: false }), /automated publication/);
   for (const override of [{ commit: "c".repeat(40) }, { request: { application: "pulse" } }, { recipesSHA256: "c".repeat(64) }]) assert.throws(() => choosePlan({ ...input, ...override }), /Pending/);
   assert.throws(() => choosePlan(setup({ draft: true, expired: true })), /expired/);
 });

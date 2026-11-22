@@ -63,7 +63,7 @@ export function mergeReviewedRecipes(reviewed, active) {
   return next;
 }
 
-export function choosePlan({ releases, bundles, commit, request, reviewed, recipesSHA256, now = new Date() }) {
+export function choosePlan({ releases, bundles, commit, request, reviewed, recipesSHA256, now = new Date(), allowDraftResume = true }) {
   const entries = releases.filter(entry => /^catalog-r[1-9][0-9]*$/.test(entry.tag_name)).sort((a, b) => Number(b.tag_name.slice(9)) - Number(a.tag_name.slice(9)));
   const latest = entries[0];
   if (!latest) throw new Error("Production migration requires an existing history, never bootstrap");
@@ -72,6 +72,7 @@ export function choosePlan({ releases, bundles, commit, request, reviewed, recip
   const bundle = bundles.get(latest.tag_name);
   const { catalog: active, expiresAt, custom: activeCustom } = catalogFromBundle(bundle);
   if (latest.draft) {
+    if (!allowDraftResume) throw new Error("Pending draft blocks automated publication; operator recovery via workflow_dispatch required");
     if (latest.target_commitish !== commit || JSON.stringify(bundle.request) !== JSON.stringify(request) || bundle.recipesSHA256 !== recipesSHA256 || !bundle.inputCatalog) throw new Error("Pending publication blocks progress; rerun its original commit and request");
     if (Date.parse(expiresAt) <= now.getTime()) throw new Error("Pending signatures expired; operator recovery required, never re-sign this revision");
     return { revision, resume: true, catalogBytes: Buffer.from(bundle.inputCatalog, "base64"), request, recipesSHA256 };
@@ -116,7 +117,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   const custom = JSON.parse(customBytes);
   console.log("Catalog preparation stage: reviewed-recipe-plan");
   const inputHash = sha256(Buffer.concat([Buffer.from(`catalog:${reviewedBytes.length}\n`), reviewedBytes, customBytes]));
-  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash });
+  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash, allowDraftResume: env.GITHUB_EVENT_NAME === "workflow_dispatch" });
   if (!plan.resume) {
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));

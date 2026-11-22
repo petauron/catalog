@@ -1,5 +1,6 @@
 {
   "schemaVersion": 1,
+  "autoPublishReviewed": false,
   "sources": {
     "senlun": {
       "repository": "petauron/senlun",
@@ -7,6 +8,10 @@
       "publishJob": "Publish GitHub release",
       "branch": "main",
       "allowPrerelease": true,
+      "autoPublish": {
+        "enabled": true,
+        "allowPrerelease": false
+      },
       "recovery": {
         "verifyJob": "Verify protected release source",
         "ciWorkflow": ".github/workflows/ci.yml",
