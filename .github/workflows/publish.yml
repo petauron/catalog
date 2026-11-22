@@ -3,9 +3,9 @@ on:
   workflow_dispatch:
     inputs:
       kind:
-        description: Publish a verified release or reviewed recipe change
+        description: Publish a verified release, reviewed recipe change, or run auto-reconcile
         type: choice
-        options: [release, reviewed]
+        options: [release, reviewed, reconcile]
         default: release
       application:
         description: Reviewed source identifier (release only)
@@ -22,7 +22,7 @@ on:
   repository_dispatch:
     types: [catalog-reconcile]
   schedule:
-    - cron: "*/15 * * * *"
+    - cron: "7,22,37,52 * * * *"
 permissions:
   contents: read
 concurrency:
@@ -32,7 +32,10 @@ concurrency:
 jobs:
   discover:
     name: Discover pending catalog publication
-    if: github.repository == 'petauron/catalog' && github.ref == 'refs/heads/main' && github.event_name != 'workflow_dispatch'
+    if: >-
+      github.repository == 'petauron/catalog' &&
+      github.ref == 'refs/heads/main' &&
+      (github.event_name != 'workflow_dispatch' || inputs.kind == 'reconcile')
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     # GitHub hides draft releases under contents:read; write is needed strictly to
@@ -65,12 +68,12 @@ jobs:
   publish:
     needs: [discover]
     # Explicit !cancelled() is required so a skipped discover job on manual
-    # workflow_dispatch does not cause implicit success() to skip publish.
+    # workflow_dispatch (release/reviewed) does not cause implicit success() to skip publish.
     if: >-
       !cancelled() &&
       github.repository == 'petauron/catalog' &&
       github.ref == 'refs/heads/main' &&
-      ((github.event_name == 'workflow_dispatch' && needs.discover.result == 'skipped') ||
+      ((github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile' && needs.discover.result == 'skipped') ||
        (needs.discover.result == 'success' && needs.discover.outputs.should_publish == 'true'))
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -117,17 +120,18 @@ jobs:
           go build -o "$CATALOG_BIN/catalog-verify" ./cmd/catalog-verify
       - name: Warn before offline root rotation is required
         run: node scripts/root-expiry.mjs
-      # discover is skipped on workflow_dispatch (so needs.discover.outputs.* are empty),
-      # making the ternary fallback exact even for empty manual inputs (e.g. kind=reviewed).
+      # discover is skipped on manual release/reviewed workflow_dispatch (so needs.discover.outputs.*
+      # are empty), making the ternary fallback exact even for empty manual inputs (e.g. kind=reviewed).
       - name: Resolve source, verify artifacts, and allocate a durable revision
         id: prepare
         env:
           GH_TOKEN: ${{ github.token }}
-          CATALOG_REQUEST_KIND: ${{ github.event_name == 'workflow_dispatch' && inputs.kind || needs.discover.outputs.kind }}
-          CATALOG_APPLICATION: ${{ github.event_name == 'workflow_dispatch' && inputs.application || needs.discover.outputs.application }}
-          CATALOG_SOURCE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || needs.discover.outputs.tag }}
-          CATALOG_SOURCE_SHA: ${{ github.event_name == 'workflow_dispatch' && inputs.sha || needs.discover.outputs.sha }}
-          CATALOG_SOURCE_RUN_ID: ${{ github.event_name == 'workflow_dispatch' && inputs.run_id || needs.discover.outputs.run_id }}
+          CATALOG_RECONCILED: ${{ needs.discover.result == 'success' }}
+          CATALOG_REQUEST_KIND: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.kind || needs.discover.outputs.kind }}
+          CATALOG_APPLICATION: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.application || needs.discover.outputs.application }}
+          CATALOG_SOURCE_TAG: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.tag || needs.discover.outputs.tag }}
+          CATALOG_SOURCE_SHA: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.sha || needs.discover.outputs.sha }}
+          CATALOG_SOURCE_RUN_ID: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.run_id || needs.discover.outputs.run_id }}
         run: node scripts/catalog-plan.mjs
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         if: steps.prepare.outputs.publish == 'true'

@@ -33,12 +33,29 @@ test("circuit breaker trips on two publish-job failures since last publication a
     }),
     { open: false, failures: 0 },
   );
-  // A successful manual workflow_dispatch after the failures resets the breaker.
+  // A successful manual workflow_dispatch where publish ran resets the breaker,
+  // whereas a manual reconcile no-op (publish skipped) does not reset it.
   assert.deepEqual(
     isCircuitOpen(
       failedRuns,
       [{ id: 11, run_number: 11, event: "workflow_dispatch", status: "completed", conclusion: "success", run_started_at: "2026-11-22T05:20:00Z" }],
-      { currentRunId: "12", sinceIso, jobsForRun: publishFailedJobs },
+      {
+        currentRunId: "12",
+        sinceIso,
+        jobsForRun: runId => (runId === 11 ? [{ name: "publish", conclusion: "skipped" }] : [{ name: "publish", conclusion: "failure" }]),
+      },
+    ),
+    { open: true, failures: 2 },
+  );
+  assert.deepEqual(
+    isCircuitOpen(
+      failedRuns,
+      [{ id: 11, run_number: 11, event: "workflow_dispatch", status: "completed", conclusion: "success", run_started_at: "2026-11-22T05:20:00Z" }],
+      {
+        currentRunId: "12",
+        sinceIso,
+        jobsForRun: runId => (runId === 11 ? [{ name: "publish", conclusion: "success" }] : [{ name: "publish", conclusion: "failure" }]),
+      },
     ),
     { open: false, failures: 0 },
   );
