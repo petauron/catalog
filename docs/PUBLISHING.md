@@ -7,9 +7,10 @@ Installing/upgrading an application still requires an administrator's action.
 
 ## Release request contract
 
-The protected `publish.yml` workflow supports manual `workflow_dispatch` as well as
-automatic pull-only reconciliation (`repository_dispatch` type `catalog-reconcile` for
-instant wakeup and a 15-minute `schedule` fallback).
+The protected `publish.yml` workflow supports manual `workflow_dispatch` (`release`,
+`reviewed`, or `reconcile`) as well as automatic pull-only reconciliation
+(`repository_dispatch` type `catalog-reconcile` for instant wakeup and an off-peak
+15-minute `schedule` fallback `7,22,37,52 * * * *`).
 
 For manual dispatch, after an application's release publishing job succeeds, an
 administrator selects `kind=release` and supplies `application`, `tag`, the tag's exact

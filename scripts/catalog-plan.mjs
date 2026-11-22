@@ -117,7 +117,7 @@ export async function preparePublication(env = process.env, run = execute, verif
   const custom = JSON.parse(customBytes);
   console.log("Catalog preparation stage: reviewed-recipe-plan");
   const inputHash = sha256(Buffer.concat([Buffer.from(`catalog:${reviewedBytes.length}\n`), reviewedBytes, customBytes]));
-  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash, allowDraftResume: env.GITHUB_EVENT_NAME === "workflow_dispatch" });
+  const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash, allowDraftResume: env.GITHUB_EVENT_NAME === "workflow_dispatch" && env.CATALOG_RECONCILED !== "true" });
   if (!plan.resume) {
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));

@@ -25,6 +25,10 @@ function isPublishJobFailure(jobs) {
   );
 }
 
+function isPublishJobSuccess(jobs) {
+  return (jobs ?? []).some(job => job?.name === "publish" && job.conclusion === "success");
+}
+
 export function isCircuitOpen(
   failedRuns,
   manualSuccessRuns,
@@ -35,7 +39,12 @@ export function isCircuitOpen(
     if (String(run?.id) === String(currentRunId)) continue;
     if (run?.event !== "workflow_dispatch" || run?.status !== "completed" || run?.conclusion !== "success") continue;
     const ts = runTimestampMs(run);
-    if (Number.isFinite(ts) && (!Number.isFinite(resetMs) || ts > resetMs)) resetMs = ts;
+    if (!Number.isFinite(ts) || (Number.isFinite(resetMs) && ts <= resetMs)) continue;
+    if (jobsForRun) {
+      if (!RUN_ID_PATTERN.test(String(run.id))) continue;
+      if (!isPublishJobSuccess(jobsForRun(run.id))) continue;
+    }
+    resetMs = ts;
   }
 
   const candidates = [...(failedRuns ?? [])]

@@ -24,8 +24,9 @@ test("allocates monotonic revisions under the serialized workflow", () => {
 test("catalog publication isolates unprivileged discovery from protected signing", () => {
   const workflow = readFileSync(new URL("../.github/workflows/publish.yml", import.meta.url), "utf8");
   assert.match(workflow, /workflow_dispatch:/);
+  assert.match(workflow, /options:\s*\[release,\s*reviewed,\s*reconcile\]/);
   assert.match(workflow, /repository_dispatch:\s*\n\s*types:\s*\[catalog-reconcile\]/);
-  assert.match(workflow, /(^|\n)\s*schedule:/);
+  assert.match(workflow, /(^|\n)\s*schedule:\s*\n\s*-\s*cron:\s*"7,22,37,52 \* \* \* \*"/);
   assert.match(workflow, /CATALOG_AUTOPUBLISH_DISABLED/);
   assert.doesNotMatch(workflow, /github\.event\.client_payload|create-github-app-token|CATALOG_NOTIFY/);
   const discoverStart = workflow.indexOf("  discover:");
@@ -34,11 +35,14 @@ test("catalog publication isolates unprivileged discovery from protected signing
   const discoverBlock = workflow.slice(discoverStart, publishStart);
   const publishBlock = workflow.slice(publishStart);
   assert.ok(discoverBlock.includes("node scripts/catalog-reconcile.mjs"));
+  assert.ok(discoverBlock.includes("inputs.kind == 'reconcile'"));
   assert.ok(discoverBlock.includes("contents: write"), "discover needs contents:write to see draft releases fail-closed");
   assert.ok(!discoverBlock.includes("environment: catalog-signing"));
   assert.ok(!discoverBlock.includes("CATALOG_SIGNERS"));
   assert.ok(!discoverBlock.includes("R2_SECRET_ACCESS_KEY"));
   assert.ok(publishBlock.includes("!cancelled()"), "publish must include !cancelled() so skipped discover does not skip manual workflow_dispatch");
+  assert.ok(publishBlock.includes("inputs.kind != 'reconcile'"), "manual reconcile must pass discovered outputs to publish");
+  assert.ok(publishBlock.includes("CATALOG_RECONCILED:"), "publish must mark reconciled runs so drafts are never auto-resumed");
 });
 
 test("pending publication only resumes original commit/request/recipe on manual workflow_dispatch", () => {
