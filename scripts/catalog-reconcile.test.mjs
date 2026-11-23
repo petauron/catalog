@@ -239,7 +239,7 @@ test("glivela auto-publish selects newer stable release and requires exact main 
   };
   assert.deepEqual(
     checkSourceCIReady(glivelaRule, sha, endpoint => {
-      if (endpoint.includes("/actions/workflows/")) return { workflow_runs: [ciRun] };
+      if (endpoint.startsWith("actions/workflows/")) return { workflow_runs: [ciRun] };
       if (endpoint.includes("/jobs?")) return { jobs: [{ name: glivelaRule.ciJob, status: "completed", conclusion: "success" }] };
       throw new Error(`unexpected ${endpoint}`);
     }),
@@ -247,7 +247,7 @@ test("glivela auto-publish selects newer stable release and requires exact main 
   );
   assert.equal(
     checkSourceCIReady(glivelaRule, sha, endpoint => {
-      if (endpoint.includes("/actions/workflows/")) return { workflow_runs: [ciRun] };
+      if (endpoint.startsWith("actions/workflows/")) return { workflow_runs: [ciRun] };
       if (endpoint.includes("/jobs?")) return { jobs: [{ name: glivelaRule.ciJob, status: "completed", conclusion: "skipped" }] };
       throw new Error(`unexpected ${endpoint}`);
     }).ready,

@@ -502,6 +502,10 @@ test("glivela release verification attests image, metadata and archives, checks 
       }
     }
   }
+  assert.throws(
+    () => validateRequest(fixture.gRequest, { schemaVersion: 1, sources: { glivela: { ...registry.sources.glivela, recovery: { verifyJob: "v", ciWorkflow: ".github/workflows/ci.yml", ciJob: "CI / gate" } } } }),
+    /Recovery workflow_dispatch is not supported/,
+  );
   assert.deepEqual(input, original);
   assert.deepEqual(applyRelease(next, verified, registry.sources.glivela), next);
   assert.throws(() => applyRelease(next, { ...verified, version: "0.1.1" }, registry.sources.glivela), /rollback/);

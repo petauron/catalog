@@ -126,7 +126,8 @@ assets use the exact authenticated GitHub asset ID through the existing CLI,
 with bounded output and unchanged inventory, size and digest checks; browser
 download URLs remain the published recipe coordinates. It never executes
 downloaded files. It then updates only the four Glivela recipe versions
-and release coordinates, reviewed UI checkout SHA and its existing pin contract.
+and release coordinates, verifies that `.github/workflows/publish.yml` retains
+the dynamic verified UI checkout pin, and updates the UI baseline test contract.
 It also advances only Glivela's machine-identity digest and version comment in
 the existing brand contract. The current recipe must first match its old digest;
 only then may verified version/image coordinates produce the new Glivela digest.
@@ -314,12 +315,15 @@ already published application version's recipe is rejected. Schema 4
 `packageRevision` remains deferred with the runtime migration.
 
 Glivela's application-owned workspace remains a product integration, not an
-installation allowlist. For each publication the workflow checks out the reviewed,
-full Glivela source commit pinned in `publish.yml`, builds the version-matched
-JS/CSS pair before loading signing credentials, and signs both exact assets as
-TUF targets. A new Glivela UI version requires a reviewed update to that pin. Retrying a pending publication must reproduce the
-saved bytes; changing UI bytes at the same application version or omitting an
-already-signed UI pair is rejected.
+installation allowlist. For each publication `catalog-plan.mjs` resolves and
+verifies the immutable protected-main Glivela commit for the candidate `meridian`
+version (using the attested release SHA on `glivela` releases or the published
+protected-main tag commit otherwise), `publish.yml` checks out that exact commit,
+builds and tests the version-matched JS/CSS pair before loading signing
+credentials, cross-checks both digests against attested `runtime.json` on
+`glivela` releases, and signs both exact assets as TUF targets. Retrying a
+pending publication must reproduce the saved bytes; changing UI bytes at the same
+application version or omitting an already-signed UI pair is rejected.
 
 Signed target, timestamp, snapshot, targets and reviewed root v2 expire at the
 end of year 9999.

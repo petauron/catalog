@@ -36,6 +36,7 @@ export function validateRequest(request, registry) {
   if (rule.recovery && (!/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.recovery.ciWorkflow) || !rule.recovery.ciJob || !rule.recovery.verifyJob)) throw new Error("Invalid recovery source policy");
   if (rule.ciWorkflow && (!/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.ciWorkflow) || (rule.ciJob !== undefined && !rule.ciJob))) throw new Error("Invalid source CI policy");
   if (rule.nativeMirror === true) {
+    if (rule.recovery) throw new Error("Recovery workflow_dispatch is not supported for native mirror sources");
     if (rule.archivePrefix !== "glivela" || !rule.iperf3?.version || !sha256Pattern.test(rule.iperf3?.digests?.amd64 ?? "") || !sha256Pattern.test(rule.iperf3?.digests?.arm64 ?? "")) throw new Error("Invalid native mirror source policy");
   }
   return rule;
@@ -178,6 +179,7 @@ export function resolveGlivelaUIRevision(version, rule, runCommand = execute) {
 
 async function verifyGlivelaRelease(request, rule, work, { release, run, api, pages, sourceRef, runCommand, download, verifyMirror = true, verifyMirrorFn = verifyNativeMirror }) {
   const version = request.tag.slice(1);
+  if (run.event !== "push") throw new Error("Glivela release must come from a protected-main push run");
   if (release.target_commitish !== request.sha) throw new Error("Release target commit differs from source SHA");
   if (rule.ciWorkflow) {
     console.log("Release verification stage: exact-product-ci");
