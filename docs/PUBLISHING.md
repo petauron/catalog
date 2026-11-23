@@ -31,15 +31,27 @@ For automatic publication, an unprivileged `discover` job (running outside the
   payload; `discover` ignores `client_payload` and resolves all release identities from
   the reviewed registry and authenticated GitHub APIs.
 - Only sources with `autoPublish.enabled: true` are automatically published, subject to
-  their per-source `autoPublish.allowPrerelease` policy (`senlun` auto-publishes stable
-  SemVer releases; prereleases and manual recoveries remain explicit `workflow_dispatch`).
-- When an upstream commit advances the independent Agent version, `discover` waits until
-  `senlun-agent-v<version>` is also published at the same commit SHA before handing off to
-  `publish`.
+  their per-source `autoPublish.allowPrerelease` policy (`senlun` and `glivela`
+  auto-publish stable SemVer releases; prereleases and manual recoveries remain explicit
+  `workflow_dispatch`).
+- When a `senlun` upstream commit advances the independent Agent version, `discover` waits
+  until `senlun-agent-v<version>` is also published at the same commit SHA before handing
+  off to `publish`.
+- When a `glivela` release is selected (automatically or via `workflow_dispatch`
+  `kind=release`, `application=glivela`), an isolated `mirror-glivela` job verifies the
+  exact protected commit, push CI gate (`CI / gate`), SLSA attestations, pinned `iperf3`
+  digests, `hostTCPBudget` contract and UI digest consistency before using R2 storage
+  credentials (never `CATALOG_SIGNERS`) to copy both immutable native bundles to
+  `downloads.petauron.com`. The subsequent `publish` job re-verifies provenance and the
+  public mirror, checks out the verified protected-main Glivela commit for `meridian-ui`,
+  asserts the freshly built UI bundles match the attested `runtime.json` SHA256 digests,
+  and updates all four Glivela recipes (`meridian`, `glivela-entry`, `glivela-node`,
+  `glivela-dual`) together.
 - Pending draft `catalog-rN` releases block automatic publication fail-closed, two
-  consecutive failed automated runs trip a circuit breaker until a manual recovery run
-  succeeds, and setting Repository Variable `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all
-  automatic runs without affecting manual `workflow_dispatch`.
+  consecutive failed automated `mirror-glivela` or `publish` runs trip a circuit breaker
+  until a manual recovery run succeeds, and setting Repository Variable
+  `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all automatic runs without affecting manual
+  `workflow_dispatch`.
 - `publish` still independently re-verifies every request through `catalog-plan.mjs`,
   SLSA attestations and `catalog-check --artifacts` before entering `catalog-signing`.
 - Reviewed recipe changes (`kind=reviewed`) remain manual by default
@@ -86,15 +98,18 @@ retain `ui-meridian-<version>` names. Subsequent versions use
 the version. They do not retry another name on a failed verification. Historical
 ledger validation retains both signed formats without rewriting either.
 
-The protected workflow pins the released Glivela source commit and builds its
+The protected workflow resolves the exact verified protected-main Glivela commit
+for the candidate `meridian` version in `catalog-plan.mjs` and builds its
 application-owned UI with its own lockfile. No Vastora web checkout, npm install,
 source symlink or `VASTORA_WEB_SOURCE` is needed. The Center consumer used for
 recipe validation is a separate integration gate and remains pinned.
-For subsequent releases, advance the Glivela source pin and recipe version
-together after source CI and publication. Keep canonical `ui-glivela` output
-paths and never alter existing signed bytes.
+Routine stable Glivela releases auto-publish through `catalog/sources.json`
+without requiring a manual catalog PR; keep canonical `ui-glivela` output paths
+and never alter existing signed bytes. When a Glivela release changes pinned
+`iperf3` supplier digests, runtime templates or host capabilities, automatic
+publication fails closed and requires a reviewed catalog PR first.
 
-### Glivela review-only release handoff
+### Glivela manual baseline handoff (optional / capability changes)
 
 From a clean catalog feature worktree based on current protected `main`, use the
 existing authenticated GitHub CLI and installed lockfile dependencies:

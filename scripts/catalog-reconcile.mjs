@@ -7,7 +7,7 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { catalogFromBundle, loadImportedLedger, mergeReviewedRecipes } from "./catalog-plan.mjs";
 import { validatePublication, verifyLedgerAsset } from "./publish-catalog.mjs";
-import { compareVersions, execute, validateRequest } from "./release-source.mjs";
+import { artifactAppIds, compareVersions, execute, validateRequest } from "./release-source.mjs";
 
 const AUTO_EVENTS = new Set(["schedule", "repository_dispatch"]);
 const MAX_CONSECUTIVE_AUTO_FAILURES = 2;
@@ -21,7 +21,9 @@ function runTimestampMs(run) {
 
 function isPublishJobFailure(jobs) {
   return (jobs ?? []).some(
-    job => job?.name === "publish" && (job.conclusion === "failure" || job.conclusion === "timed_out"),
+    job =>
+      (job?.name === "publish" || job?.name === "mirror-glivela") &&
+      (job.conclusion === "failure" || job.conclusion === "timed_out"),
   );
 }
 
@@ -146,8 +148,39 @@ function resolveTagCommit(api, tag) {
   return ref?.type === "commit" && /^[a-f0-9]{40}$/.test(ref.sha) ? ref.sha : null;
 }
 
+export function checkSourceCIReady(rule, sha, api, pages = null) {
+  const workflowFile = rule.ciWorkflow.split("/").at(-1);
+  const runs = api(`actions/workflows/${workflowFile}/runs?head_sha=${sha}&event=push&per_page=100`).workflow_runs ?? [];
+  const newest = [...runs].sort((a, b) => (b.run_number ?? 0) - (a.run_number ?? 0))[0];
+  if (
+    !newest ||
+    !RUN_ID_PATTERN.test(String(newest.id)) ||
+    newest.head_sha !== sha ||
+    newest.head_branch !== rule.branch ||
+    newest.event !== "push" ||
+    newest.path !== rule.ciWorkflow ||
+    newest.repository?.full_name !== rule.repository ||
+    newest.head_repository?.full_name !== rule.repository ||
+    newest.status !== "completed" ||
+    newest.conclusion !== "success"
+  ) {
+    return { ready: false, reason: `waiting for ${rule.ciWorkflow} push CI on ${sha}` };
+  }
+  if (rule.ciJob) {
+    const jobs = pages
+      ? pages(`actions/runs/${newest.id}/jobs?filter=latest&per_page=100`).flatMap(page => page.jobs ?? [])
+      : (api(`actions/runs/${newest.id}/jobs?filter=latest&per_page=100`).jobs ?? []);
+    const gates = jobs.filter(job => job.name === rule.ciJob);
+    if (gates.length !== 1 || gates[0].status !== "completed" || gates[0].conclusion !== "success") {
+      return { ready: false, reason: `waiting for required CI job "${rule.ciJob}" on ${sha}` };
+    }
+  }
+  return { ready: true };
+}
+
 export function checkAgentReleaseReady(rule, sha, activeAgentVersion, api) {
-  const agentVersion = readSourceFile(api, "crates/senlun-agent/version.txt", sha).trim();
+  const agentVersionFile = rule.agentVersionFile ?? "crates/senlun-agent/version.txt";
+  const agentVersion = readSourceFile(api, agentVersionFile, sha).trim();
   if (!AGENT_VERSION_PATTERN.test(agentVersion)) {
     return { ready: false, reason: `invalid agent version at ${sha}` };
   }
@@ -271,8 +304,8 @@ export function reconcileCatalog(env = process.env, run = execute) {
   for (const [application, rule] of Object.entries(registry.sources ?? {})) {
     if (rule?.autoPublish?.enabled !== true) continue;
     const activeApp = active.apps.find(app => app.id === rule.imageApp);
-    const activeAgent = active.apps.find(app => app.id === rule.artifactApp);
-    if (!activeApp || !activeAgent) continue;
+    const artifactIds = artifactAppIds(rule);
+    if (!activeApp || artifactIds.length === 0 || artifactIds.some(id => !active.apps.some(app => app.id === id))) continue;
 
     const upstreamApi = endpoint => JSON.parse(run("gh", ["api", `repos/${rule.repository}/${endpoint}`]));
     const upstreamPages = endpoint => JSON.parse(run("gh", ["api", "--paginate", "--slurp", `repos/${rule.repository}/${endpoint}`]));
@@ -283,6 +316,10 @@ export function reconcileCatalog(env = process.env, run = execute) {
     const sha = resolveTagCommit(upstreamApi, candidate.tag_name);
     if (!sha) {
       console.log(`Skipping ${application} ${candidate.tag_name}: could not resolve tag commit`);
+      continue;
+    }
+    if (rule.nativeMirror === true && candidate.target_commitish !== sha) {
+      console.log(`Skipping ${application} ${candidate.tag_name}: release target commit differs from tag commit ${sha}`);
       continue;
     }
     const branch = upstreamApi(`branches/${rule.branch}`);
@@ -306,10 +343,23 @@ export function reconcileCatalog(env = process.env, run = execute) {
       continue;
     }
 
-    const agentCheck = checkAgentReleaseReady(rule, sha, activeAgent.version, upstreamApi);
-    if (!agentCheck.ready) {
-      console.log(`Waiting for ${application} ${candidate.tag_name}: ${agentCheck.reason}`);
-      continue;
+    if (rule.ciWorkflow) {
+      const ciCheck = checkSourceCIReady(rule, sha, upstreamApi, upstreamPages);
+      if (!ciCheck.ready) {
+        console.log(`Waiting for ${application} ${candidate.tag_name}: ${ciCheck.reason}`);
+        continue;
+      }
+    }
+
+    let detail = `run ${matchedRun.id}`;
+    if (rule.agentVersionFile || rule.artifactApp) {
+      const activeAgent = active.apps.find(app => app.id === rule.artifactApp);
+      const agentCheck = checkAgentReleaseReady(rule, sha, activeAgent.version, upstreamApi);
+      if (!agentCheck.ready) {
+        console.log(`Waiting for ${application} ${candidate.tag_name}: ${agentCheck.reason}`);
+        continue;
+      }
+      detail = `agent ${agentCheck.agentVersion}, run ${matchedRun.id}`;
     }
 
     const request = { application, runId: String(matchedRun.id), sha, tag: candidate.tag_name };
@@ -321,7 +371,7 @@ export function reconcileCatalog(env = process.env, run = execute) {
       tag: candidate.tag_name,
       sha,
       runId: String(matchedRun.id),
-      reason: `discovered verified release ${application} ${candidate.tag_name} (agent ${agentCheck.agentVersion}, run ${matchedRun.id})`,
+      reason: `discovered verified release ${application} ${candidate.tag_name} (${detail})`,
     };
   }
 

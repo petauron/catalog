@@ -127,13 +127,11 @@ try {
     if (brandMatches.length !== 1 || brandMatches[0][2] !== machineDigest(apps[0]) || brandContract.split(baseline).length !== 2) throw new Error("Reviewed Glivela brand identity baseline differs from the current recipe");
     const workflowPath = ".github/workflows/publish.yml";
     const workflow = readFileSync(workflowPath, "utf8");
-    const pin = /repository: petauron\/glivela\n          ref: ([a-f0-9]{40})/g;
-    const matches = [...workflow.matchAll(pin)];
-    if (matches.length !== 1) throw new Error("Expected one reviewed UI source pin");
-    const oldSHA = matches[0][1];
+    const dynamicPin = "repository: petauron/glivela\n          ref: ${{ steps.prepare.outputs.glivela_ui_ref }}";
+    if (!workflow.includes(dynamicPin)) throw new Error("Expected verified dynamic Glivela UI source pin");
     const testPath = "scripts/ui-publication-pins.test.mjs";
     const contract = readFileSync(testPath, "utf8");
-    if (!contract.includes(oldVersion) || !contract.includes(oldSHA)) throw new Error("Reviewed UI contract differs from source pins");
+    if (!contract.includes(oldVersion)) throw new Error("Reviewed UI contract differs from source baseline");
     const runtimeWrites = [];
     const controller = apps[0].images?.find(item => item.name === "controller");
     if (!controller) throw new Error("Reviewed controller image mapping is missing");
@@ -170,11 +168,10 @@ try {
     const nextBrandContract = brandContract
       .replace(brandPin, (_, prefix, oldDigest, suffix) => `${prefix}${machineDigest(apps[0])}${suffix}`)
       .replace(baseline, `Reviewed baseline includes Glivela ${version.replace(/^0\.1\.0-/, "")} release coordinates`);
-    // Resolve and validate every input before changing these four review files.
+    // Resolve and validate every input before changing these review files.
     for (const [file, value] of runtimeWrites) writeFileSync(file, value);
     writeFileSync(catalogPath, `${JSON.stringify(catalog, null, 2)}\n`);
-    writeFileSync(workflowPath, workflow.replace(pin, `repository: petauron/glivela\n          ref: ${sha}`));
-    writeFileSync(testPath, contract.replace(`Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} publication`, `Glivela ${version.replace(/^0\.1\.0-/, "")} publication`).replace(`'${oldVersion}'`, `'${version}'`).replaceAll(oldSHA, sha));
+    writeFileSync(testPath, contract.replace(`Glivela ${oldVersion.replace(/^0\.1\.0-/, "")} publication`, `Glivela ${version.replace(/^0\.1\.0-/, "")} publication`).replace(`'${oldVersion}'`, `'${version}'`));
     writeFileSync(brandPath, nextBrandContract);
     console.log(`Prepared review-only Glivela ${tag} from https://github.com/${repository}/actions/runs/${runId}`);
     console.log("Review git diff, submit a PR and wait for its required CI. Merging does not sign, publish or deploy the catalog.");

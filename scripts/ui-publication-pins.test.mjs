@@ -10,7 +10,10 @@ test('Glivela 0.1.1 publication builds solely from its reviewed application sour
   assert.equal(controller.packageRevision,5);
   assert.deepEqual(controller.services.find(service=>service.name==='controller'),{name:'controller',protocol:'https',containerPort:9443,defaultHostPort:19443,management:true});
   assert.doesNotMatch(workflow,/VASTORA_WEB_SOURCE|ui-dependency|repository: petauron\/vastora/);
-  assert.match(workflow,/ref: 0ae52529db51afde86ec8df9ac2a18371e8b9efa/);
+  assert.ok(workflow.includes('repository: petauron/glivela\n          ref: ${{ steps.prepare.outputs.glivela_ui_ref }}'));
+  assert.ok(workflow.includes('test "$(git -C meridian-ui rev-parse HEAD)" = "$GLIVELA_UI_REF"'));
+  assert.ok(workflow.includes('GLIVELA_UI_JS_SHA256'));
+  assert.ok(workflow.includes('GLIVELA_UI_CSS_SHA256'));
   assert.ok(workflow.includes('ui-glivela-$version.js'));
   assert.ok(workflow.includes('ui-glivela-$version.css'));
 });

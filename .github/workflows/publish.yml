@@ -65,14 +65,71 @@ jobs:
         run: |
           npm ci --ignore-scripts
           node scripts/catalog-reconcile.mjs
-  publish:
+  mirror-glivela:
     needs: [discover]
-    # Explicit !cancelled() is required so a skipped discover job on manual
-    # workflow_dispatch (release/reviewed) does not cause implicit success() to skip publish.
     if: >-
       !cancelled() &&
       github.repository == 'petauron/catalog' &&
       github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.kind == 'release' && inputs.application == 'glivela' && needs.discover.result == 'skipped') ||
+       (needs.discover.result == 'success' && needs.discover.outputs.should_publish == 'true' && needs.discover.outputs.kind == 'release' && needs.discover.outputs.application == 'glivela'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: catalog-signing
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      packages: read
+    env:
+      CATALOG_PRODUCTION_ENABLED: ${{ vars.CATALOG_PRODUCTION_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require explicit cutover and protected noninteractive signing environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$CATALOG_PRODUCTION_ENABLED" = true
+          jq -e '.publisherCutoverCompleted and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
+            jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+      - name: Verify attested Glivela release and stage native bundles before storage credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CATALOG_SOURCE_TAG: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.tag || needs.discover.outputs.tag }}
+          CATALOG_SOURCE_SHA: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.sha || needs.discover.outputs.sha }}
+          CATALOG_SOURCE_RUN_ID: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.run_id || needs.discover.outputs.run_id }}
+        run: |
+          npm ci --ignore-scripts
+          node --test scripts/release-source.test.mjs scripts/mirror-glivela-native.test.mjs
+          node scripts/stage-glivela-native.mjs "$RUNNER_TEMP/glivela-native-mirror"
+      - name: Copy immutable bytes and verify official public origin
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET_NAME: ${{ vars.CATALOG_R2_BUCKET_NAME }}
+          R2_ENDPOINT: https://${{ vars.CATALOG_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: node scripts/mirror-glivela-native.mjs "$RUNNER_TEMP/glivela-native-mirror"
+      - name: Remove temporary distributions
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/glivela-native-mirror"
+  publish:
+    needs: [discover, mirror-glivela]
+    # Explicit !cancelled() is required so a skipped discover or mirror-glivela job
+    # does not cause implicit success() to skip publish.
+    if: >-
+      !cancelled() &&
+      github.repository == 'petauron/catalog' &&
+      github.ref == 'refs/heads/main' &&
+      (needs.mirror-glivela.result == 'success' || needs.mirror-glivela.result == 'skipped') &&
       ((github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile' && needs.discover.result == 'skipped') ||
        (needs.discover.result == 'success' && needs.discover.outputs.should_publish == 'true'))
     runs-on: ubuntu-24.04
@@ -137,12 +194,17 @@ jobs:
         if: steps.prepare.outputs.publish == 'true'
         with:
           repository: petauron/glivela
-          ref: 0ae52529db51afde86ec8df9ac2a18371e8b9efa
+          ref: ${{ steps.prepare.outputs.glivela_ui_ref }}
           path: meridian-ui
           persist-credentials: false
       - name: Build independent Glivela UI without publication credentials
         if: steps.prepare.outputs.publish == 'true'
+        env:
+          GLIVELA_UI_REF: ${{ steps.prepare.outputs.glivela_ui_ref }}
+          GLIVELA_UI_JS_SHA256: ${{ steps.prepare.outputs.glivela_ui_js_sha256 }}
+          GLIVELA_UI_CSS_SHA256: ${{ steps.prepare.outputs.glivela_ui_css_sha256 }}
         run: |
+          test "$(git -C meridian-ui rev-parse HEAD)" = "$GLIVELA_UI_REF"
           npm ci --prefix meridian-ui/ui
           npm run check --prefix meridian-ui/ui
           npm test --prefix meridian-ui/ui
@@ -153,6 +215,12 @@ jobs:
           test -s "$script" && test -s "$style"
           test "$(wc -c < "$script")" -le 4194304
           test "$(wc -c < "$style")" -le 4194304
+          if [ -n "$GLIVELA_UI_JS_SHA256" ]; then
+            printf '%s  %s\n' "$GLIVELA_UI_JS_SHA256" "$script" | sha256sum --check --status
+          fi
+          if [ -n "$GLIVELA_UI_CSS_SHA256" ]; then
+            printf '%s  %s\n' "$GLIVELA_UI_CSS_SHA256" "$style" | sha256sum --check --status
+          fi
           echo "CATALOG_UI_BUNDLE=$GITHUB_WORKSPACE/$script" >> "$GITHUB_ENV"
           echo "CATALOG_UI_STYLE=$GITHUB_WORKSPACE/$style" >> "$GITHUB_ENV"
       - name: Sign online roles, persist exact bytes, CAS activate, and verify public catalog

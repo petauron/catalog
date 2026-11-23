@@ -3,7 +3,8 @@ import assert from "node:assert/strict";
 import { mkdtempSync, readFileSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
-import { applyRelease, compareVersions, fetchBounded, parseChecksums, sha256, validateRequest, verifyRelease, verifyReleaseIdentity, verifyRecoveryProvenance } from "./release-source.mjs";
+import { applyRelease, compareVersions, fetchBounded, parseChecksums, resolveGlivelaUIRevision, sha256, validateRequest, verifyRelease, verifyReleaseIdentity, verifyRecoveryProvenance } from "./release-source.mjs";
+import { stageGlivelaNative } from "./stage-glivela-native.mjs";
 
 const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url)));
 const rule = registry.sources.senlun;
@@ -319,4 +320,239 @@ test("one verified release updates both production Senlun recipes without changi
     assert.deepEqual(app, previous);
   }
   assert.deepEqual(input, original);
+});
+
+function glivelaFixture(t) {
+  const directory = mkdtempSync(path.join(tmpdir(), "catalog-glivela-test-"));
+  t.after(() => rmSync(directory, { recursive: true, force: true }));
+  const glivelaRule = registry.sources.glivela;
+  const gRequest = { application: "glivela", runId: "555", sha: "d".repeat(40), tag: "v0.2.0" };
+  const iperfBytes = { amd64: Buffer.from("iperf-amd64"), arm64: Buffer.from("iperf-arm64") };
+  const testRegistry = structuredClone(registry);
+  testRegistry.sources.glivela.iperf3.digests = {
+    amd64: sha256(iperfBytes.amd64),
+    arm64: sha256(iperfBytes.arm64),
+  };
+  const index = { manifests: ["amd64", "arm64"].map(architecture => ({ platform: { os: "linux", architecture }, digest: `sha256:${"e".repeat(64)}` })) };
+  const manifestBytes = Buffer.from(JSON.stringify(index));
+  const imageRef = `ghcr.io/petauron/glivela@sha256:${sha256(manifestBytes)}`;
+  const uiDigests = { "glivela-ui.js": "1".repeat(64), "glivela-ui.css": "2".repeat(64) };
+  const assets = new Map([
+    ["glivela-0.2.0-linux-amd64.tar.gz", Buffer.from("bundle-amd64")],
+    ["glivela-0.2.0-linux-arm64.tar.gz", Buffer.from("bundle-arm64")],
+    ["glivela-controller-image.json", Buffer.from(JSON.stringify({ version: "0.2.0", commit: gRequest.sha, reference: imageRef, platforms: ["linux/amd64", "linux/arm64"] }))],
+  ]);
+  const sumsText = [
+    `${sha256(assets.get("glivela-0.2.0-linux-amd64.tar.gz"))}  ./glivela-0.2.0-linux-amd64.tar.gz`,
+    `${sha256(assets.get("glivela-0.2.0-linux-arm64.tar.gz"))}  ./glivela-0.2.0-linux-arm64.tar.gz`,
+    `${sha256(assets.get("glivela-controller-image.json"))}  glivela-controller-image.json`,
+  ].join("\n");
+  assets.set("SHA256SUMS", Buffer.from(`${sumsText}\n`));
+  const assetList = [...assets].map(([name, bytes], idx) => ({
+    id: idx + 1,
+    name,
+    size: bytes.length,
+    state: "uploaded",
+    digest: `sha256:${sha256(bytes)}`,
+    browser_download_url: `https://github.com/petauron/glivela/releases/download/v0.2.0/${name}`,
+  }));
+  const runtimeByArch = Object.fromEntries(["amd64", "arm64"].map(arch => [arch, {
+    hostTCPBudget: "vastora-v1",
+    version: "0.2.0",
+    commit: gRequest.sha,
+    os: "linux",
+    architecture: arch,
+    iperf3: { version: "3.22", sha256: sha256(iperfBytes[arch]) },
+    ui: { ...uiDigests },
+  }]));
+  const calls = [];
+  const mirrored = [];
+  const fixture = {
+    directory,
+    gRequest,
+    testRegistry,
+    glivelaRule,
+    imageRef,
+    uiDigests,
+    assets,
+    assetList,
+    runtimeByArch,
+    calls,
+    mirrored,
+    ciGate: "success",
+    rejectAttestation: false,
+    release: {
+      tag_name: "v0.2.0",
+      draft: false,
+      prerelease: false,
+      published_at: "2026-11-23T08:00:00Z",
+      target_commitish: gRequest.sha,
+      assets: assetList,
+    },
+    runObj: {
+      id: 555,
+      head_sha: gRequest.sha,
+      head_branch: "main",
+      path: glivelaRule.workflow,
+      event: "push",
+      head_repository: { full_name: glivelaRule.repository },
+      repository: { full_name: glivelaRule.repository },
+      status: "in_progress",
+      conclusion: null,
+    },
+  };
+  const run = (command, args) => {
+    calls.push([command, ...args]);
+    if (command === "tar") {
+      const arch = args[1].includes("arm64") ? "arm64" : "amd64";
+      if (args[0] === "-tzf") return Buffer.from("LICENSE.glivela\nLICENSE.iperf3\nglivela\niperf3\nruntime.json\nxray\n");
+      if (args[0] === "-xOzf" && args[2] === "iperf3") return iperfBytes[arch];
+      if (args[0] === "-xOzf" && args[2] === "runtime.json") return Buffer.from(JSON.stringify(fixture.runtimeByArch[arch]));
+      throw new Error(`unexpected tar ${args.join(" ")}`);
+    }
+    assert.equal(command, "gh");
+    if (args[0] === "attestation") {
+      if (fixture.rejectAttestation) throw new Error("glivela attestation rejected");
+      return Buffer.from("");
+    }
+    const endpoint = args.at(-1);
+    if (endpoint.includes("/releases/assets/")) {
+      const id = Number(endpoint.split("/").at(-1));
+      const item = fixture.assetList.find(a => a.id === id);
+      return fixture.assets.get(item.name);
+    }
+    if (endpoint.includes("/contents/.release-please-manifest.json")) {
+      const text = JSON.stringify({ ".": "0.2.0" });
+      return Buffer.from(JSON.stringify({ type: "file", encoding: "base64", size: Buffer.byteLength(text), content: Buffer.from(text).toString("base64") }));
+    }
+    if (endpoint.includes("/contents/ui/package.json")) {
+      const text = JSON.stringify({ version: "0.2.0" });
+      return Buffer.from(JSON.stringify({ type: "file", encoding: "base64", size: Buffer.byteLength(text), content: Buffer.from(text).toString("base64") }));
+    }
+    if (endpoint.includes("/actions/workflows/ci.yml/runs")) {
+      return Buffer.from(JSON.stringify([{ workflow_runs: [{
+        id: 777,
+        run_number: 80,
+        event: "push",
+        head_branch: "main",
+        head_sha: gRequest.sha,
+        path: glivelaRule.ciWorkflow,
+        repository: { full_name: glivelaRule.repository },
+        head_repository: { full_name: glivelaRule.repository },
+        status: "completed",
+        conclusion: "success",
+      }] }]));
+    }
+    if (endpoint.includes("/actions/runs/777/jobs")) {
+      return Buffer.from(JSON.stringify([{ jobs: [{ name: glivelaRule.ciJob, status: "completed", conclusion: fixture.ciGate }] }]));
+    }
+    if (endpoint.includes("/actions/runs/555/jobs")) {
+      return Buffer.from(JSON.stringify([{ jobs: [{ name: glivelaRule.publishJob, status: "completed", conclusion: "success" }] }]));
+    }
+    if (endpoint.includes("/actions/runs/555")) return Buffer.from(JSON.stringify(fixture.runObj));
+    if (endpoint.includes("/releases/tags/")) return Buffer.from(JSON.stringify(fixture.release));
+    if (endpoint.includes("/git/ref/tags/")) return Buffer.from(JSON.stringify({ object: { type: "commit", sha: gRequest.sha } }));
+    if (endpoint.includes("/compare/")) return Buffer.from(JSON.stringify({ status: "identical" }));
+    if (endpoint.includes("/branches/main")) return Buffer.from(JSON.stringify({ protected: true }));
+    throw new Error(`unexpected gh endpoint ${endpoint}`);
+  };
+  const download = async url => url.includes("/token?") ? Buffer.from('{"token":"fixture"}') : manifestBytes;
+  const verifyMirrorFn = async (version, arch, digest, size) => { mirrored.push({ version, arch, digest, size }); };
+  fixture.run = run;
+  fixture.download = download;
+  fixture.verify = opts => verifyRelease(gRequest, testRegistry, path.join(directory, "assets"), run, download, { verifyMirrorFn, ...opts });
+  return fixture;
+}
+
+test("glivela release verification attests image, metadata and archives, checks iperf3/UI/CI, and updates all four recipes", async t => {
+  assert.equal(registry.sources.glivela.iperf3.digests.amd64, "ef4c89f3fc01c56cf00d34b900024c74f68e540dab452eef4fd902544d9c1c64");
+  assert.equal(registry.sources.glivela.iperf3.digests.arm64, "34364466812357fe021a8647cb433c8006b0360e3b690ecda470a979a2601031");
+  const fixture = glivelaFixture(t);
+  assert.equal(validateRequest(fixture.gRequest, registry), registry.sources.glivela);
+  const verified = await fixture.verify();
+  assert.equal(verified.version, "0.2.0");
+  assert.equal(verified.image, fixture.imageRef);
+  assert.deepEqual(verified.ui, fixture.uiDigests);
+  assert.equal(verified.artifacts.length, 2);
+  assert.equal(fixture.mirrored.length, 2);
+  const attestations = fixture.calls.filter(args => args[0] === "gh" && args[1] === "attestation");
+  assert.equal(attestations.length, 4, "must attest image json, OCI image, and both native archives");
+  for (const args of attestations) {
+    assert.equal(args[args.indexOf("--repo") + 1], "petauron/glivela");
+    assert.equal(args[args.indexOf("--signer-workflow") + 1], "petauron/glivela/.github/workflows/release-please.yml");
+    assert.equal(args[args.indexOf("--source-digest") + 1], fixture.gRequest.sha);
+    assert.ok(args.includes("refs/heads/main"));
+    assert.ok(args.includes("--deny-self-hosted-runners"));
+  }
+  const input = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import.meta.url)));
+  const original = structuredClone(input);
+  const next = applyRelease(input, verified, registry.sources.glivela);
+  for (const id of ["meridian", "glivela-entry", "glivela-node", "glivela-dual"]) {
+    const app = next.apps.find(item => item.id === id);
+    const prev = original.apps.find(item => item.id === id);
+    assert.equal(app.version, "0.2.0");
+    assert.equal(app.packageRevision, prev.packageRevision);
+    assert.deepEqual(app.runtime, prev.runtime);
+    if (id === "meridian") {
+      assert.equal(app.images.find(img => img.name === "controller").reference, fixture.imageRef);
+    } else {
+      assert.equal(app.artifacts.length, 2);
+      for (const art of app.artifacts) {
+        assert.equal(art.url, `https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v0.2.0/glivela-0.2.0-linux-${art.architecture}.tar.gz`);
+      }
+    }
+  }
+  assert.deepEqual(input, original);
+  assert.deepEqual(applyRelease(next, verified, registry.sources.glivela), next);
+  assert.throws(() => applyRelease(next, { ...verified, version: "0.1.1" }, registry.sources.glivela), /rollback/);
+});
+
+test("glivela release verification fails closed on CI gate, attestation, TCP budget, or UI digest mismatch", async t => {
+  for (const [name, mutate, expected] of [
+    ["CI gate skipped", f => { f.ciGate = "skipped"; }, /CI gate/],
+    ["attestation rejected", f => { f.rejectAttestation = true; }, /attestation rejected/],
+    ["hostTCPBudget changed", f => { f.runtimeByArch.amd64.hostTCPBudget = "other"; }, /runtime metadata/],
+    ["amd64/arm64 UI digests disagree", f => { f.runtimeByArch.arm64.ui["glivela-ui.js"] = "9".repeat(64); }, /disagree on UI digests/],
+  ]) {
+    await t.test(name, async t => {
+      const f = glivelaFixture(t);
+      mutate(f);
+      await assert.rejects(f.verify(), expected);
+    });
+  }
+});
+
+test("resolveGlivelaUIRevision resolves exact protected-main commit and fails closed on draft or version mismatch", () => {
+  const glivelaRule = registry.sources.glivela;
+  const sha = "f".repeat(40);
+  const apiMap = (overrides = {}) => (command, args) => {
+    assert.equal(command, "gh");
+    const ep = args.at(-1);
+    if (ep.includes("/releases/tags/v0.2.0")) return Buffer.from(JSON.stringify({ tag_name: "v0.2.0", draft: false, prerelease: false, published_at: "2026-11-23T08:00:00Z", target_commitish: sha, ...overrides.release }));
+    if (ep.includes("/git/ref/tags/v0.2.0")) return Buffer.from(JSON.stringify({ object: { type: "commit", sha: overrides.tagSha ?? sha } }));
+    if (ep.includes("/branches/main")) return Buffer.from(JSON.stringify({ protected: overrides.protected ?? true }));
+    if (ep.includes("/compare/")) return Buffer.from(JSON.stringify({ status: overrides.status ?? "ahead" }));
+    if (ep.includes("/contents/ui/package.json")) {
+      const text = JSON.stringify({ version: overrides.uiVersion ?? "0.2.0" });
+      return Buffer.from(JSON.stringify({ type: "file", encoding: "base64", size: Buffer.byteLength(text), content: Buffer.from(text).toString("base64") }));
+    }
+    throw new Error(`unexpected ${ep}`);
+  };
+  assert.equal(resolveGlivelaUIRevision("0.2.0", glivelaRule, apiMap()), sha);
+  assert.throws(() => resolveGlivelaUIRevision("0.2.0", glivelaRule, apiMap({ release: { draft: true } })), /not published/);
+  assert.throws(() => resolveGlivelaUIRevision("0.2.0", glivelaRule, apiMap({ protected: false })), /protected main/);
+  assert.throws(() => resolveGlivelaUIRevision("0.2.0", glivelaRule, apiMap({ uiVersion: "0.1.1" })), /package version differs/);
+});
+
+test("stageGlivelaNative refuses non-protected environments before calling GitHub", async () => {
+  let called = false;
+  await assert.rejects(
+    stageGlivelaNative({
+      env: { CATALOG_PRODUCTION_ENABLED: "false", GITHUB_REPOSITORY: "petauron/catalog", GITHUB_REF: "refs/heads/main", GITHUB_SHA: "a".repeat(40), RUNNER_TEMP: "/tmp" },
+      staging: "/tmp/glivela-native-mirror",
+      run: () => { called = true; return Buffer.from("{}"); },
+    }),
+    /protected official publication job/,
+  );
+  assert.equal(called, false);
 });

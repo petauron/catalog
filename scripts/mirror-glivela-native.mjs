@@ -2,11 +2,13 @@
 // Copy only already verified Glivela distributions. Never sign a catalog,
 // create a release/tag, execute a distribution or contact an installed node.
 import {execFileSync} from 'node:child_process';
+import {createHash} from 'node:crypto';
 import {readFileSync,lstatSync,mkdtempSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
-import {sha256} from './release-source.mjs';
+
+const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 
 export function nativeMirrorURL(version, architecture) {
  if (!/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:alpha|beta|rc)\.(0|[1-9][0-9]*))?$/.test(version) || !['amd64','arm64'].includes(architecture)) throw Error('Invalid Glivela distribution identity');
