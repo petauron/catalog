@@ -30,9 +30,11 @@ test("catalog publication isolates unprivileged discovery from protected signing
   assert.match(workflow, /CATALOG_AUTOPUBLISH_DISABLED/);
   assert.doesNotMatch(workflow, /github\.event\.client_payload|create-github-app-token|CATALOG_NOTIFY/);
   const discoverStart = workflow.indexOf("  discover:");
+  const mirrorStart = workflow.indexOf("  mirror-glivela:");
   const publishStart = workflow.indexOf("  publish:");
-  assert.ok(discoverStart > 0 && publishStart > discoverStart);
-  const discoverBlock = workflow.slice(discoverStart, publishStart);
+  assert.ok(discoverStart > 0 && mirrorStart > discoverStart && publishStart > mirrorStart);
+  const discoverBlock = workflow.slice(discoverStart, mirrorStart);
+  const mirrorBlock = workflow.slice(mirrorStart, publishStart);
   const publishBlock = workflow.slice(publishStart);
   assert.ok(discoverBlock.includes("node scripts/catalog-reconcile.mjs"));
   assert.ok(discoverBlock.includes("inputs.kind == 'reconcile'"));
@@ -40,9 +42,17 @@ test("catalog publication isolates unprivileged discovery from protected signing
   assert.ok(!discoverBlock.includes("environment: catalog-signing"));
   assert.ok(!discoverBlock.includes("CATALOG_SIGNERS"));
   assert.ok(!discoverBlock.includes("R2_SECRET_ACCESS_KEY"));
-  assert.ok(publishBlock.includes("!cancelled()"), "publish must include !cancelled() so skipped discover does not skip manual workflow_dispatch");
+  assert.ok(mirrorBlock.includes("environment: catalog-signing"));
+  assert.ok(!mirrorBlock.includes("CATALOG_SIGNERS"), "mirror-glivela must never receive TUF signing keys");
+  assert.ok(!mirrorBlock.includes("meridian-ui"), "mirror-glivela must never run upstream UI builds");
+  assert.ok(mirrorBlock.indexOf("node scripts/stage-glivela-native.mjs") < mirrorBlock.indexOf("R2_SECRET_ACCESS_KEY"), "Glivela provenance staging must run before R2 credentials");
+  assert.ok(mirrorBlock.includes("node scripts/mirror-glivela-native.mjs"));
+  assert.ok(publishBlock.includes("needs: [discover, mirror-glivela]"));
+  assert.ok(publishBlock.includes("needs.mirror-glivela.result == 'success' || needs.mirror-glivela.result == 'skipped'"));
+  assert.ok(publishBlock.includes("!cancelled()"), "publish must include !cancelled() so skipped discover or mirror-glivela does not skip publish");
   assert.ok(publishBlock.includes("inputs.kind != 'reconcile'"), "manual reconcile must pass discovered outputs to publish");
   assert.ok(publishBlock.includes("CATALOG_RECONCILED:"), "publish must mark reconciled runs so drafts are never auto-resumed");
+  assert.ok(publishBlock.indexOf("Build independent Glivela UI without publication credentials") < publishBlock.indexOf("CATALOG_SIGNERS:"), "Glivela UI build must stay isolated from signing credentials");
 });
 
 test("pending publication only resumes original commit/request/recipe on manual workflow_dispatch", () => {

@@ -31,15 +31,27 @@ For automatic publication, an unprivileged `discover` job (running outside the
   payload; `discover` ignores `client_payload` and resolves all release identities from
   the reviewed registry and authenticated GitHub APIs.
 - Only sources with `autoPublish.enabled: true` are automatically published, subject to
-  their per-source `autoPublish.allowPrerelease` policy (`senlun` auto-publishes stable
-  SemVer releases; prereleases and manual recoveries remain explicit `workflow_dispatch`).
-- When an upstream commit advances the independent Agent version, `discover` waits until
-  `senlun-agent-v<version>` is also published at the same commit SHA before handing off to
-  `publish`.
+  their per-source `autoPublish.allowPrerelease` policy (`senlun` and `glivela`
+  auto-publish stable SemVer releases; prereleases and manual recoveries remain explicit
+  `workflow_dispatch`).
+- When a `senlun` upstream commit advances the independent Agent version, `discover` waits
+  until `senlun-agent-v<version>` is also published at the same commit SHA before handing
+  off to `publish`.
+- When a `glivela` release is selected (automatically or via `workflow_dispatch`
+  `kind=release`, `application=glivela`), an isolated `mirror-glivela` job verifies the
+  exact protected commit, push CI gate (`CI / gate`), SLSA attestations, pinned `iperf3`
+  digests, `hostTCPBudget` contract and UI digest consistency before using R2 storage
+  credentials (never `CATALOG_SIGNERS`) to copy both immutable native bundles to
+  `downloads.petauron.com`. The subsequent `publish` job re-verifies provenance and the
+  public mirror, checks out the verified protected-main Glivela commit for `meridian-ui`,
+  asserts the freshly built UI bundles match the attested `runtime.json` SHA256 digests,
+  and updates all four Glivela recipes (`meridian`, `glivela-entry`, `glivela-node`,
+  `glivela-dual`) together.
 - Pending draft `catalog-rN` releases block automatic publication fail-closed, two
-  consecutive failed automated runs trip a circuit breaker until a manual recovery run
-  succeeds, and setting Repository Variable `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all
-  automatic runs without affecting manual `workflow_dispatch`.
+  consecutive failed automated `mirror-glivela` or `publish` runs trip a circuit breaker
+  until a manual recovery run succeeds, and setting Repository Variable
+  `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all automatic runs without affecting manual
+  `workflow_dispatch`.
 - `publish` still independently re-verifies every request through `catalog-plan.mjs`,
   SLSA attestations and `catalog-check --artifacts` before entering `catalog-signing`.
 - Reviewed recipe changes (`kind=reviewed`) remain manual by default
@@ -86,15 +98,18 @@ retain `ui-meridian-<version>` names. Subsequent versions use
 the version. They do not retry another name on a failed verification. Historical
 ledger validation retains both signed formats without rewriting either.
 
-The protected workflow pins the released Glivela source commit and builds its
+The protected workflow resolves the exact verified protected-main Glivela commit
+for the candidate `meridian` version in `catalog-plan.mjs` and builds its
 application-owned UI with its own lockfile. No Vastora web checkout, npm install,
 source symlink or `VASTORA_WEB_SOURCE` is needed. The Center consumer used for
 recipe validation is a separate integration gate and remains pinned.
-For subsequent releases, advance the Glivela source pin and recipe version
-together after source CI and publication. Keep canonical `ui-glivela` output
-paths and never alter existing signed bytes.
+Routine stable Glivela releases auto-publish through `catalog/sources.json`
+without requiring a manual catalog PR; keep canonical `ui-glivela` output paths
+and never alter existing signed bytes. When a Glivela release changes pinned
+`iperf3` supplier digests, runtime templates or host capabilities, automatic
+publication fails closed and requires a reviewed catalog PR first.
 
-### Glivela review-only release handoff
+### Glivela manual baseline handoff (optional / capability changes)
 
 From a clean catalog feature worktree based on current protected `main`, use the
 existing authenticated GitHub CLI and installed lockfile dependencies:
@@ -111,7 +126,8 @@ assets use the exact authenticated GitHub asset ID through the existing CLI,
 with bounded output and unchanged inventory, size and digest checks; browser
 download URLs remain the published recipe coordinates. It never executes
 downloaded files. It then updates only the four Glivela recipe versions
-and release coordinates, reviewed UI checkout SHA and its existing pin contract.
+and release coordinates, verifies that `.github/workflows/publish.yml` retains
+the dynamic verified UI checkout pin, and updates the UI baseline test contract.
 It also advances only Glivela's machine-identity digest and version comment in
 the existing brand contract. The current recipe must first match its old digest;
 only then may verified version/image coordinates produce the new Glivela digest.
@@ -299,12 +315,15 @@ already published application version's recipe is rejected. Schema 4
 `packageRevision` remains deferred with the runtime migration.
 
 Glivela's application-owned workspace remains a product integration, not an
-installation allowlist. For each publication the workflow checks out the reviewed,
-full Glivela source commit pinned in `publish.yml`, builds the version-matched
-JS/CSS pair before loading signing credentials, and signs both exact assets as
-TUF targets. A new Glivela UI version requires a reviewed update to that pin. Retrying a pending publication must reproduce the
-saved bytes; changing UI bytes at the same application version or omitting an
-already-signed UI pair is rejected.
+installation allowlist. For each publication `catalog-plan.mjs` resolves and
+verifies the immutable protected-main Glivela commit for the candidate `meridian`
+version (using the attested release SHA on `glivela` releases or the published
+protected-main tag commit otherwise), `publish.yml` checks out that exact commit,
+builds and tests the version-matched JS/CSS pair before loading signing
+credentials, cross-checks both digests against attested `runtime.json` on
+`glivela` releases, and signs both exact assets as TUF targets. Retrying a
+pending publication must reproduce the saved bytes; changing UI bytes at the same
+application version or omitting an already-signed UI pair is rejected.
 
 Signed target, timestamp, snapshot, targets and reviewed root v2 expire at the
 end of year 9999.

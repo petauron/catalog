@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
   checkAgentReleaseReady,
+  checkSourceCIReady,
   findVerifiedSourceRun,
   isCircuitOpen,
   reconcileCatalog,
@@ -11,6 +12,7 @@ import {
 
 const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url), "utf8"));
 const senlunRule = registry.sources.senlun;
+const glivelaRule = registry.sources.glivela;
 const sha = "a".repeat(40);
 
 test("circuit breaker trips on two publish-job failures since last publication and resets on manual success", () => {
@@ -32,6 +34,15 @@ test("circuit breaker trips on two publish-job failures since last publication a
       jobsForRun: () => [{ name: "discover", conclusion: "failure" }],
     }),
     { open: false, failures: 0 },
+  );
+  // Repeated mirror-glivela failures also trip the circuit breaker.
+  assert.deepEqual(
+    isCircuitOpen(failedRuns, [], {
+      currentRunId: "13",
+      sinceIso,
+      jobsForRun: () => [{ name: "mirror-glivela", conclusion: "failure" }, { name: "publish", conclusion: "skipped" }],
+    }),
+    { open: true, failures: 2 },
   );
   // A successful manual workflow_dispatch where publish ran resets the breaker,
   // whereas a manual reconcile no-op (publish skipped) does not reset it.
@@ -200,4 +211,55 @@ test("reconcileCatalog respects kill switch without calling GitHub", () => {
   );
   assert.equal(result.publish, false);
   assert.equal(called, false);
+});
+
+test("glivela auto-publish selects newer stable release and requires exact main push CI gate", () => {
+  assert.equal(glivelaRule.autoPublish.enabled, true);
+  assert.equal(glivelaRule.autoPublish.allowPrerelease, false);
+  assert.deepEqual(glivelaRule.artifactApps, ["glivela-entry", "glivela-node", "glivela-dual"]);
+  const releases = [
+    { tag_name: "v0.2.1-alpha.1", draft: false, prerelease: true, published_at: "2026-11-23T02:00:00Z" },
+    { tag_name: "v0.2.0", draft: false, prerelease: false, published_at: "2026-11-23T01:00:00Z" },
+    { tag_name: "v0.1.1", draft: false, prerelease: false, published_at: "2026-11-22T01:00:00Z" },
+  ];
+  assert.equal(selectCandidateRelease(releases, "0.1.1", glivelaRule)?.tag_name, "v0.2.0");
+  assert.equal(selectCandidateRelease(releases, "0.2.0", glivelaRule), null);
+
+  const ciRun = {
+    id: 901,
+    run_number: 50,
+    event: "push",
+    path: glivelaRule.ciWorkflow,
+    head_sha: sha,
+    head_branch: "main",
+    repository: { full_name: glivelaRule.repository },
+    head_repository: { full_name: glivelaRule.repository },
+    status: "completed",
+    conclusion: "success",
+  };
+  assert.deepEqual(
+    checkSourceCIReady(glivelaRule, sha, endpoint => {
+      if (endpoint.startsWith("actions/workflows/")) return { workflow_runs: [ciRun] };
+      if (endpoint.includes("/jobs?")) return { jobs: [{ name: glivelaRule.ciJob, status: "completed", conclusion: "success" }] };
+      throw new Error(`unexpected ${endpoint}`);
+    }),
+    { ready: true },
+  );
+  assert.equal(
+    checkSourceCIReady(glivelaRule, sha, endpoint => {
+      if (endpoint.startsWith("actions/workflows/")) return { workflow_runs: [ciRun] };
+      if (endpoint.includes("/jobs?")) return { jobs: [{ name: glivelaRule.ciJob, status: "completed", conclusion: "skipped" }] };
+      throw new Error(`unexpected ${endpoint}`);
+    }).ready,
+    false,
+  );
+  assert.equal(
+    checkSourceCIReady(glivelaRule, sha, () => ({
+      workflow_runs: [
+        { ...ciRun, id: 902, run_number: 51, conclusion: "failure" },
+        ciRun,
+      ],
+    })).ready,
+    false,
+  );
 });

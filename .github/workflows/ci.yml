@@ -96,6 +96,7 @@ jobs:
         run: |
           npm ci --ignore-scripts
           node --check scripts/prepare-glivela-release.mjs
+          node --check scripts/stage-glivela-native.mjs
           go test ./... -count=1
           node --test scripts/*.test.mjs
       - name: Validate reviewed recipes and independent root chain

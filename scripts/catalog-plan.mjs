@@ -4,7 +4,7 @@ import { readFileSync, writeFileSync, mkdirSync, lstatSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { validatePublication, verifyLedgerAsset } from "./publish-catalog.mjs";
-import { applyRelease, compareVersions, execute, migrateSenlunRecipe, sha256, validateRequest, verifyAgentRelease, verifyRelease } from "./release-source.mjs";
+import { applyRelease, artifactAppIds, compareVersions, execute, migrateSenlunRecipe, resolveGlivelaUIRevision, sha256, validateRequest, verifyAgentRelease, verifyRelease } from "./release-source.mjs";
 
 export function loadImportedLedger(directory) {
   const index = JSON.parse(readFileSync(path.join(directory, "index.json")));
@@ -118,15 +118,25 @@ export async function preparePublication(env = process.env, run = execute, verif
   console.log("Catalog preparation stage: reviewed-recipe-plan");
   const inputHash = sha256(Buffer.concat([Buffer.from(`catalog:${reviewedBytes.length}\n`), reviewedBytes, customBytes]));
   const plan = choosePlan({ releases: [...releases, ...imported.map(item => item.release)], bundles, commit: env.GITHUB_SHA, request, reviewed: JSON.parse(reviewedBytes), recipesSHA256: inputHash, allowDraftResume: env.GITHUB_EVENT_NAME === "workflow_dispatch" && env.CATALOG_RECONCILED !== "true" });
+  let verifiedGlivela = null;
   if (!plan.resume) {
     if (!request.kind) {
       const verified = await verify(request, registry, path.join(work, "upstream"));
       const rule = registry.sources[request.application];
-      const previous = plan.active.apps.find(app => app.id === rule.artifactApp);
-      const candidate = plan.candidate.apps.find(app => app.id === rule.artifactApp);
-      if (!previous || !candidate || compareVersions(verified.agentVersion, previous.version) < 0) throw new Error("Agent version would move backwards");
-      if (compareVersions(verified.agentVersion, previous.version) > 0) verifyAgentRelease(verified, rule, run);
-      else if (candidate.version !== previous.version || JSON.stringify(candidate.artifacts) !== JSON.stringify(previous.artifacts)) throw new Error("Unchanged Agent coordinates require their own reviewed publication");
+      if (rule.agentVersionFile || rule.artifactApp) {
+        const previous = plan.active.apps.find(app => app.id === rule.artifactApp);
+        const candidate = plan.candidate.apps.find(app => app.id === rule.artifactApp);
+        if (!previous || !candidate || compareVersions(verified.agentVersion, previous.version) < 0) throw new Error("Agent version would move backwards");
+        if (compareVersions(verified.agentVersion, previous.version) > 0) verifyAgentRelease(verified, rule, run);
+        else if (candidate.version !== previous.version || JSON.stringify(candidate.artifacts) !== JSON.stringify(previous.artifacts)) throw new Error("Unchanged Agent coordinates require their own reviewed publication");
+      } else {
+        for (const id of [rule.imageApp, ...artifactAppIds(rule)]) {
+          const previous = plan.active.apps.find(app => app.id === id);
+          const candidate = plan.candidate.apps.find(app => app.id === id);
+          if (!previous || !candidate || compareVersions(verified.version, previous.version) < 0) throw new Error("Application version would move backwards");
+        }
+        if (rule.independentUI) verifiedGlivela = verified;
+      }
       plan.candidate = applyRelease(plan.candidate, verified, rule);
     }
     const changed = JSON.stringify(plan.candidate.apps) !== JSON.stringify(plan.active.apps) || JSON.stringify(custom) !== JSON.stringify(plan.activeCustom);
@@ -134,6 +144,13 @@ export async function preparePublication(env = process.env, run = execute, verif
     plan.candidate.generatedAt = new Date().toISOString().replace(/\.\d{3}Z$/, "Z");
     plan.catalogBytes = Buffer.from(JSON.stringify(plan.candidate));
   }
+  const candidateCatalog = JSON.parse(plan.catalogBytes);
+  const meridianApp = candidateCatalog.apps?.find(app => app.id === "meridian");
+  if (!meridianApp) throw new Error("Reviewed Glivela controller recipe is missing");
+  console.log("Catalog preparation stage: glivela-ui-source-pin");
+  const glivelaUIRef = verifiedGlivela ? verifiedGlivela.request.sha : resolveGlivelaUIRevision(meridianApp.version, registry.sources.glivela, run);
+  if (!/^[a-f0-9]{40}$/.test(glivelaUIRef ?? "")) throw new Error("Invalid verified Glivela UI commit");
+  const glivelaUI = verifiedGlivela?.ui ?? null;
   const catalog = path.join(work, "candidate.json");
   writeFileSync(catalog, plan.catalogBytes, { mode: 0o600, flag: "wx" });
   const targetCustom = path.join(work, "target-custom.json");
@@ -157,10 +174,24 @@ export async function preparePublication(env = process.env, run = execute, verif
   }
   const result = { revision: plan.revision, commit: env.GITHUB_SHA, repository, catalog, targetCustom, work: path.join(work, "publication"), rootDirectory: "catalog/trust", binDirectory: env.CATALOG_BIN, request, recipesSHA256: plan.recipesSHA256, runURL: `https://github.com/${repository}/actions/runs/${env.GITHUB_RUN_ID}` };
   writeFileSync(path.join(work, "plan.json"), JSON.stringify(result), { mode: 0o600, flag: "wx" });
-  return result;
+  return { ...result, glivelaUIRef, glivelaUI };
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === path.resolve(process.argv[1])) {
-  try { const result = await preparePublication(); if (result.noop) console.log("Catalog request already satisfied; no signing or publication required."); else console.log(`Validated catalog publication r${result.revision}; awaiting signing stage.`); writeFileSync(process.env.GITHUB_OUTPUT, `publish=${!result.noop}\n`, { flag: "a" }); }
+  try {
+    const result = await preparePublication();
+    if (result.noop) console.log("Catalog request already satisfied; no signing or publication required.");
+    else console.log(`Validated catalog publication r${result.revision}; awaiting signing stage.`);
+    const outputs = [`publish=${!result.noop}`];
+    if (!result.noop) {
+      const uiJS = result.glivelaUI?.["glivela-ui.js"] ?? "";
+      const uiCSS = result.glivelaUI?.["glivela-ui.css"] ?? "";
+      if (!/^[a-f0-9]{40}$/.test(result.glivelaUIRef) || (uiJS && !/^[a-f0-9]{64}$/.test(uiJS)) || (uiCSS && !/^[a-f0-9]{64}$/.test(uiCSS))) throw new Error("Invalid Glivela UI verification outputs");
+      outputs.push(`glivela_ui_ref=${result.glivelaUIRef}`);
+      outputs.push(`glivela_ui_js_sha256=${uiJS}`);
+      outputs.push(`glivela_ui_css_sha256=${uiCSS}`);
+    }
+    writeFileSync(process.env.GITHUB_OUTPUT, `${outputs.join("\n")}\n`, { flag: "a" });
+  }
   catch { console.error("Catalog preparation blocked. Check migration acceptance, source provenance, and pending ledger; no publication was performed."); process.exitCode = 1; }
 }
