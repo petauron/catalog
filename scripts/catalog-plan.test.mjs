@@ -26,7 +26,7 @@ test("catalog publication isolates unprivileged discovery from protected signing
   assert.match(workflow, /workflow_dispatch:/);
   assert.match(workflow, /options:\s*\[release,\s*reviewed,\s*reconcile\]/);
   assert.match(workflow, /repository_dispatch:\s*\n\s*types:\s*\[catalog-reconcile\]/);
-  assert.match(workflow, /(^|\n)\s*schedule:\s*\n\s*-\s*cron:\s*"7,22,37,52 \* \* \* \*"/);
+  assert.match(workflow, /(^|\n)\s*schedule:\s*\n\s*-\s*cron:\s*"17 \*\/6 \* \* \*"/);
   assert.match(workflow, /CATALOG_AUTOPUBLISH_DISABLED/);
   assert.doesNotMatch(workflow, /github\.event\.client_payload|create-github-app-token|CATALOG_NOTIFY/);
   const discoverStart = workflow.indexOf("  discover:");
