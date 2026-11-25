@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.7.0](https://github.com/petauron/catalog/compare/v0.6.1...v0.7.0) (2026-11-25)
+
+
+### Features
+
+* **publish:** add automatic verified publication for Glivela ([#246](https://github.com/petauron/catalog/issues/246)) ([8ee6d05](https://github.com/petauron/catalog/commit/8ee6d05cfc3694928cc48cf9757536fac081aa73))
+* **publish:** add manual reconcile dispatch and off-peak cron offset ([#243](https://github.com/petauron/catalog/issues/243)) ([bf188b6](https://github.com/petauron/catalog/commit/bf188b63d92a2d7ef406264ae71ba149dae472b7))
+* **publish:** add pull-only catalog reconciler with instant wakeup ([#240](https://github.com/petauron/catalog/issues/240)) ([02561d8](https://github.com/petauron/catalog/commit/02561d8f88bb8abcbd631b2a44b87193f9d477c4))
+
+
+### Bug Fixes
+
+* **catalog:** publish Glivela 0.1.0 ([#235](https://github.com/petauron/catalog/issues/235)) ([b73812f](https://github.com/petauron/catalog/commit/b73812fca832bb4f2111f58b1e311567832aba5e))
+* **catalog:** publish Glivela 0.1.1 ([#244](https://github.com/petauron/catalog/issues/244)) ([333e09a](https://github.com/petauron/catalog/commit/333e09a446e227eafd97092584464e6dd5742a7d))
+* **catalog:** publish Glivela startup recovery ([e232406](https://github.com/petauron/catalog/commit/e232406b610788984f9b332300e68f71e3808909))
+* **catalog:** update CPA to 8.0.79 ([d9a5485](https://github.com/petauron/catalog/commit/d9a5485debaaf98de57eaf80966c1ea38609cc65))
+* **check:** authenticate api.github.com artifact lookups and surface catalog-check diagnostics ([#237](https://github.com/petauron/catalog/issues/237)) ([f3ea4bd](https://github.com/petauron/catalog/commit/f3ea4bd1608c6ea3ebc36fb63e98f63832b550c8))
+* **cpa:** declare trusted Tunnel client IP recipes for CPA and Keeper ([#232](https://github.com/petauron/catalog/issues/232)) ([0fde6bb](https://github.com/petauron/catalog/commit/0fde6bbae7fc9a473c1636fa0afeff2eea4951d1))
+
 ## [0.6.1](https://github.com/petauron/catalog/compare/v0.6.0...v0.6.1) (2026-11-16)
 
 
