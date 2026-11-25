@@ -7,7 +7,7 @@ on:
 permissions:
   contents: read
 concurrency:
-  group: catalog-ci-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}
+  group: catalog-ci-${{ github.workflow }}-${{ github.event.pull_request.head.repo.full_name || github.repository }}-${{ github.head_ref || github.ref_name }}-${{ github.base_ref || 'none' }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   verify:
@@ -27,82 +27,157 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           EVENT_NAME: ${{ github.event_name }}
+          BASE_REF: ${{ github.base_ref }}
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
           HEAD_SHA: ${{ github.event.pull_request.head.sha }}
           BEFORE_SHA: ${{ github.event.before }}
         run: |
           set -eu
-          is_docs_only() {
-            files="$1"
-            [ -n "$files" ] || return 1
-            old_ifs=$IFS
-            nl=$(printf '\nx'); nl=${nl%x}; IFS=$nl
-            for path in $files; do
-              [ -n "$path" ] || continue
-              case "$path" in
-                LICENSE*|NOTICE*|*THIRD_PARTY*|*LICENSES*) IFS=$old_ifs; return 1 ;;
-                *.md|docs/*|.github/ISSUE_TEMPLATE/*|.github/PULL_REQUEST_TEMPLATE.md) ;;
-                *) IFS=$old_ifs; return 1 ;;
-              esac
-            done
-            IFS=$old_ifs
-            return 0
-          }
-          run_ci=true
-          if [ "$EVENT_NAME" = "pull_request" ] && [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ]; then
-            changed=$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")
-            if is_docs_only "$changed"; then
-              run_ci=false
+          go=true
+          node=true
+          release_metadata=true
+          must_run_main=true
+          scope_reason='full-default'
+
+          apply_classification() {
+            if cls="$(sh scripts/classify-ci-changes.sh --git "$1" "$2")"; then
+              go="$(printf '%s\n' "$cls" | awk -F= '$1 == "go" { print $2 }')"
+              node="$(printf '%s\n' "$cls" | awk -F= '$1 == "node" { print $2 }')"
+              release_metadata="$(printf '%s\n' "$cls" | awk -F= '$1 == "release_metadata" { print $2 }')"
+              must_run_main="$(printf '%s\n' "$cls" | awk -F= '$1 == "must_run_main" { print $2 }')"
+              if { [ "$go" != 'true' ] && [ "$go" != 'false' ]; } || \
+                 { [ "$node" != 'true' ] && [ "$node" != 'false' ]; } || \
+                 { [ "$release_metadata" != 'true' ] && [ "$release_metadata" != 'false' ]; } || \
+                 { [ "$must_run_main" != 'true' ] && [ "$must_run_main" != 'false' ]; }; then
+                go=true; node=true; release_metadata=true; must_run_main=true
+                scope_reason='classifier-parse-fallback'
+                return 1
+              fi
+              return 0
             fi
-          elif [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ] && [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
-            changed=$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")
-            must_run_main=false
-            old_ifs=$IFS
-            nl=$(printf '\nx'); nl=${nl%x}; IFS=$nl
-            for path in $changed; do
-              case "$path" in
-                .release-please-manifest.json|catalog/*) must_run_main=true ;;
-              esac
-            done
-            IFS=$old_ifs
-            if [ "$must_run_main" = "false" ]; then
-              if is_docs_only "$changed"; then
-                run_ci=false
-              else
-                main_tree=$(git rev-parse "${GITHUB_SHA}^{tree}")
-                pr_head=$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '[.[] | select(.merged_at != null and .merge_commit_sha == "'"$GITHUB_SHA"'" and .base.ref == "main" and .head.repo.full_name == "'"$GITHUB_REPOSITORY"'")] | if length == 1 then .[0].head.sha else empty end' 2>/dev/null || true)
+            go=true; node=true; release_metadata=true; must_run_main=true
+            scope_reason='classifier-exit-fallback'
+            return 1
+          }
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ "$BASE_REF" = "main" ] && [ -n "$BASE_SHA" ] && [ -n "$HEAD_SHA" ] && \
+             git cat-file -e "${BASE_SHA}^{commit}" 2>/dev/null && \
+             git cat-file -e "${HEAD_SHA}^{commit}" 2>/dev/null; then
+            if apply_classification "$BASE_SHA" "$HEAD_SHA"; then
+              scope_reason='pull-request-diff'
+            fi
+          elif [ "$EVENT_NAME" = "push" ] && [ "$GITHUB_REF" = "refs/heads/main" ] && \
+               [ -n "$BEFORE_SHA" ] && [ "$BEFORE_SHA" != "0000000000000000000000000000000000000000" ] && \
+               git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null && \
+               git merge-base --is-ancestor "$BEFORE_SHA" "$GITHUB_SHA" 2>/dev/null; then
+            if apply_classification "$BEFORE_SHA" "$GITHUB_SHA"; then
+              scope_reason='main-push-diff'
+              if [ "$must_run_main" = "false" ] && { [ "$go" = "true" ] || [ "$node" = "true" ]; }; then
+                main_tree="$(git rev-parse "${GITHUB_SHA}^{tree}")"
+                pr_head="$(gh api "repos/$GITHUB_REPOSITORY/commits/$GITHUB_SHA/pulls" --jq '[.[] | select(.merged_at != null and .merge_commit_sha == "'"$GITHUB_SHA"'" and .base.ref == "main" and .head.repo.full_name == "'"$GITHUB_REPOSITORY"'")] | if length == 1 then .[0].head.sha else empty end' 2>/dev/null || true)"
                 if [ -n "$pr_head" ]; then
-                  pr_tree=$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$pr_head" --jq '.tree.sha // empty' 2>/dev/null || true)
-                  pr_ci=$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&head_sha=$pr_head&per_page=100" --jq '.workflow_runs | sort_by(.run_number) | last | if . != null and .head_sha == "'"$pr_head"'" and .head_repository.full_name == "'"$GITHUB_REPOSITORY"'" and .status == "completed" and .conclusion == "success" then "ok" else empty end' 2>/dev/null || true)
+                  pr_tree="$(gh api "repos/$GITHUB_REPOSITORY/git/commits/$pr_head" --jq '.tree.sha // empty' 2>/dev/null || true)"
+                  pr_ci="$(gh api "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?event=pull_request&head_sha=$pr_head&per_page=100" --jq '.workflow_runs | sort_by(.run_number) | last | if . != null and .head_sha == "'"$pr_head"'" and .head_repository.full_name == "'"$GITHUB_REPOSITORY"'" and .status == "completed" and .conclusion == "success" then "ok" else empty end' 2>/dev/null || true)"
                   if [ "$pr_tree" = "$main_tree" ] && [ "$pr_ci" = "ok" ]; then
-                    run_ci=false
+                    go=false
+                    node=false
+                    release_metadata=false
+                    scope_reason='verified-pr-tree'
                   fi
                 fi
               fi
             fi
           fi
-          echo "run_ci=$run_ci" >> "$GITHUB_OUTPUT"
-      - if: steps.scope.outputs.run_ci == 'true'
+
+          echo "Scope ($scope_reason): go=$go node=$node release_metadata=$release_metadata must_run_main=$must_run_main"
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "node=$node" >> "$GITHUB_OUTPUT"
+          echo "release_metadata=$release_metadata" >> "$GITHUB_OUTPUT"
+      - name: Verify release metadata
+        if: steps.scope.outputs.release_metadata == 'true'
+        run: |
+          set -eu
+          manifest_version="$(jq -ser '
+            if length == 1
+               and (.[0] | type == "object" and length == 1)
+               and (.[0]["."] | type == "string")
+               and (.[0]["."] | (contains("\n") | not) and (contains("\r") | not))
+               and (.[0]["."] | test("^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)(-[0-9A-Za-z-]+(\\.[0-9A-Za-z-]+)*)?\\z"))
+            then .[0]["."]
+            else error("invalid manifest version")
+            end
+          ' .release-please-manifest.json)"
+          jq -en --arg v "$manifest_version" --slurpfile pkg package.json \
+            '($pkg | length == 1) and ($pkg[0] | type == "object") and ($pkg[0].version == $v)' >/dev/null
+          jq -en --arg v "$manifest_version" --slurpfile lock package-lock.json \
+            '($lock | length == 1) and ($lock[0] | type == "object") and ($lock[0].version == $v) and ($lock[0].packages | type == "object") and ($lock[0].packages[""] | type == "object") and ($lock[0].packages[""].version == $v)' >/dev/null
+          jq -en --slurpfile cfg release-please-config.json \
+            '($cfg | length == 1) and ($cfg[0] | type == "object") and ($cfg[0].packages | type == "object") and ($cfg[0].packages["."] | type == "object")' >/dev/null
+      - if: steps.scope.outputs.go == 'true'
         uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
-      - if: steps.scope.outputs.run_ci == 'true'
+      - if: steps.scope.outputs.node == 'true'
         uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 24
-      - name: Test protocol, artifact safety, and publication boundaries
-        if: steps.scope.outputs.run_ci == 'true'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Run Go and Node verification in parallel
+        if: steps.scope.outputs.go == 'true' && steps.scope.outputs.node == 'true'
         run: |
+          set -eu
+          sh -n scripts/classify-ci-changes.sh
+          npm ci --ignore-scripts
+          node_log="$RUNNER_TEMP/catalog-node-ci.log"
+          (
+            set -eu
+            node --check scripts/prepare-glivela-release.mjs
+            node --check scripts/stage-glivela-native.mjs
+            node --test scripts/*.test.mjs
+          ) >"$node_log" 2>&1 &
+          node_pid=$!
+
+          go_rc=0
+          if go test ./... -count=1 && go run ./cmd/catalog-check --catalog catalog/catalog.json --root-directory catalog/trust; then
+            :
+          else
+            go_rc=$?
+          fi
+
+          node_rc=0
+          if wait "$node_pid"; then
+            :
+          else
+            node_rc=$?
+          fi
+
+          echo '::group::Node protocol and publication checks'
+          cat "$node_log"
+          echo '::endgroup::'
+
+          if [ "$go_rc" -ne 0 ] || [ "$node_rc" -ne 0 ]; then
+            echo "Catalog checks failed: go_exit=$go_rc node_exit=$node_rc" >&2
+            exit 1
+          fi
+      - name: Run Go protocol validation
+        if: steps.scope.outputs.go == 'true' && steps.scope.outputs.node != 'true'
+        run: |
+          set -eu
+          sh -n scripts/classify-ci-changes.sh
+          go test ./... -count=1
+          go run ./cmd/catalog-check --catalog catalog/catalog.json --root-directory catalog/trust
+      - name: Run Node publication script checks
+        if: steps.scope.outputs.node == 'true' && steps.scope.outputs.go != 'true'
+        run: |
+          set -eu
+          sh -n scripts/classify-ci-changes.sh
           npm ci --ignore-scripts
           node --check scripts/prepare-glivela-release.mjs
           node --check scripts/stage-glivela-native.mjs
-          go test ./... -count=1
           node --test scripts/*.test.mjs
-      - name: Validate reviewed recipes and independent root chain
-        if: steps.scope.outputs.run_ci == 'true'
-        run: go run ./cmd/catalog-check --catalog catalog/catalog.json --root-directory catalog/trust
-      - if: steps.scope.outputs.run_ci == 'true'
+      - if: steps.scope.outputs.go == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           repository: petauron/vastora
@@ -110,6 +185,6 @@ jobs:
           path: vastora-consumer
           persist-credentials: false
       - name: Validate production recipe with the reviewed schema 4 consumer
-        if: steps.scope.outputs.run_ci == 'true'
+        if: steps.scope.outputs.go == 'true'
         run: |
           (cd vastora-consumer && sh scripts/check-independent-catalog.sh --catalog ../catalog/catalog.json --root-directory ../catalog/trust)
