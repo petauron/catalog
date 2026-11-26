@@ -10,15 +10,15 @@ import {fileURLToPath} from 'node:url';
 
 const sha256=bytes=>createHash('sha256').update(bytes).digest('hex');
 const versionPattern=/^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(?:alpha|beta|rc)\.(0|[1-9][0-9]*))?$/;
-const senlunArchMap={amd64:'x86_64',arm64:'aarch64'};
-const stagingProducts={'glivela-native-mirror':'glivela','senlun-native-mirror':'senlun'};
+const senlunArchMap=Object.freeze(Object.assign(Object.create(null),{amd64:'x86_64',arm64:'aarch64'}));
+const stagingProducts=Object.freeze(Object.assign(Object.create(null),{'glivela-native-mirror':'glivela','senlun-native-mirror':'senlun'}));
 
 export function nativeMirrorURL(version, architecture) {
  if (!versionPattern.test(version) || !['amd64','arm64'].includes(architecture)) throw Error('Invalid Glivela distribution identity');
  return `https://downloads.petauron.com/vastora/catalog/artifacts/glivela/v${version}/glivela-${version}-linux-${architecture}.tar.gz`;
 }
 export function senlunNativeMirrorURL(version, architecture) {
- const archiveArch=senlunArchMap[architecture];
+ const archiveArch=typeof architecture==='string'&&Object.hasOwn(senlunArchMap,architecture)?senlunArchMap[architecture]:undefined;
  if (!versionPattern.test(version) || !archiveArch) throw Error('Invalid Senlun distribution identity');
  return `https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v${version}/senlun-v${version}-linux-${archiveArch}.tar.gz`;
 }
@@ -65,7 +65,8 @@ export function uploadNativeMirror({directory,bucket,endpoint,expectedProduct},r
 if(process.argv[1]&&fileURLToPath(import.meta.url)===path.resolve(process.argv[1])){
  try{
   const [directory,...extra]=process.argv.slice(2);
-  const expectedProduct=stagingProducts[path.basename(directory??'')];
+  const stagingName=path.basename(directory??'');
+  const expectedProduct=Object.hasOwn(stagingProducts,stagingName)?stagingProducts[stagingName]:undefined;
   if(extra.length||path.dirname(directory??'')!==process.env.RUNNER_TEMP||!expectedProduct)throw Error('Invalid mirror staging');
   const plan=uploadNativeMirror({directory,bucket:process.env.R2_BUCKET_NAME,endpoint:process.env.R2_ENDPOINT,expectedProduct});
   const verify=plan.product==='senlun'?verifySenlunNativeMirror:verifyNativeMirror;

@@ -185,6 +185,8 @@ function releaseFixture(t) {
   };
   const download = async url => url.includes("/token?") ? Buffer.from('{"token":"fixture"}') : url.includes("/manifests/") ? Buffer.from(JSON.stringify(fixture.index)) : raw.get(url.split("/").at(-1));
   const verifyMirrorFn = async (version, arch, digest, size) => { mirrored.push({ version, arch, digest, size }); };
+  fixture.run = run;
+  fixture.download = download;
   fixture.verify = opts => verifyRelease(request, registry, path.join(directory, "assets"), run, download, { verifyMirrorFn, ...opts });
   return fixture;
 }
@@ -569,7 +571,7 @@ test("stageGlivelaNative refuses non-protected environments before calling GitHu
   assert.equal(called, false);
 });
 
-test("stageSenlunNative refuses non-protected environments before calling GitHub and staging skips mirror check", async t => {
+test("stageSenlunNative refuses non-protected environments and stages verified native bundles with product metadata", async t => {
   let called = false;
   await assert.rejects(
     stageSenlunNative({
@@ -581,7 +583,29 @@ test("stageSenlunNative refuses non-protected environments before calling GitHub
   );
   assert.equal(called, false);
   const fixture = releaseFixture(t);
-  const staged = await fixture.verify({ verifyMirror: false });
+  const staging = path.join(fixture.directory, "senlun-native-mirror");
+  const staged = await stageSenlunNative({
+    env: {
+      CATALOG_PRODUCTION_ENABLED: "true",
+      GITHUB_REPOSITORY: "petauron/catalog",
+      GITHUB_REF: "refs/heads/main",
+      GITHUB_SHA: "e".repeat(40),
+      RUNNER_TEMP: fixture.directory,
+      CATALOG_SOURCE_TAG: request.tag,
+      CATALOG_SOURCE_SHA: request.sha,
+      CATALOG_SOURCE_RUN_ID: request.runId,
+    },
+    staging,
+    run: fixture.run,
+    download: fixture.download,
+  });
   assert.equal(fixture.mirrored.length, 0);
-  assert.equal(staged.stagedFiles.length, 2);
+  assert.equal(staged.product, "senlun");
+  assert.equal(staged.version, "0.1.0-alpha.5");
+  assert.equal(staged.artifacts.length, 2);
+  const plan = JSON.parse(readFileSync(path.join(staging, "mirror.json"), "utf8"));
+  assert.deepEqual(plan, staged);
+  for (const item of plan.artifacts) {
+    assert.deepEqual(readFileSync(path.join(staging, item.name)), fixture.raw.get(item.name));
+  }
 });

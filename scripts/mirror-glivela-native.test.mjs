@@ -19,6 +19,7 @@ test('Senlun native mirror fixes the official origin, architecture mapping and e
  assert.equal(senlunNativeMirrorURL('0.2.1','amd64'),'https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v0.2.1/senlun-v0.2.1-linux-x86_64.tar.gz');
  assert.equal(senlunNativeMirrorURL('0.2.1','arm64'),'https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v0.2.1/senlun-v0.2.1-linux-aarch64.tar.gz');
  assert.throws(()=>senlunNativeMirrorURL('../escape','amd64'));assert.throws(()=>senlunNativeMirrorURL('0.2.1','x86_64'));
+ assert.throws(()=>senlunNativeMirrorURL('0.2.1','toString'));assert.throws(()=>senlunNativeMirrorURL('0.2.1','__proto__'));
  const bytes=Buffer.from('senlun-verified');
  const fake=async(url,options)=>{assert.equal(new URL(url).hostname,'downloads.petauron.com');assert.equal(options.redirect,'error');return new Response(bytes);};
  await verifySenlunNativeMirror('0.2.1','arm64',sha256(bytes),bytes.length,fake);
