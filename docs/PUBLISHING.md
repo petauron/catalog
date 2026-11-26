@@ -36,7 +36,13 @@ For automatic publication, an unprivileged `discover` job (running outside the
   `workflow_dispatch`).
 - When a `senlun` upstream commit advances the independent Agent version, `discover` waits
   until `senlun-agent-v<version>` is also published at the same commit SHA before handing
-  off to `publish`.
+  off to `mirror-senlun` and `publish`.
+- When a `senlun` release is selected (automatically or via `workflow_dispatch`
+  `kind=release`, `application=senlun`), an isolated `mirror-senlun` job verifies the exact
+  protected commit, release inventory, `SHA256SUMS`, SLSA attestations, and multiarch image
+  before using R2 storage credentials (never `CATALOG_SIGNERS`) to copy both immutable
+  native Agent bundles to `downloads.petauron.com` under
+  `vastora/catalog/artifacts/senlun/v<version>/`.
 - When a `glivela` release is selected (automatically or via `workflow_dispatch`
   `kind=release`, `application=glivela`), an isolated `mirror-glivela` job verifies the
   exact protected commit, push CI gate (`CI / gate`), SLSA attestations, pinned `iperf3`
@@ -48,8 +54,8 @@ For automatic publication, an unprivileged `discover` job (running outside the
   and updates all four Glivela recipes (`meridian`, `glivela-entry`, `glivela-node`,
   `glivela-dual`) together.
 - Pending draft `catalog-rN` releases block automatic publication fail-closed, two
-  consecutive failed automated `mirror-glivela` or `publish` runs trip a circuit breaker
-  until a manual recovery run succeeds, and setting Repository Variable
+  consecutive failed automated `mirror-glivela`, `mirror-senlun`, or `publish` runs trip a
+  circuit breaker until a manual recovery run succeeds, and setting Repository Variable
   `CATALOG_AUTOPUBLISH_DISABLED=true` pauses all automatic runs without affecting manual
   `workflow_dispatch`.
 - `publish` still independently re-verifies every request through `catalog-plan.mjs`,
@@ -358,29 +364,34 @@ stopped-writer handover, preserve the existing certificates and node state, then
 activate the persistent installed bootstrap. Never re-enroll nodes or fabricate
 installation receipts to expose the UI.
 
-### Glivela native delivery on IPv6-only nodes
+### Glivela and Senlun native delivery on IPv6-only nodes
 
-`mirror-glivela-native.yml` copies an already published, immutable Glivela release
-into the existing official download origin. It does not create tags or Releases,
-sign/activate a catalog, contact nodes, change DNS/routes or grant access. Supply
-the existing release tag, exact source SHA and successful source release run ID.
-The job requires successful exact-head protected catalog CI and reuses the normal
-Glivela handoff's source/main/tag/run, GitHub asset inventory, SHA256SUMS,
-two-platform image, bundled iperf3 and native runtime version/commit checks before
-storage credentials are available. Distributions are never executed.
+`mirror-glivela-native.yml` and `mirror-senlun-native.yml` copy an already published,
+immutable Glivela or Senlun release into the existing official download origin. Neither
+workflow creates tags or Releases, signs/activates a catalog, contacts nodes, changes
+DNS/routes, or grants access. Supply the existing release tag, exact source SHA, and
+successful source release run ID.
 
-Only the amd64 and arm64 archives are written, under
-`https://downloads.petauron.com/vastora/catalog/artifacts/glivela/vVERSION/`. Writes use `If-None-Match: *`;
-retry accepts existing objects only when their bytes are identical. Storage and
-public-origin readback must match the source digest. Temporary files are removed,
-no Actions artifacts or additional release tags are retained, and no signing keys
-are exposed to this job. Failed copies retain the original source and must be
-retried with the same release identity; never overwrite an object.
+- For Glivela, the job reuses the normal handoff's source/main/tag/run, GitHub asset
+  inventory, `SHA256SUMS`, two-platform image, bundled `iperf3`, and native runtime
+  version/commit checks before storage credentials are available, and writes only the
+  amd64 and arm64 archives under
+  `https://downloads.petauron.com/vastora/catalog/artifacts/glivela/vVERSION/`.
+- For Senlun, `stage-senlun-native.mjs` verifies the exact protected commit, release
+  inventory, `SHA256SUMS`, SLSA attestations, and multiarch image before storage
+  credentials are available, and writes only the `x86_64` and `aarch64` archives under
+  `https://downloads.petauron.com/vastora/catalog/artifacts/senlun/vVERSION/`.
 
-After mirroring, the normal `prepare-glivela-release.mjs TAG SHA RUN_ID` handoff
-also verifies the official mirror and prepares those fixed HTTPS URLs in the
-signed recipe. The protected catalog publication and explicit per-node upgrade
-remain separate operations. The normal Agent HTTPS/archive/digest validation
-is unchanged; there is no fallback to another origin. Historical signed recipes
-are not rewritten. Actual IPv6 download and runtime acceptance are checked on
-the authorized IPv6-only nodes during rollout.
+Distributions are never executed. Writes use `If-None-Match: *`; retry accepts existing
+objects only when their bytes are identical. Storage and public-origin readback must match
+the source digest. Temporary files are removed, no Actions artifacts or additional release
+tags are retained, and no signing keys are exposed to these jobs. Failed copies retain the
+original source and must be retried with the same release identity; never overwrite an
+object.
+
+After mirroring, the normal release publication (`publish.yml`) or reviewed recipe update
+verifies the official mirror and records those fixed HTTPS URLs in the signed recipe. The
+protected catalog publication and explicit per-node upgrade remain separate operations. The
+normal Agent HTTPS/archive/digest validation is unchanged; there is no fallback to another
+origin. Historical signed recipes are not rewritten. Actual IPv6 download and runtime
+acceptance are checked on the authorized IPv6-only nodes during rollout.

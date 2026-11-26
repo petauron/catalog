@@ -8,20 +8,20 @@ const recipe = JSON.parse(readFileSync(new URL("../catalog/catalog.json", import
 const products = [
   ["meridian", "Glivela", "Glivela", "bf2989a1f445e1fbed1d8cb347a0de4a69be1c7d85f538a1c73417a55aae5449"],
   ["senlun", "Senlun", "Senlun", "228c5818adbf51da6cc9825d84e523b913c19f0f5d57e730fe46e6f95f599133"],
-  ["senlun-agent", "Senlun Agent", "Senlun 探针", "979931c62a87cad39ba5a8da3298b1558d8a765094c5e4de50c7da810b565308"],
+  ["senlun-agent", "Senlun Agent", "Senlun 探针", "ecf0cc8a5ef6c2899433479213d6ab2ce825ee07164f07cdda4b04a1c0098e78"],
 ];
 
 test("reviewed product identities and release coordinates are pinned", () => {
   for (const [id, en, zh, machineDigest] of products) {
     const app = recipe.apps.find(item => item.id === id);
     assert.deepEqual(app.name, { en, "zh-CN": zh });
-    assert.equal(app.packageRevision, id === "senlun-agent" ? 9 : 5);
+    assert.equal(app.packageRevision, id === "senlun-agent" ? 10 : 5);
     const identity = structuredClone(app);
     delete identity.name;
     delete identity.description;
     delete identity.packageRevision;
     identity.config = identity.config.map(({ label, description, ...field }) => field);
-    // Reviewed baseline includes Glivela 0.1.1 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs, the portable native probe contract with its optional explicit management proxy and all executable,
+    // Reviewed baseline includes Glivela 0.1.1 release coordinates, managed panel credential binding and the retained controller port 19443, standalone Senlun inputs, Senlun Agent 0.2.1 official mirror coordinates, the portable native probe contract with its optional explicit management proxy and all executable,
     // data path, user, config key, service, capability, image and artifact fields.
     assert.equal(sha256(JSON.stringify(identity)), machineDigest);
   }
@@ -32,7 +32,7 @@ test("brand metadata does not roll back a later published upstream version", () 
   const active = structuredClone(recipe);
   for (const [id] of products) {
     const app = active.apps.find(item => item.id === id);
-    app.version = "0.2.0";
+    app.version = "0.3.0";
     app.packageRevision = id === "meridian" ? 1 : 4;
     for (const image of app.images ?? []) image.reference = "accepted-image-digest";
     for (const artifact of app.artifacts ?? []) {
@@ -44,8 +44,8 @@ test("brand metadata does not roll back a later published upstream version", () 
   for (const [id, en] of products) {
     const app = merged.apps.find(item => item.id === id);
     assert.equal(app.name.en, en);
-    assert.equal(app.version, "0.2.0");
-    assert.equal(app.packageRevision, id === "senlun-agent" ? 9 : 5);
+    assert.equal(app.version, "0.3.0");
+    assert.equal(app.packageRevision, id === "senlun-agent" ? 10 : 5);
     for (const image of app.images ?? []) assert.equal(image.reference, "accepted-image-digest");
     for (const artifact of app.artifacts ?? []) {
       assert.equal(artifact.url, "https://example.invalid/accepted-artifact");

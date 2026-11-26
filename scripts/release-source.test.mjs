@@ -5,6 +5,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { applyRelease, compareVersions, fetchBounded, parseChecksums, resolveGlivelaUIRevision, sha256, validateRequest, verifyRelease, verifyReleaseIdentity, verifyRecoveryProvenance } from "./release-source.mjs";
 import { stageGlivelaNative } from "./stage-glivela-native.mjs";
+import { stageSenlunNative } from "./stage-senlun-native.mjs";
 
 const registry = JSON.parse(readFileSync(new URL("../catalog/sources.json", import.meta.url)));
 const rule = registry.sources.senlun;
@@ -156,7 +157,8 @@ function releaseFixture(t) {
   const info = identity();
   info.release.assets = [...raw].map(([name, bytes]) => ({ name, size: bytes.length, state: "uploaded", digest: `sha256:${sha256(bytes)}`, browser_download_url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}` }));
   const calls = [];
-  const fixture = { directory, raw, info, calls, rejectAttestation: false,
+  const mirrored = [];
+  const fixture = { directory, raw, info, calls, mirrored, rejectAttestation: false,
     index: { manifests: ["amd64", "arm64"].map(architecture => ({ platform: { os: "linux", architecture }, digest: `sha256:${"c".repeat(64)}` })) } };
   const run = (command, args) => {
     assert.equal(command, "gh"); calls.push(args);
@@ -182,7 +184,8 @@ function releaseFixture(t) {
     return Buffer.from(JSON.stringify(data));
   };
   const download = async url => url.includes("/token?") ? Buffer.from('{"token":"fixture"}') : url.includes("/manifests/") ? Buffer.from(JSON.stringify(fixture.index)) : raw.get(url.split("/").at(-1));
-  fixture.verify = () => verifyRelease(request, registry, path.join(directory, "assets"), run, download);
+  const verifyMirrorFn = async (version, arch, digest, size) => { mirrored.push({ version, arch, digest, size }); };
+  fixture.verify = opts => verifyRelease(request, registry, path.join(directory, "assets"), run, download, { verifyMirrorFn, ...opts });
   return fixture;
 }
 
@@ -190,6 +193,11 @@ test("release verification independently attests both archives and exact multiar
   const fixture = releaseFixture(t);
   const verified = await fixture.verify();
   assert.equal(verified.artifacts.length, 2); assert.equal(verified.image, `ghcr.io/petauron/senlun@sha256:${sha256(Buffer.from(JSON.stringify(fixture.index)))}`);
+  assert.equal(fixture.mirrored.length, 2);
+  for (const artifact of verified.artifacts) {
+    const archiveArch = artifact.architecture === "amd64" ? "x86_64" : "aarch64";
+    assert.equal(artifact.url, `https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v0.1.0-alpha.5/senlun-v0.1.0-alpha.5-linux-${archiveArch}.tar.gz`);
+  }
   const attestations = fixture.calls.filter(args => args[0] === "attestation");
   assert.equal(attestations.length, 3);
   for (const args of attestations) {
@@ -559,4 +567,21 @@ test("stageGlivelaNative refuses non-protected environments before calling GitHu
     /protected official publication job/,
   );
   assert.equal(called, false);
+});
+
+test("stageSenlunNative refuses non-protected environments before calling GitHub and staging skips mirror check", async t => {
+  let called = false;
+  await assert.rejects(
+    stageSenlunNative({
+      env: { CATALOG_PRODUCTION_ENABLED: "false", GITHUB_REPOSITORY: "petauron/catalog", GITHUB_REF: "refs/heads/main", GITHUB_SHA: "a".repeat(40), RUNNER_TEMP: "/tmp" },
+      staging: "/tmp/senlun-native-mirror",
+      run: () => { called = true; return Buffer.from("{}"); },
+    }),
+    /protected official publication job/,
+  );
+  assert.equal(called, false);
+  const fixture = releaseFixture(t);
+  const staged = await fixture.verify({ verifyMirror: false });
+  assert.equal(fixture.mirrored.length, 0);
+  assert.equal(staged.stagedFiles.length, 2);
 });

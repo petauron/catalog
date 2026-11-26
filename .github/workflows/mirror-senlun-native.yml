@@ -1,0 +1,73 @@
+name: Mirror verified Senlun native distributions
+on:
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing published Senlun tag
+        type: string
+        required: true
+      sha:
+        description: Exact protected release source SHA
+        type: string
+        required: true
+      run_id:
+        description: Successful source release run
+        type: string
+        required: true
+permissions:
+  contents: read
+concurrency:
+  group: official-senlun-native-mirror
+  queue: max
+  cancel-in-progress: false
+jobs:
+  mirror:
+    if: github.repository == 'petauron/catalog' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: catalog-signing
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      packages: read
+    env:
+      CATALOG_PRODUCTION_ENABLED: ${{ vars.CATALOG_PRODUCTION_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require explicit cutover and protected noninteractive signing environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$CATALOG_PRODUCTION_ENABLED" = true
+          jq -e '.publisherCutoverCompleted and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
+            jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Verify attested Senlun release and stage native bundles before storage credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CATALOG_SOURCE_TAG: ${{ inputs.tag }}
+          CATALOG_SOURCE_SHA: ${{ inputs.sha }}
+          CATALOG_SOURCE_RUN_ID: ${{ inputs.run_id }}
+        run: |
+          npm ci --ignore-scripts
+          node --test scripts/release-source.test.mjs scripts/mirror-glivela-native.test.mjs
+          node scripts/stage-senlun-native.mjs "$RUNNER_TEMP/senlun-native-mirror"
+      - name: Copy immutable bytes and verify official public origin
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET_NAME: ${{ vars.CATALOG_R2_BUCKET_NAME }}
+          R2_ENDPOINT: https://${{ vars.CATALOG_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: node scripts/mirror-glivela-native.mjs "$RUNNER_TEMP/senlun-native-mirror"
+      - name: Remove temporary distributions
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/senlun-native-mirror"

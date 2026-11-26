@@ -22,7 +22,7 @@ function runTimestampMs(run) {
 function isPublishJobFailure(jobs) {
   return (jobs ?? []).some(
     job =>
-      (job?.name === "publish" || job?.name === "mirror-glivela") &&
+      (job?.name === "publish" || job?.name === "mirror-glivela" || job?.name === "mirror-senlun") &&
       (job.conclusion === "failure" || job.conclusion === "timed_out"),
   );
 }

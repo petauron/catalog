@@ -135,6 +135,7 @@ jobs:
             set -eu
             node --check scripts/prepare-glivela-release.mjs
             node --check scripts/stage-glivela-native.mjs
+            node --check scripts/stage-senlun-native.mjs
             node --test scripts/*.test.mjs
           ) >"$node_log" 2>&1 &
           node_pid=$!
@@ -176,6 +177,7 @@ jobs:
           npm ci --ignore-scripts
           node --check scripts/prepare-glivela-release.mjs
           node --check scripts/stage-glivela-native.mjs
+          node --check scripts/stage-senlun-native.mjs
           node --test scripts/*.test.mjs
       - if: steps.scope.outputs.go == 'true'
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

@@ -121,15 +121,72 @@ jobs:
       - name: Remove temporary distributions
         if: always()
         run: rm -rf -- "$RUNNER_TEMP/glivela-native-mirror"
+  mirror-senlun:
+    needs: [discover]
+    if: >-
+      !cancelled() &&
+      github.repository == 'petauron/catalog' &&
+      github.ref == 'refs/heads/main' &&
+      ((github.event_name == 'workflow_dispatch' && inputs.kind == 'release' && inputs.application == 'senlun' && needs.discover.result == 'skipped') ||
+       (needs.discover.result == 'success' && needs.discover.outputs.should_publish == 'true' && needs.discover.outputs.kind == 'release' && needs.discover.outputs.application == 'senlun'))
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: catalog-signing
+    permissions:
+      contents: read
+      actions: read
+      attestations: read
+      packages: read
+    env:
+      CATALOG_PRODUCTION_ENABLED: ${{ vars.CATALOG_PRODUCTION_ENABLED }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Require explicit cutover and protected noninteractive signing environment
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          test "$CATALOG_PRODUCTION_ENABLED" = true
+          jq -e '.publisherCutoverCompleted and .oldWriterDisabled and .consumerCompatibilityVerified' catalog/migration.json >/dev/null
+          gh api "repos/$GITHUB_REPOSITORY/branches/main" --jq '.protected' | grep -qx true
+          gh api "repos/$GITHUB_REPOSITORY/environments/catalog-signing" |
+            jq -e '.deployment_branch_policy.protected_branches == true and ([.protection_rules[]? | select(.type == "required_reviewers") | .reviewers[]?] | length == 0)' >/dev/null
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 24
+      - name: Verify attested Senlun release and stage native bundles before storage credentials
+        env:
+          GH_TOKEN: ${{ github.token }}
+          CATALOG_SOURCE_TAG: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.tag || needs.discover.outputs.tag }}
+          CATALOG_SOURCE_SHA: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.sha || needs.discover.outputs.sha }}
+          CATALOG_SOURCE_RUN_ID: ${{ (github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile') && inputs.run_id || needs.discover.outputs.run_id }}
+        run: |
+          npm ci --ignore-scripts
+          node --test scripts/release-source.test.mjs scripts/mirror-glivela-native.test.mjs
+          node scripts/stage-senlun-native.mjs "$RUNNER_TEMP/senlun-native-mirror"
+      - name: Copy immutable bytes and verify official public origin
+        env:
+          AWS_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          AWS_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          AWS_DEFAULT_REGION: auto
+          AWS_EC2_METADATA_DISABLED: 'true'
+          R2_BUCKET_NAME: ${{ vars.CATALOG_R2_BUCKET_NAME }}
+          R2_ENDPOINT: https://${{ vars.CATALOG_CLOUDFLARE_ACCOUNT_ID }}.r2.cloudflarestorage.com
+        run: node scripts/mirror-glivela-native.mjs "$RUNNER_TEMP/senlun-native-mirror"
+      - name: Remove temporary distributions
+        if: always()
+        run: rm -rf -- "$RUNNER_TEMP/senlun-native-mirror"
   publish:
-    needs: [discover, mirror-glivela]
-    # Explicit !cancelled() is required so a skipped discover or mirror-glivela job
+    needs: [discover, mirror-glivela, mirror-senlun]
+    # Explicit !cancelled() is required so a skipped discover or mirror job
     # does not cause implicit success() to skip publish.
     if: >-
       !cancelled() &&
       github.repository == 'petauron/catalog' &&
       github.ref == 'refs/heads/main' &&
       (needs.mirror-glivela.result == 'success' || needs.mirror-glivela.result == 'skipped') &&
+      (needs.mirror-senlun.result == 'success' || needs.mirror-senlun.result == 'skipped') &&
       ((github.event_name == 'workflow_dispatch' && inputs.kind != 'reconcile' && needs.discover.result == 'skipped') ||
        (needs.discover.result == 'success' && needs.discover.outputs.should_publish == 'true'))
     runs-on: ubuntu-24.04
