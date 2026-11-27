@@ -914,7 +914,7 @@
     },
     {
       "id": "senlun-agent",
-      "version": "0.1.0-alpha.31",
+      "version": "0.2.1",
       "name": {
         "en": "Senlun Agent",
         "zh-CN": "Senlun 探针"
@@ -930,8 +930,8 @@
           "name": "senlun-agent",
           "operatingSystem": "linux",
           "architecture": "amd64",
-          "url": "https://github.com/petauron/senlun/releases/download/v0.1.0-alpha.31/senlun-v0.1.0-alpha.31-linux-x86_64.tar.gz",
-          "sha256": "83d5720cea0307472639d6f0010a9b73b433ab8bd21715d5dcb5d900c5af9cfe",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v0.2.1/senlun-v0.2.1-linux-x86_64.tar.gz",
+          "sha256": "b4227bdc7b1b20a404820ad5e1ab38e00340555b23dbda097271c900f4cf2641",
           "format": "tar.gz",
           "stripComponents": 1
         },
@@ -939,8 +939,8 @@
           "name": "senlun-agent",
           "operatingSystem": "linux",
           "architecture": "arm64",
-          "url": "https://github.com/petauron/senlun/releases/download/v0.1.0-alpha.31/senlun-v0.1.0-alpha.31-linux-aarch64.tar.gz",
-          "sha256": "a8281f405c4d8a71f583c56c8f4ba2db2958a9f366110e86c887d448161a329f",
+          "url": "https://downloads.petauron.com/vastora/catalog/artifacts/senlun/v0.2.1/senlun-v0.2.1-linux-aarch64.tar.gz",
+          "sha256": "757f44e0371e2ac424a23481fc2b67859c223ab6193200d93ba43a8039c0913d",
           "format": "tar.gz",
           "stripComponents": 1
         }
@@ -1063,7 +1063,7 @@
           "secret": true
         }
       ],
-      "packageRevision": 9,
+      "packageRevision": 10,
       "runtime": {
         "kind": "native",
         "version": 2,

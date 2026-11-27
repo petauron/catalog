@@ -35,12 +35,20 @@ test("circuit breaker trips on two publish-job failures since last publication a
     }),
     { open: false, failures: 0 },
   );
-  // Repeated mirror-glivela failures also trip the circuit breaker.
+  // Repeated mirror-glivela or mirror-senlun failures also trip the circuit breaker.
   assert.deepEqual(
     isCircuitOpen(failedRuns, [], {
       currentRunId: "13",
       sinceIso,
       jobsForRun: () => [{ name: "mirror-glivela", conclusion: "failure" }, { name: "publish", conclusion: "skipped" }],
+    }),
+    { open: true, failures: 2 },
+  );
+  assert.deepEqual(
+    isCircuitOpen(failedRuns, [], {
+      currentRunId: "13",
+      sinceIso,
+      jobsForRun: () => [{ name: "mirror-senlun", conclusion: "failure" }, { name: "publish", conclusion: "skipped" }],
     }),
     { open: true, failures: 2 },
   );

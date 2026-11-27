@@ -6,7 +6,7 @@ import { createHash } from "node:crypto";
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import semver from "semver";
-import { nativeMirrorURL, verifyNativeMirror } from "./mirror-glivela-native.mjs";
+import { nativeMirrorURL, senlunNativeMirrorURL, verifyNativeMirror, verifySenlunNativeMirror } from "./mirror-glivela-native.mjs";
 
 export const sha256 = bytes => createHash("sha256").update(bytes).digest("hex");
 export const execute = (command, args, { maxBuffer = 8 * 1024 * 1024, timeout = 180000 } = {}) =>
@@ -36,8 +36,12 @@ export function validateRequest(request, registry) {
   if (rule.recovery && (!/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.recovery.ciWorkflow) || !rule.recovery.ciJob || !rule.recovery.verifyJob)) throw new Error("Invalid recovery source policy");
   if (rule.ciWorkflow && (!/^\.github\/workflows\/[a-zA-Z0-9_-]+\.yml$/.test(rule.ciWorkflow) || (rule.ciJob !== undefined && !rule.ciJob))) throw new Error("Invalid source CI policy");
   if (rule.nativeMirror === true) {
-    if (rule.recovery) throw new Error("Recovery workflow_dispatch is not supported for native mirror sources");
-    if (rule.archivePrefix !== "glivela" || !rule.iperf3?.version || !sha256Pattern.test(rule.iperf3?.digests?.amd64 ?? "") || !sha256Pattern.test(rule.iperf3?.digests?.arm64 ?? "")) throw new Error("Invalid native mirror source policy");
+    if (rule.archivePrefix === "glivela") {
+      if (rule.recovery) throw new Error("Recovery workflow_dispatch is not supported for native mirror sources");
+      if (!rule.iperf3?.version || !sha256Pattern.test(rule.iperf3?.digests?.amd64 ?? "") || !sha256Pattern.test(rule.iperf3?.digests?.arm64 ?? "")) throw new Error("Invalid native mirror source policy");
+    } else if (rule.archivePrefix !== "senlun") {
+      throw new Error("Invalid native mirror source policy");
+    }
   }
   return rule;
 }
@@ -268,7 +272,7 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     ...(recovery ? { signerComparison: api(`compare/${run.head_sha}...${rule.branch}`), sourceToSigner: api(`compare/${request.sha}...${run.head_sha}`) } : {}),
   });
   const sourceRef = releaseSourceRef(request, rule, run);
-  if (rule.nativeMirror === true) {
+  if (rule.archivePrefix === "glivela" && rule.nativeMirror === true) {
     return verifyGlivelaRelease(request, rule, work, { release, run, api, pages, sourceRef, runCommand, download, verifyMirror: options.verifyMirror, verifyMirrorFn: options.verifyMirrorFn });
   }
   // The Service tag and Agent version are independent. Read both the Agent
@@ -300,7 +304,11 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     const result = runCommand("gh", ["attestation", "verify", location, "--repo", rule.repository, "--signer-workflow", `${rule.repository}/${rule.workflow}`, "--source-digest", run.head_sha, "--signer-digest", run.head_sha, "--source-ref", sourceRef, "--deny-self-hosted-runners", ...(recovery ? ["--format", "json"] : [])]);
     if (recovery) verifyRecoveryProvenance(JSON.parse(result), request, rule, run);
   };
+  const version = request.tag.slice(1);
+  const verifyMirror = options.verifyMirror ?? true;
+  const verifyMirrorFn = options.verifyMirrorFn ?? verifySenlunNativeMirror;
   const artifacts = [];
+  const stagedFiles = [];
   console.log("Release verification stage: native-archives-and-attestations");
   for (const [architecture, archiveArch] of Object.entries(rule.archives)) {
     if (!["amd64", "arm64"].includes(architecture) || !["x86_64", "aarch64"].includes(archiveArch)) throw new Error("Unsupported source artifact mapping");
@@ -312,7 +320,12 @@ export async function verifyRelease(request, registry, work, runCommand = execut
     const location = path.join(work, name);
     writeFileSync(location, raw, { mode: 0o600, flag: "wx" });
     attest(location);
-    artifacts.push({ name: rule.artifactName, operatingSystem: "linux", architecture, url: `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}`, sha256: digest });
+    const url = rule.nativeMirror === true
+      ? senlunNativeMirrorURL(version, architecture)
+      : `https://github.com/${rule.repository}/releases/download/${request.tag}/${name}`;
+    if (rule.nativeMirror === true && verifyMirror) await verifyMirrorFn(version, architecture, digest, raw.length);
+    artifacts.push({ name: rule.artifactName, operatingSystem: "linux", architecture, url, sha256: digest });
+    stagedFiles.push({ architecture, name, size: raw.length, sha256: digest, location });
   }
   if (artifacts.length !== 2) throw new Error("Both native platforms are required");
   console.log("Release verification stage: multiarch-image-and-attestation");
@@ -326,7 +339,7 @@ export async function verifyRelease(request, registry, work, runCommand = execut
   attest(`oci://${image}`);
   // catalog-check independently reads both OCI platform configs and verifies
   // archive members/ELF headers after this materializes the candidate catalog.
-  return { request, version: request.tag.slice(1), agentVersion, artifacts, image };
+  return { request, version, agentVersion, artifacts, image, stagedFiles };
 }
 
 // An increased Agent version is eligible only after its own Release Please
