@@ -1,5 +1,12 @@
 # Changelog
 
+## [0.8.0](https://github.com/petauron/catalog/compare/v0.7.0...v0.8.0) (2026-11-27)
+
+
+### Features
+
+* **publish:** mirror Senlun native agent bundles to downloads.petauron.com ([#255](https://github.com/petauron/catalog/issues/255)) ([fab909b](https://github.com/petauron/catalog/commit/fab909b6cdc9856d9d586d83a0cb5855e383ec50))
+
 ## [0.7.0](https://github.com/petauron/catalog/compare/v0.6.1...v0.7.0) (2026-11-25)
 
 
